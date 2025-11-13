@@ -2,9 +2,5 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/thirdparty/glfw" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/thirdparty/glm" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/thirdparty/stb" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/thirdparty/tinyobjloader" vcs="Git" />
   </component>
 </project>
