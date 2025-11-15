@@ -36,6 +36,7 @@ private:
 	vk::raii::Instance instance = nullptr;
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
 	vk::raii::Device device = nullptr;
+	vk::raii::Queue graphicsQueue = nullptr;
 
 
 	void initWindow() {
@@ -104,7 +105,7 @@ private:
 		}
 	}
 
-	uint32_t findQueueFamiles(vk::raii::PhysicalDevice physicalDevice) {
+	uint32_t findQueueFamilies(vk::raii::PhysicalDevice physicalDevice) {
 		// find the index of the first queue family that support graphics
 		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
 
@@ -153,6 +154,37 @@ private:
 
 	void createLogicalDevice() {
 	    //TODO https://docs.vulkan.org/tutorial/latest/03_Drawing_a_triangle/00_Setup/04_Logical_device_and_queues.html#_introduction
+    	std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+    	uint32_t graphicsIndex = findQueueFamilies(physicalDevice);
+
+    	vk::DeviceQueueCreateInfo deviceQueueCreateInfo{};
+    	deviceQueueCreateInfo.queueFamilyIndex = graphicsIndex;
+    	deviceQueueCreateInfo.queueCount = 1;
+
+    	float queuePriority = 1.0f;
+		deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+
+    	vk::PhysicalDeviceFeatures deviceFeatures;
+
+    	// Create a chain of feature structures
+    	vk::StructureChain<
+    		vk::PhysicalDeviceFeatures2,
+    		vk::PhysicalDeviceVulkan13Features,
+    		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain;
+
+    	featureChain.get<vk::PhysicalDeviceFeatures2>();
+    	featureChain.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering = VK_TRUE;
+    	featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState = VK_TRUE;
+
+    	vk::DeviceCreateInfo deviceCreateInfo{};
+    	deviceCreateInfo.pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>();
+    	deviceCreateInfo.queueCreateInfoCount = 1;
+    	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+    	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+    	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+
+    	device = vk::raii::Device(physicalDevice, deviceCreateInfo);
+    	graphicsQueue = vk::raii::Queue(device, graphicsIndex, 0);
     }
 	void initVulkan() {
 		createInstance();
