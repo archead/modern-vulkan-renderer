@@ -34,16 +34,24 @@ private:
 	GLFWwindow* window;
 	vk::raii::Context context; // creates the RAII Vulkan_hpp context for the entire project
 	vk::raii::Instance instance = nullptr;
+	vk::raii::SurfaceKHR surface = nullptr;
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
 	vk::raii::Device device = nullptr;
-	vk::raii::Queue graphicsQueue = nullptr;
+	vk::raii::Queue graphicsQueue = nullptr; // also responsible for the present queue (in my case they are in the same family)
+	vk::raii::Queue presentQueue = nullptr;
 
+	std::vector<const char*> deviceExtensions = {
+		vk::KHRSwapchainExtensionName,
+		vk::KHRSpirv14ExtensionName,
+		vk::KHRSynchronization2ExtensionName,
+		vk::KHRCreateRenderpass2ExtensionName
+	};
 
 	void initWindow() {
 		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // we're not using OpenGL
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // dealing with relizable windows will come later
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // dealing with resizable windows will come later
 
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 	}
@@ -93,9 +101,7 @@ private:
 		createInfo.enabledExtensionCount  = glfwExtensionCount;
 		createInfo.ppEnabledExtensionNames = glfwExtensions;
 		createInfo.ppEnabledLayerNames = requiredLayers.data();
-		createInfo.enabledExtensionCount = 0;
-		createInfo.ppEnabledExtensionNames = nullptr;
-		
+
 		try {
 		instance = vk::raii::Instance(context, createInfo);
 		} catch (const vk::SystemError& err) {
@@ -103,6 +109,14 @@ private:
 		} catch (const std::exception& err) {
 			std::cerr << "Error: " << err.what() << std::endl;
 		}
+	}
+
+	void createSurface() {
+		VkSurfaceKHR _surface;
+		if (glfwCreateWindowSurface(*instance, window, nullptr, &_surface) != 0) {
+			throw std::runtime_error("failed to create window surface!");
+		}
+		surface = vk::raii::SurfaceKHR(instance, _surface);
 	}
 
 	uint32_t findQueueFamilies(vk::raii::PhysicalDevice physicalDevice) {
@@ -114,15 +128,9 @@ private:
 			std::find_if(queueFamilyProperties.begin(),
 				queueFamilyProperties.end(),
 				[](vk::QueueFamilyProperties const& qfp) { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; });
+
 		return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
 	}
-
-	std::vector<const char*> deviceExtensions = {
-		vk::KHRSwapchainExtensionName,
-		vk::KHRSpirv14ExtensionName,
-		vk::KHRSynchronization2ExtensionName,
-		vk::KHRCreateRenderpass2ExtensionName
-	};
 
     void pickPhysicalDevice() {
     	std::vector<vk::raii::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
@@ -151,11 +159,19 @@ private:
     	if (devIter == devices.end()) { throw std::runtime_error("failed to find a suitable GPU!"); }
 	}
 
-
 	void createLogicalDevice() {
-	    //TODO https://docs.vulkan.org/tutorial/latest/03_Drawing_a_triangle/00_Setup/04_Logical_device_and_queues.html#_introduction
     	std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
     	uint32_t graphicsIndex = findQueueFamilies(physicalDevice);
+
+    	// this is SUPER hacky lmfao, ideally needs to be checked during the entire findQueueFamilies() process
+		// TODO make this actually work correctly
+    	VkBool32 presentSupport = physicalDevice.getSurfaceSupportKHR(graphicsIndex, *surface);
+    	if (presentSupport == VK_FALSE) {
+    		throw std::runtime_error("can't find present queue in currently selected queue family index!");
+    	} else {
+    		std::cout << "present queue index: " << graphicsIndex << std::endl;
+    	}
+
 
     	vk::DeviceQueueCreateInfo deviceQueueCreateInfo{};
     	deviceQueueCreateInfo.queueFamilyIndex = graphicsIndex;
@@ -185,9 +201,13 @@ private:
 
     	device = vk::raii::Device(physicalDevice, deviceCreateInfo);
     	graphicsQueue = vk::raii::Queue(device, graphicsIndex, 0);
+		presentQueue = vk::raii::Queue(device, graphicsIndex, 0); // this handle is the same as the graphicsQueue one cause they are in the same familyQueue
+		
     }
+
 	void initVulkan() {
 		createInstance();
+    	createSurface();
 		pickPhysicalDevice();
     	createLogicalDevice();
 	}
