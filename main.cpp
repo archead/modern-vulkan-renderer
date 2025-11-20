@@ -41,8 +41,14 @@ private:
 	vk::raii::SurfaceKHR surface = nullptr;
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
 	vk::raii::Device device = nullptr;
+	uint32_t graphicsFamilyIndex;
+	uint32_t presentFamilyIndex;
 	vk::raii::Queue graphicsQueue = nullptr; // also responsible for the present queue (in my case they are in the same family)
 	vk::raii::Queue presentQueue = nullptr;
+	vk::SurfaceFormatKHR swapChainSurfaceFormat;
+	vk::Extent2D swapChainExtent;
+
+
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -210,8 +216,8 @@ private:
 
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
 		for (const auto& availableFormat : availableFormats) {
-			if (availableFormat.format == vk::formats::eB8G8R8A8Srgb &&
-				availableFormat.colorSpace == vk::eSrgbNonLinear) {
+			if (availableFormat.format == vk::Format::eB8G8R8A8Srgb &&
+				availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
 				return availableFormat;
 			}
 		}
@@ -220,7 +226,7 @@ private:
 
 	vk::PresentModeKHR chooseSwapPresentMode (const std::vector<vk::PresentModeKHR>& availablePresentModes) {
 		for (const auto& availablePresentMode : availablePresentModes) {
-			if (availabelMode == vk::PresentModeKHR::eMailbox) {
+			if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
 				return vk::PresentModeKHR::eMailbox;
 			}
 		}
@@ -236,9 +242,37 @@ private:
 		glfwGetFramebufferSize(window, &width, &height);
 
 		return {
-		std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capablities.maxImageExtent.width),
+		std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
 		std::clamp<uint32_t>(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
 		};
+	}
+
+	void createSwapChain() {
+		auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
+		swapChainExtent = chooseSwapExtent(surfaceCapabilities);
+
+		swapChainSurfaceFormat = chooseSwapSurfaceFormat(physicalDevice.getSurfaceFormatsKHR(surface));
+
+		auto minImageCount = std::max(3u, surfaceCapabilities.minImageCount);
+		if (surfaceCapabilities.maxImageCount > 0 && minImageCount > surfaceCapabilities.maxImageCount) {
+			minImageCount = surfaceCapabilities.maxImageCount;
+		}
+
+		vk::SwapchainCreateInfoKHR swapChainCreateInfo{};
+		swapChainCreateInfo.flags = vk::SwapchainCreateFlagsKHR();
+		swapChainCreateInfo.surface = surface;
+		swapChainCreateInfo.minImageCount = minImageCount;
+		swapChainCreateInfo.imageFormat = swapChainSurfaceFormat.format;
+		swapChainCreateInfo.imageColorSpace = swapChainSurfaceFormat.colorSpace;
+		swapChainCreateInfo.imageExtent = swapChainExtent;
+		swapChainCreateInfo.imageArrayLayers = 1;
+		swapChainCreateInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+		swapChainCreateInfo.imageSharingMode = vk::SharingMode::eExclusive;
+		swapChainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
+		swapChainCreateInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+		swapChainCreateInfo.presentMode = chooseSwapPresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
+		swapChainCreateInfo.clipped = true;
+		swapChainCreateInfo.oldSwapchain = nullptr;
 	}
 
 	void initVulkan() {
@@ -246,6 +280,7 @@ private:
     	createSurface();
 		pickPhysicalDevice();
     	createLogicalDevice();
+		createSwapChain();
 	}
 
 	void mainLoop() {
