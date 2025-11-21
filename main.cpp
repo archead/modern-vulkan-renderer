@@ -47,8 +47,9 @@ private:
 	vk::raii::Queue presentQueue = nullptr;
 	vk::SurfaceFormatKHR swapChainSurfaceFormat;
 	vk::Extent2D swapChainExtent;
-
-
+	vk::raii::SwapchainKHR swapChain = nullptr;
+	std::vector<vk::Image> swapChainImages;
+	vk::Format swapChainImageFormat = vk::Format::eUndefined;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -141,6 +142,7 @@ private:
 
 		return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
 	}
+
 
     void pickPhysicalDevice() {
     	std::vector<vk::raii::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
@@ -273,6 +275,12 @@ private:
 		swapChainCreateInfo.presentMode = chooseSwapPresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
 		swapChainCreateInfo.clipped = true;
 		swapChainCreateInfo.oldSwapchain = nullptr;
+
+		swapChain = vk::raii::SwapchainKHR(device, swapChainCreateInfo);
+		swapChainImages = swapChain.getImages();
+
+		swapChainImageFormat = swapChainSurfaceFormat.format;
+
 	}
 
 	void initVulkan() {
