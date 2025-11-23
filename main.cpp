@@ -50,6 +50,7 @@ private:
 	vk::raii::SwapchainKHR swapChain = nullptr;
 	std::vector<vk::Image> swapChainImages;
 	vk::Format swapChainImageFormat = vk::Format::eUndefined;
+	std::vector<vk::raii::ImageView> swapChainImageViews;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -283,12 +284,26 @@ private:
 
 	}
 
+	void createImageViews() {
+		swapChainImageViews.clear();
+
+		vk::ImageViewCreateInfo imageViewCreateInfo{};
+		imageViewCreateInfo.viewType = vk::ImageViewType::e2D;
+		imageViewCreateInfo.format = swapChainImageFormat;
+		imageViewCreateInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+		for (auto image : swapChainImages) {
+			imageViewCreateInfo.image = image;
+			swapChainImageViews.emplace_back(device, imageViewCreateInfo );
+		}
+	}
+
 	void initVulkan() {
 		createInstance();
     	createSurface();
 		pickPhysicalDevice();
     	createLogicalDevice();
 		createSwapChain();
+		createImageViews();
 	}
 
 	void mainLoop() {
