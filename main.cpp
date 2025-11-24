@@ -297,6 +297,10 @@ private:
 		}
 	}
 
+	void createGraphicsPipeline() {
+
+	}
+
 	void initVulkan() {
 		createInstance();
     	createSurface();
@@ -304,6 +308,7 @@ private:
     	createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createGraphicsPipeline();
 	}
 
 	void mainLoop() {
