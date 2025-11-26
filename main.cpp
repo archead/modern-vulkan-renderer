@@ -12,6 +12,8 @@
 #include <limits> // Necessary for std::numeric_limits
 #include <algorithm> // Necessary for std::clamp
 
+#include <fstream>
+
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
@@ -24,6 +26,22 @@ constexpr bool enableValidationLayers = false;
 #else
 constexpr bool enableValidationLayers = true;
 #endif
+
+static std::vector<char> readFile(const std::string& filename) {
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open()) {
+		throw std::runtime_error("failed to open file!");
+	}
+
+	std::vector<char> buffer(file.tellg());
+
+	file.seekg(0, std::ios::beg);
+	file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+
+	file.close();
+	return buffer;
+}
 
 class HelloTriangleApplication {
 public:
@@ -297,8 +315,13 @@ private:
 		}
 	}
 
-	void createGraphicsPipeline() {
+	[[nodiscard]] vk::raii::ShaderModule createShaderModule(const std::vector<char>& code) {
+		
+	}
 
+	void createGraphicsPipeline() {
+		auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
+		std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
 	}
 
 	void initVulkan() {
