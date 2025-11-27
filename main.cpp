@@ -316,12 +316,29 @@ private:
 	}
 
 	[[nodiscard]] vk::raii::ShaderModule createShaderModule(const std::vector<char>& code) {
-		
+		vk::ShaderModuleCreateInfo createInfo;
+		createInfo.codeSize = code.size() * sizeof(char);
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+		vk::raii::ShaderModule shaderModule(device, createInfo);
+		return shaderModule;
 	}
 
 	void createGraphicsPipeline() {
 		auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
 		std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
+		vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
+
+		vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
+		vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
+		vertShaderStageInfo.module = shaderModule;
+		vertShaderStageInfo.pName = "vertMain";
+
+		vk::PipelineShaderStageCreateInfo fragShaderStageInfo;
+		fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
+		fragShaderStageInfo.module = shaderModule;
+		fragShaderStageInfo.pName = "fragMain";
+
+		vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,fragShaderStageInfo};
 	}
 
 	void initVulkan() {
