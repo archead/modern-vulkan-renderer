@@ -339,6 +339,20 @@ private:
 		fragShaderStageInfo.pName = "fragMain";
 
 		vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,fragShaderStageInfo};
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+
+		std::vector dynamicStates= {
+			vk::DynamicState::eViewport,
+			vk::DynamicState::eScissor
+		};
+
+		vk::PipelineDynamicStateCreateInfo dynamicState;
+		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+		dynamicState.pDynamicStates = dynamicStates.data();
+
+		vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+		inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
+
 	}
 
 	void initVulkan() {
