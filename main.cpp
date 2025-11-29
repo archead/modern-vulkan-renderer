@@ -123,7 +123,7 @@ private:
 									{ return strcmp(extensionProperty.extensionName, glfwExtension) == 0; })) {
 
 				throw std::runtime_error{"Required GLFW extension not supported"};
-			}
+									}
 		}
 
 		vk::InstanceCreateInfo createInfo{};
@@ -133,7 +133,7 @@ private:
 		createInfo.ppEnabledLayerNames = requiredLayers.data();
 
 		try {
-		instance = vk::raii::Instance(context, createInfo);
+			instance = vk::raii::Instance(context, createInfo);
 		} catch (const vk::SystemError& err) {
 			std::cerr << "Vulkan error: " << err.what() << std::endl;
 		} catch (const std::exception& err) {
@@ -163,9 +163,9 @@ private:
 	}
 
 
-    void pickPhysicalDevice() {
-    	std::vector<vk::raii::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
-    	const auto devIter = std::ranges::find_if(devices, [&](auto const& device) {
+	void pickPhysicalDevice() {
+		std::vector<vk::raii::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
+		const auto devIter = std::ranges::find_if(devices, [&](auto const& device) {
 			auto queueFamilies = device.getQueueFamilyProperties();
 			bool isSuitable = device.getProperties().apiVersion >= VK_API_VERSION_1_3;
 
@@ -187,60 +187,60 @@ private:
 			if (isSuitable) { physicalDevice = device; }
 			return isSuitable;
 		});
-    	if (devIter == devices.end()) { throw std::runtime_error("failed to find a suitable GPU!"); }
+		if (devIter == devices.end()) { throw std::runtime_error("failed to find a suitable GPU!"); }
 	}
 
 	void createLogicalDevice() {
-    	std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
-    	uint32_t graphicsIndex = findQueueFamilies(physicalDevice);
+		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+		uint32_t graphicsIndex = findQueueFamilies(physicalDevice);
 
-    	// this is SUPER hacky lmfao, ideally needs to be checked during the entire findQueueFamilies() process
+		// this is SUPER hacky lmfao, ideally needs to be checked during the entire findQueueFamilies() process
 		// TODO make this actually work correctly
-    	VkBool32 presentSupport = physicalDevice.getSurfaceSupportKHR(graphicsIndex, *surface);
-    	if (presentSupport == VK_FALSE) {
-    		throw std::runtime_error("can't find present queue in currently selected queue family index!");
-    	} else {
-    		std::cout << "present queue index: " << graphicsIndex << std::endl;
-    	}
+		VkBool32 presentSupport = physicalDevice.getSurfaceSupportKHR(graphicsIndex, *surface);
+		if (presentSupport == VK_FALSE) {
+			throw std::runtime_error("can't find present queue in currently selected queue family index!");
+		} else {
+			std::cout << "present queue index: " << graphicsIndex << std::endl;
+		}
 
-    	vk::DeviceQueueCreateInfo deviceQueueCreateInfo{};
-    	deviceQueueCreateInfo.queueFamilyIndex = graphicsIndex;
-    	deviceQueueCreateInfo.queueCount = 1;
+		vk::DeviceQueueCreateInfo deviceQueueCreateInfo{};
+		deviceQueueCreateInfo.queueFamilyIndex = graphicsIndex;
+		deviceQueueCreateInfo.queueCount = 1;
 
-    	float queuePriority = 1.0f;
+		float queuePriority = 1.0f;
 		deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
 
-    	vk::PhysicalDeviceFeatures deviceFeatures;
+		vk::PhysicalDeviceFeatures deviceFeatures;
 
-    	// Create a chain of feature structures
-    	vk::StructureChain<
-    		vk::PhysicalDeviceFeatures2,
-    		vk::PhysicalDeviceVulkan13Features,
-    		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain;
+		// Create a chain of feature structures
+		vk::StructureChain<
+			vk::PhysicalDeviceFeatures2,
+			vk::PhysicalDeviceVulkan13Features,
+			vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain;
 
-    	featureChain.get<vk::PhysicalDeviceFeatures2>();
-    	featureChain.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering = VK_TRUE;
-    	featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState = VK_TRUE;
+		featureChain.get<vk::PhysicalDeviceFeatures2>();
+		featureChain.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering = VK_TRUE;
+		featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState = VK_TRUE;
 
-    	vk::DeviceCreateInfo deviceCreateInfo{};
-    	deviceCreateInfo.pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>();
-    	deviceCreateInfo.queueCreateInfoCount = 1;
-    	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
-    	deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
-    	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+		vk::DeviceCreateInfo deviceCreateInfo{};
+		deviceCreateInfo.pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>();
+		deviceCreateInfo.queueCreateInfoCount = 1;
+		deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+		deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
+		deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-    	device = vk::raii::Device(physicalDevice, deviceCreateInfo);
-    	graphicsQueue = vk::raii::Queue(device, graphicsIndex, 0);
+		device = vk::raii::Device(physicalDevice, deviceCreateInfo);
+		graphicsQueue = vk::raii::Queue(device, graphicsIndex, 0);
 		presentQueue = vk::raii::Queue(device, graphicsIndex, 0); // this handle is the same as the graphicsQueue one cause they are in the same familyQueue
 
-    }
+	}
 
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
 		for (const auto& availableFormat : availableFormats) {
 			if (availableFormat.format == vk::Format::eB8G8R8A8Srgb &&
 				availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
 				return availableFormat;
-			}
+				}
 		}
 		return availableFormats[0];
 	}
@@ -263,9 +263,9 @@ private:
 		glfwGetFramebufferSize(window, &width, &height);
 
 		return {
-		std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-		std::clamp<uint32_t>(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
-		};
+			std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+			std::clamp<uint32_t>(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
+			};
 	}
 
 	void createSwapChain() {
@@ -352,6 +352,25 @@ private:
 
 		vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
 		inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
+
+		vk::Viewport{0.0f, 0.0, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f};
+		vk::PipelineViewportStateCreateInfo viewportState({}, 1,{},1);
+
+		vk::PipelineRasterizationStateCreateInfo rasterizer;
+		rasterizer.depthClampEnable = vk::False;
+		rasterizer.rasterizerDiscardEnable = vk::False;
+		rasterizer.polygonMode = vk::PolygonMode::eFill;
+		rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+		rasterizer.frontFace = vk::FrontFace::eClockwise;
+		rasterizer.depthBiasEnable = vk::False;
+		rasterizer.depthBiasSlopeFactor = 1.0f;
+		rasterizer.lineWidth = 1.0f;
+
+		vk::PipelineMultisampleStateCreateInfo multisampling;
+		multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
+		multisampling.sampleShadingEnable = vk::False;
+
+
 
 	}
 
