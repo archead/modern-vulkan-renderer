@@ -69,6 +69,7 @@ private:
 	std::vector<vk::Image> swapChainImages;
 	vk::Format swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
+	vk::raii::PipelineLayout pipelineLayout = nullptr;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -161,7 +162,6 @@ private:
 
 		return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
 	}
-
 
 	void pickPhysicalDevice() {
 		std::vector<vk::raii::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
@@ -370,7 +370,27 @@ private:
 		multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
 		multisampling.sampleShadingEnable = vk::False;
 
+		vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+		colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+		colorBlendAttachment.blendEnable = vk::False; // disabling color blending for now.
+		colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+		colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+		colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd;
+		colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+		colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+		colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd;
 
+		vk::PipelineColorBlendStateCreateInfo colorBlending;
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.logicOp = vk::LogicOp::eCopy;
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments =  &colorBlendAttachment;
+
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
+		pipelineLayoutInfo.setLayoutCount = 0;
+		pipelineLayoutInfo.pushConstantRangeCount = 0;
+
+		pipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
 	}
 
