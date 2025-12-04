@@ -474,7 +474,6 @@ private:
 
 		commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
 
-		// TODO: write notes of all the calls below
 		commandBuffer.draw(3, 1, 0, 0);
 
 		commandBuffer.endRendering();
@@ -560,4 +559,8 @@ int main() {
 	}
 
 	return EXIT_SUCCESS;
+}
+
+void drawFrame() {
+
 }
