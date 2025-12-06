@@ -73,6 +73,9 @@ private:
 	vk::raii::Pipeline graphicsPipeline = nullptr;
 	vk::raii::CommandPool commandPool = nullptr;
 	vk::raii::CommandBuffer commandBuffer = nullptr;
+	vk::raii::Semaphore presentCompleteSemaphore = nullptr;
+	vk::raii::Semaphore renderCompleteSemaphore = nullptr;
+	vk::raii::Fence drawFence = nullptr;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -490,7 +493,6 @@ private:
 		commandBuffer.end();
 	}
 
-
 	void transition_image_layout(
 		uint32_t imageIndex,
 		vk::ImageLayout oldLayout,
@@ -524,6 +526,14 @@ private:
 		commandBuffer.pipelineBarrier2(dependencyInfo);
 	}
 
+	void createSyncObjects() {
+		presentCompleteSemaphore = vk::raii::Semaphore(device, vk::SemaphoreCreateInfo());
+		renderCompleteSemaphore = vk::raii::Semaphore(device, vk::SemaphoreCreateInfo());
+		vk::FenceCreateInfo fenceInfo;
+		fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+		drawFence = vk::raii::Fence(device, fenceInfo);
+	}
+
 	void initVulkan() {
 		createInstance();
     	createSurface();
@@ -534,6 +544,7 @@ private:
 		createGraphicsPipeline();
 		createCommandPool();
 		createCommandBuffer();
+		createSyncObjects();
 	}
 
 	void mainLoop() {
@@ -545,6 +556,17 @@ private:
 	void cleanup() {
 		glfwDestroyWindow(window);
 		glfwTerminate();
+	}
+
+	void drawFrame() {
+		auto [result, imageIndex] = swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore, nullptr);
+
+		recordCommandBuffer(imageIndex);
+
+		//TODO: Take notes on this
+		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+		const vk::SubmitInfo submitInfo(**presentCompleteSemaphore, waitDestinationStageMask, **commandBuffer, **renderCompleteSemaphore);
+
 	}
 };
 
@@ -561,6 +583,3 @@ int main() {
 	return EXIT_SUCCESS;
 }
 
-void drawFrame() {
-
-}
