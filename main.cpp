@@ -550,6 +550,7 @@ private:
 	void mainLoop() {
 		while (!glfwWindowShouldClose(window)) {
 			glfwPollEvents();
+			drawFrame();
 		}
 	}
 
@@ -563,10 +564,21 @@ private:
 
 		recordCommandBuffer(imageIndex);
 
-		//TODO: Take notes on this
 		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
-		const vk::SubmitInfo submitInfo(**presentCompleteSemaphore, waitDestinationStageMask, **commandBuffer, **renderCompleteSemaphore);
 
+		const vk::SubmitInfo submitInfo(
+			*presentCompleteSemaphore,
+			waitDestinationStageMask,
+			*commandBuffer,
+			*renderCompleteSemaphore);
+
+		graphicsQueue.submit(submitInfo, *drawFence);
+
+		while (vk::Result::eTimeout == device.waitForFences(*drawFence, vk::True, UINT64_MAX));
+
+		const vk::PresentInfoKHR presentInfoKHR( *renderCompleteSemaphore, *swapChain, imageIndex);
+
+		result = presentQueue.presentKHR(presentInfoKHR);
 	}
 };
 
