@@ -21,6 +21,8 @@ const std::vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
 
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
 #else
@@ -65,17 +67,24 @@ private:
 	vk::raii::Queue presentQueue = nullptr;
 	vk::SurfaceFormatKHR swapChainSurfaceFormat;
 	vk::Extent2D swapChainExtent;
+
 	vk::raii::SwapchainKHR swapChain = nullptr;
 	std::vector<vk::Image> swapChainImages;
+
 	vk::Format swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
+
 	vk::raii::PipelineLayout pipelineLayout = nullptr;
 	vk::raii::Pipeline graphicsPipeline = nullptr;
+
 	vk::raii::CommandPool commandPool = nullptr;
-	vk::raii::CommandBuffer commandBuffer = nullptr;
-	vk::raii::Semaphore presentCompleteSemaphore = nullptr;
-	vk::raii::Semaphore renderCompleteSemaphore = nullptr;
-	vk::raii::Fence drawFence = nullptr;
+
+	std::vector<vk::raii::CommandBuffer> commandBuffers;
+	std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
+	std::vector<vk::raii::Semaphore> renderCompleteSemaphores;
+	std::vector<vk::raii::Fence> inFlightFences;
+
+	uint32_t currentFrame = 0;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -428,17 +437,20 @@ private:
 		commandPool = vk::raii::CommandPool(device, poolInfo);
 	}
 
-	void createCommandBuffer() {
+	void createCommandBuffers() {
+		commandBuffers.clear();
+		commandBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+
 		vk::CommandBufferAllocateInfo allocInfo;
 		allocInfo.commandPool = commandPool;
 		allocInfo.level = vk::CommandBufferLevel::ePrimary;
-		allocInfo.commandBufferCount = 1;
+		allocInfo.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
-		commandBuffer = std::move(vk::raii::CommandBuffers(device, allocInfo).front());
+		commandBuffers = vk::raii::CommandBuffers(device, allocInfo);
 	}
 
 	void recordCommandBuffer(uint32_t imageIndex) {
-		commandBuffer.begin({});
+		commandBuffers[currentFrame].begin({});
 
 		// Before starting rendering, transition the swapchain image to COLOR_ATTACHMENT_OPTIMAL
 		transition_image_layout(
@@ -465,21 +477,21 @@ private:
 		renderingInfo.colorAttachmentCount = 1;
 		renderingInfo.pColorAttachments = &attachmentInfo;
 
-		commandBuffer.beginRendering(renderingInfo);
+		commandBuffers[currentFrame].beginRendering(renderingInfo);
 
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+		commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
 		// Set the dynamic states of Scissor and Viewport
-		commandBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f,
+		commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f,
 			static_cast<float>(swapChainExtent.width),
 			static_cast<float>(swapChainExtent.height),
 			0.0f, 1.0f));
 
-		commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
+		commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
 
-		commandBuffer.draw(3, 1, 0, 0);
+		commandBuffers[currentFrame].draw(3, 1, 0, 0);
 
-		commandBuffer.endRendering();
+		commandBuffers[currentFrame].endRendering();
 
 		transition_image_layout(
 			imageIndex,
@@ -490,7 +502,7 @@ private:
 			vk::PipelineStageFlagBits2::eColorAttachmentOutput,
 			vk::PipelineStageFlagBits2::eBottomOfPipe);
 
-		commandBuffer.end();
+		commandBuffers[currentFrame].end();
 	}
 
 	void transition_image_layout(
@@ -523,15 +535,25 @@ private:
 		dependencyInfo.imageMemoryBarrierCount = 1;
 		dependencyInfo.pImageMemoryBarriers = &barrier;
 
-		commandBuffer.pipelineBarrier2(dependencyInfo);
+		commandBuffers[currentFrame].pipelineBarrier2(dependencyInfo);
 	}
 
 	void createSyncObjects() {
-		presentCompleteSemaphore = vk::raii::Semaphore(device, vk::SemaphoreCreateInfo());
-		renderCompleteSemaphore = vk::raii::Semaphore(device, vk::SemaphoreCreateInfo());
+		presentCompleteSemaphores.clear();
+		renderCompleteSemaphores.clear();
+		inFlightFences.clear();
+
 		vk::FenceCreateInfo fenceInfo;
 		fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
-		drawFence = vk::raii::Fence(device, fenceInfo);
+
+		//TODO: Take notes on this
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			presentCompleteSemaphores.emplace_back(device, vk::SemaphoreCreateInfo());
+			renderCompleteSemaphores.emplace_back(device, vk::SemaphoreCreateInfo());
+			inFlightFences.emplace_back(device, fenceInfo);
+		}
+
+
 	}
 
 	void initVulkan() {
@@ -543,7 +565,7 @@ private:
 		createImageViews();
 		createGraphicsPipeline();
 		createCommandPool();
-		createCommandBuffer();
+		createCommandBuffers();
 		createSyncObjects();
 	}
 
@@ -552,6 +574,8 @@ private:
 			glfwPollEvents();
 			drawFrame();
 		}
+
+		device.waitIdle();
 	}
 
 	void cleanup() {
@@ -560,25 +584,37 @@ private:
 	}
 
 	void drawFrame() {
-		auto [result, imageIndex] = swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore, nullptr);
+		while (vk::Result::eTimeout == device.waitForFences(*inFlightFences[currentFrame], vk::True, UINT64_MAX))
+			;
+		auto [result, imageIndex] = swapChain.acquireNextImage(
+			UINT64_MAX,
+			*presentCompleteSemaphores[currentFrame],
+			nullptr);
 
+		device.resetFences(*inFlightFences[currentFrame]);
+
+		commandBuffers[currentFrame].reset();
 		recordCommandBuffer(imageIndex);
 
 		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
-		const vk::SubmitInfo submitInfo(
-			*presentCompleteSemaphore,
-			waitDestinationStageMask,
-			*commandBuffer,
-			*renderCompleteSemaphore);
+		vk::SubmitInfo submitInfo;
 
-		graphicsQueue.submit(submitInfo, *drawFence);
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &*presentCompleteSemaphores[currentFrame];
+		submitInfo.pWaitDstStageMask = &waitDestinationStageMask;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &*commandBuffers[currentFrame];
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo. pSignalSemaphores = &*renderCompleteSemaphores[currentFrame];
 
-		while (vk::Result::eTimeout == device.waitForFences(*drawFence, vk::True, UINT64_MAX));
+		graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
 
-		const vk::PresentInfoKHR presentInfoKHR( *renderCompleteSemaphore, *swapChain, imageIndex);
+		const vk::PresentInfoKHR presentInfoKHR( *renderCompleteSemaphores[currentFrame], *swapChain, imageIndex);
 
 		result = presentQueue.presentKHR(presentInfoKHR);
+
+		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 };
 
