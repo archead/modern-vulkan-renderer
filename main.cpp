@@ -14,6 +14,8 @@
 
 #include <fstream>
 
+#include <glm/glm.hpp>
+
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
@@ -44,6 +46,17 @@ static std::vector<char> readFile(const std::string& filename) {
 	file.close();
 	return buffer;
 }
+
+struct Vertex {
+	glm::vec2 pos;
+	glm::vec3 color;
+};
+
+const std::vector<Vertex> vertices = {
+	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+};
 
 class HelloTriangleApplication {
 public:
@@ -99,15 +112,17 @@ private:
 		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // we're not using OpenGL
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // dealing with resizable windows will come later
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // dealing with resizable windows will come later
 
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 
+		glfwSetWindowUserPointer(window, this);
 		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 	}
 
 	static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-
+		auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
+		app->framebufferResized = true;
 	}
 
 	void createInstance() {
@@ -567,6 +582,14 @@ private:
 	}
 
 	void recreateSwapChain() {
+
+		int width = 0, height = 0;
+		glfwGetFramebufferSize(window, &width, &height);
+		while (width == 0 || height == 0) {
+			glfwGetFramebufferSize(window, &width, &height);
+			glfwWaitEvents();
+		}
+
 		device.waitIdle();
 
 		cleanupSwapchain();
