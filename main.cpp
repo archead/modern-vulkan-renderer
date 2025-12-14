@@ -112,6 +112,8 @@ private:
 
 	uint32_t currentFrame = 0;
 
+	vk::raii::Buffer vertexBuffer = nullptr;
+
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
 		vk::KHRSpirv14ExtensionName,
@@ -388,7 +390,14 @@ private:
 		fragShaderStageInfo.pName = "fragMain";
 
 		vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,fragShaderStageInfo};
+
 		vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+		auto bindingDescription = Vertex::getBindingDescription();
+		auto attributeDescriptions = Vertex::getAttributeDescriptions();
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
+		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 		std::vector dynamicStates= {
 			vk::DynamicState::eViewport,
@@ -609,6 +618,23 @@ private:
 		createImageViews();
 
 	}
+	
+	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+
+	}
+
+	void createVertexBuffer() {
+		vk::BufferCreateInfo bufferInfo;
+		bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+		bufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer;
+		bufferInfo.sharingMode = vk::SharingMode::eExclusive;
+
+		vertexBuffer = vk::raii::Buffer(device, bufferInfo);
+
+		vk::MemoryRequirements memRequirements = vertexBuffer.getMemoryRequirements();
+
+
+	}
 
 	void initVulkan() {
 		createInstance();
@@ -619,6 +645,7 @@ private:
 		createImageViews();
 		createGraphicsPipeline();
 		createCommandPool();
+		createVertexBuffer();
 		createCommandBuffers();
 		createSyncObjects();
 	}
