@@ -113,6 +113,7 @@ private:
 	uint32_t currentFrame = 0;
 
 	vk::raii::Buffer vertexBuffer = nullptr;
+	vk::raii::DeviceMemory vertexBufferMemory = nullptr;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -524,6 +525,8 @@ private:
 
 		commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
+		commandBuffers[currentFrame].bindVertexBuffers(0, *vertexBuffer, {0});
+
 		// Set the dynamic states of Scissor and Viewport
 		commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f,
 			static_cast<float>(swapChainExtent.width),
@@ -618,9 +621,16 @@ private:
 		createImageViews();
 
 	}
-	
-	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
 
+	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+		vk::PhysicalDeviceMemoryProperties memProperties = physicalDevice.getMemoryProperties();
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) &&
+				(memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+				return i;
+			}
+		}
+		throw std::runtime_error("failed to find suitable memory type!");
 	}
 
 	void createVertexBuffer() {
@@ -633,7 +643,18 @@ private:
 
 		vk::MemoryRequirements memRequirements = vertexBuffer.getMemoryRequirements();
 
+		vk::MemoryAllocateInfo memoryAllocateInfo;
+		vk::MemoryPropertyFlags memoryProperties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+		memoryAllocateInfo.allocationSize = memRequirements.size;
+		memoryAllocateInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, memoryProperties);
 
+		vertexBufferMemory = vk::raii::DeviceMemory(device, memoryAllocateInfo);
+
+		vertexBuffer.bindMemory(*vertexBufferMemory, 0);
+
+		void* data = vertexBufferMemory.mapMemory(0, bufferInfo.size);
+		memcpy(data, vertices.data(), bufferInfo.size);
+		vertexBufferMemory.unmapMemory();
 	}
 
 	void initVulkan() {
