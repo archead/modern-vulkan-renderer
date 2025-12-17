@@ -535,7 +535,7 @@ private:
 
 		commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
 
-		commandBuffers[currentFrame].draw(3, 1, 0, 0);
+		commandBuffers[currentFrame].draw(vertices.size(), 1, 0, 0);
 
 		commandBuffers[currentFrame].endRendering();
 
@@ -634,27 +634,37 @@ private:
 	}
 
 	void createVertexBuffer() {
+
+
+		void* data = vertexBufferMemory.mapMemory(0, bufferInfo.size);
+		memcpy(data, vertices.data(), bufferInfo.size);
+		vertexBufferMemory.unmapMemory();
+	}
+
+	void createBuffer(
+		vk::DeviceSize size,
+		vk::BufferUsageFlags usageFlags,
+		vk::MemoryPropertyFlags propertyFlags,
+		vk::raii::Buffer& buffer,
+		vk::raii::DeviceMemory& bufferMemory
+		) {
 		vk::BufferCreateInfo bufferInfo;
 		bufferInfo.size = sizeof(vertices[0]) * vertices.size();
 		bufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer;
 		bufferInfo.sharingMode = vk::SharingMode::eExclusive;
 
-		vertexBuffer = vk::raii::Buffer(device, bufferInfo);
+		buffer = vk::raii::Buffer(device, bufferInfo);
 
-		vk::MemoryRequirements memRequirements = vertexBuffer.getMemoryRequirements();
+		vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
 
 		vk::MemoryAllocateInfo memoryAllocateInfo;
 		vk::MemoryPropertyFlags memoryProperties = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 		memoryAllocateInfo.allocationSize = memRequirements.size;
 		memoryAllocateInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, memoryProperties);
 
-		vertexBufferMemory = vk::raii::DeviceMemory(device, memoryAllocateInfo);
+		bufferMemory = vk::raii::DeviceMemory(device, memoryAllocateInfo);
 
-		vertexBuffer.bindMemory(*vertexBufferMemory, 0);
-
-		void* data = vertexBufferMemory.mapMemory(0, bufferInfo.size);
-		memcpy(data, vertices.data(), bufferInfo.size);
-		vertexBufferMemory.unmapMemory();
+		buffer.bindMemory(*bufferMemory, 0);
 	}
 
 	void initVulkan() {
