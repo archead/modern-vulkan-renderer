@@ -64,9 +64,14 @@ struct Vertex {
 };
 
 const std::vector<Vertex> vertices = {
-	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+const std::vector<uint16_t> indices = {
+	0, 1, 2, 2, 3, 0
 };
 
 class HelloTriangleApplication {
@@ -85,10 +90,13 @@ private:
 	vk::raii::SurfaceKHR surface = nullptr;
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
 	vk::raii::Device device = nullptr;
+
 	uint32_t graphicsFamilyIndex;
 	uint32_t presentFamilyIndex;
+
 	vk::raii::Queue graphicsQueue = nullptr; // also responsible for the present queue (in my case they are in the same family)
 	vk::raii::Queue presentQueue = nullptr;
+
 	vk::SurfaceFormatKHR swapChainSurfaceFormat;
 	vk::Extent2D swapChainExtent;
 
@@ -114,6 +122,9 @@ private:
 
 	vk::raii::Buffer vertexBuffer = nullptr;
 	vk::raii::DeviceMemory vertexBufferMemory = nullptr;
+
+	vk::raii::Buffer indexBuffer = nullptr;
+	vk::raii::DeviceMemory indexBufferMemory = nullptr;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -526,6 +537,7 @@ private:
 		commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
 		commandBuffers[currentFrame].bindVertexBuffers(0, *vertexBuffer, {0});
+		commandBuffers[currentFrame].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint16);
 
 		// Set the dynamic states of Scissor and Viewport
 		commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f,
@@ -535,7 +547,7 @@ private:
 
 		commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
 
-		commandBuffers[currentFrame].draw(vertices.size(), 1, 0, 0);
+		commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
 
 		commandBuffers[currentFrame].endRendering();
 
@@ -660,6 +672,32 @@ private:
 		copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 	}
 
+	void createIndexBuffer(){
+		vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+		vk::raii::Buffer stagingBuffer = nullptr;
+		vk::raii::DeviceMemory stagingBufferMemory = nullptr;
+		createBuffer(
+			bufferSize,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+			stagingBuffer,
+			stagingBufferMemory);
+
+		void* data = stagingBufferMemory.mapMemory(0, bufferSize);
+		memcpy(data, indices.data(), (size_t) bufferSize);
+		stagingBufferMemory.unmapMemory();
+
+		createBuffer(
+			bufferSize,
+			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			indexBuffer,
+			indexBufferMemory);
+
+		copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+	}
+
 	void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) {
 		vk::CommandBufferAllocateInfo allocInfo;
 		allocInfo.commandPool = commandPool;
@@ -714,6 +752,7 @@ private:
 		createGraphicsPipeline();
 		createCommandPool();
 		createVertexBuffer();
+		createIndexBuffer();
 		createCommandBuffers();
 		createSyncObjects();
 	}
