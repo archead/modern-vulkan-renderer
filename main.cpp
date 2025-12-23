@@ -112,6 +112,8 @@ private:
 	vk::Format swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
 
+	vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
+
 	vk::raii::PipelineLayout pipelineLayout = nullptr;
 	vk::raii::Pipeline graphicsPipeline = nullptr;
 
@@ -463,9 +465,10 @@ private:
 		colorBlending.pAttachments =  &colorBlendAttachment;
 
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
-		pipelineLayoutInfo.setLayoutCount = 0;
+		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.pSetLayouts = &*descriptorSetLayout;
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
-
+		
 		pipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
 		vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
@@ -748,6 +751,14 @@ private:
 		buffer.bindMemory(*bufferMemory, 0);
 	}
 
+	void createDescriptorSetLayout() {
+		vk::DescriptorSetLayoutBinding uboLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex, nullptr);
+		vk::DescriptorSetLayoutCreateInfo layoutInfo({}, 1, &uboLayoutBinding);
+		descriptorSetLayout = vk::raii::DescriptorSetLayout(device, layoutInfo);
+
+
+	}
+
 	void initVulkan() {
 		createInstance();
     	createSurface();
@@ -755,6 +766,7 @@ private:
     	createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createCommandPool();
 		createVertexBuffer();
