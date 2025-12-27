@@ -758,8 +758,19 @@ private:
 	}
 
 	void createDescriptorSetLayout() {
-		vk::DescriptorSetLayoutBinding uboLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex, nullptr);
-		vk::DescriptorSetLayoutCreateInfo layoutInfo({}, 1, &uboLayoutBinding);
+
+		vk::DescriptorSetLayoutBinding uboLayoutBinding;
+		uboLayoutBinding.binding = 0;
+		uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+		uboLayoutBinding.descriptorCount = 1;
+		uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+		uboLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutCreateInfo layoutInfo;
+		layoutInfo.flags = {};
+		layoutInfo.bindingCount = 1;
+		layoutInfo.pBindings = &uboLayoutBinding;
+
 		descriptorSetLayout = vk::raii::DescriptorSetLayout(device, layoutInfo);
 	}
 
@@ -770,9 +781,18 @@ private:
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+
 			vk::raii::Buffer buffer({});
 			vk::raii::DeviceMemory bufferMem({});
-			createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, buffer, bufferMem);
+
+			createBuffer(
+				bufferSize,
+				vk::BufferUsageFlagBits::eUniformBuffer,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+				buffer,
+				bufferMem
+				);
+
 			uniformBuffers.emplace_back(std::move(buffer));
 			uniformBuffersMemory.emplace_back(std::move(bufferMem));
 			uniformBuffersMapped.emplace_back(uniformBuffersMemory[i].mapMemory(0, bufferSize));
