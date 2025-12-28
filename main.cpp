@@ -555,14 +555,6 @@ private:
 
 		commandBuffers[currentFrame].bindVertexBuffers(0, *vertexBuffer, {0});
 
-		commandBuffers[currentFrame].bindDescriptorSets(
-			vk::PipelineBindPoint::eGraphics,
-			pipelineLayout,
-			0,
-			*descriptorSets[currentFrame],
-			nullptr
-			);
-
 		commandBuffers[currentFrame].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint16);
 
 		// Set the dynamic states of Scissor and Viewport
@@ -572,6 +564,14 @@ private:
 			0.0f, 1.0f));
 
 		commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
+
+		commandBuffers[currentFrame].bindDescriptorSets(
+					vk::PipelineBindPoint::eGraphics,
+					pipelineLayout,
+					0,
+					*descriptorSets[currentFrame],
+					nullptr
+					);
 
 		commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
 
