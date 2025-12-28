@@ -447,7 +447,7 @@ private:
 		rasterizer.rasterizerDiscardEnable = vk::False;
 		rasterizer.polygonMode = vk::PolygonMode::eFill;
 		rasterizer.cullMode = vk::CullModeFlagBits::eBack;
-		rasterizer.frontFace = vk::FrontFace::eClockwise;
+		rasterizer.frontFace = vk::FrontFace::eCounterClockwise; // this needs to be counterClockwise since we are using GLM for our uniform buffers which is originally designed for OpenGL where Y-axis is flipped
 		rasterizer.depthBiasEnable = vk::False;
 		rasterizer.depthBiasSlopeFactor = 1.0f;
 		rasterizer.lineWidth = 1.0f;
@@ -554,6 +554,15 @@ private:
 		commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
 		commandBuffers[currentFrame].bindVertexBuffers(0, *vertexBuffer, {0});
+
+		commandBuffers[currentFrame].bindDescriptorSets(
+			vk::PipelineBindPoint::eGraphics,
+			pipelineLayout,
+			0,
+			*descriptorSets[currentFrame],
+			nullptr
+			);
+
 		commandBuffers[currentFrame].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint16);
 
 		// Set the dynamic states of Scissor and Viewport
@@ -902,7 +911,7 @@ private:
 
 		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
-		updateUniformBuffer(imageIndex);
+		updateUniformBuffer(currentFrame);
 
 		vk::SubmitInfo submitInfo;
 
