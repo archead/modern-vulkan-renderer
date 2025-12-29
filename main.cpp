@@ -208,6 +208,7 @@ private:
 
 		vk::InstanceCreateInfo createInfo{};
 		createInfo.pApplicationInfo = &appInfo;
+		createInfo.enabledLayerCount = static_cast<uint32_t>(requiredLayers.size());
 		createInfo.enabledExtensionCount  = glfwExtensionCount;
 		createInfo.ppEnabledExtensionNames = glfwExtensions;
 		createInfo.ppEnabledLayerNames = requiredLayers.data();
