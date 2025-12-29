@@ -92,15 +92,15 @@ public:
 	}
 
 private:
-	GLFWwindow* window;
+	GLFWwindow* window = nullptr;
 	vk::raii::Context context; // creates the RAII Vulkan_hpp context for the entire project
 	vk::raii::Instance instance = nullptr;
 	vk::raii::SurfaceKHR surface = nullptr;
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
 	vk::raii::Device device = nullptr;
 
-	uint32_t graphicsFamilyIndex;
-	uint32_t presentFamilyIndex;
+	uint32_t graphicsFamilyIndex = 0;
+	uint32_t presentFamilyIndex = 0;
 
 	vk::raii::Queue graphicsQueue = nullptr; // also responsible for the present queue (in my case they are in the same family)
 	vk::raii::Queue presentQueue = nullptr;
@@ -282,6 +282,9 @@ private:
 		} else {
 			std::cout << "present queue index: " << graphicsIndex << std::endl;
 		}
+
+		graphicsFamilyIndex = graphicsIndex;
+		presentFamilyIndex = graphicsIndex;
 
 		vk::DeviceQueueCreateInfo deviceQueueCreateInfo{};
 		deviceQueueCreateInfo.queueFamilyIndex = graphicsIndex;
