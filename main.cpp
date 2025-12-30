@@ -18,6 +18,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
@@ -539,14 +542,14 @@ private:
 			vk::PipelineStageFlagBits2::eColorAttachmentOutput);
 
 		vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-		vk::RenderingAttachmentInfo attachmentInfo;
+		vk::RenderingAttachmentInfo attachmentInfo = {};
 		attachmentInfo.imageView = swapChainImageViews[imageIndex];
 		attachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 		attachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
 		attachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
 		attachmentInfo.clearValue = clearColor;
 
-		vk::RenderingInfo renderingInfo;
+		vk::RenderingInfo renderingInfo = {};
 		renderingInfo.renderArea.offset = vk::Offset2D(0, 0);
 		renderingInfo.renderArea.extent = swapChainExtent;
 		renderingInfo.layerCount = 1;
@@ -856,6 +859,27 @@ private:
 		}
 	}
 
+	void createTextureImage() {
+		int texWidth, texHeight, texChannels;
+		stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		vk::DeviceSize imageSize = texWidth * texHeight * 4;
+
+		if (!pixels) {
+			throw std::runtime_error("failed to load texture image!");
+		}
+
+		vk::raii::Buffer stagingBuffer({});
+		vk::raii::DeviceMemory stagingBufferMemory({});
+
+		createBuffer(
+			imageSize,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+			stagingBuffer,
+			stagingBufferMemory
+			);
+	}
+
 	void initVulkan() {
 		createInstance();
     	createSurface();
@@ -866,6 +890,7 @@ private:
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createCommandPool();
+		createTextureImage();
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffers();
