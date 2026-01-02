@@ -918,6 +918,18 @@ private:
 
 	}
 
+	void transitionImageLayout(const vk::raii::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
+		auto commandBuffer = beginSingleTimeCommands();
+
+		vk::ImageMemoryBarrier barrier = {};
+		barrier.oldLayout = oldLayout;
+		barrier.newLayout = newLayout;
+		barrier.image = image;
+		barrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+
+		endSingleTimeCommands(commandBuffer);
+	}
+
 	vk::raii::CommandBuffer beginSingleTimeCommands() {
 		vk::CommandBufferAllocateInfo allocInfo = {};
 		allocInfo.commandPool = commandPool;
