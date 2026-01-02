@@ -735,24 +735,9 @@ private:
 	}
 
 	void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) {
-		vk::CommandBufferAllocateInfo allocInfo;
-		allocInfo.commandPool = commandPool;
-		allocInfo.level = vk::CommandBufferLevel::ePrimary;
-		allocInfo.commandBufferCount = 1;
-
-		vk::raii::CommandBuffer commandCopyBuffer = std::move(device.allocateCommandBuffers(allocInfo).front());
-
-		vk::CommandBufferBeginInfo commandBufferBeginInfo;
-		commandBufferBeginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-		commandCopyBuffer.begin(commandBufferBeginInfo);
+		vk::raii::CommandBuffer commandCopyBuffer = beginSingleTimeCommands();
 		commandCopyBuffer.copyBuffer(srcBuffer, dstBuffer, vk::BufferCopy(0, 0, size));
-		commandCopyBuffer.end();
-
-		vk::SubmitInfo submitInfo;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &*commandCopyBuffer;
-		graphicsQueue.submit(submitInfo, nullptr);
-		graphicsQueue.waitIdle();
+		endSingleTimeCommands(commandCopyBuffer);
 	}
 
 	void createBuffer(
@@ -931,6 +916,32 @@ private:
 			textureImageTemp,
 			textureImageMemoryTemp);
 
+	}
+
+	vk::raii::CommandBuffer beginSingleTimeCommands() {
+		vk::CommandBufferAllocateInfo allocInfo = {};
+		allocInfo.commandPool = commandPool;
+		allocInfo.level = vk::CommandBufferLevel::ePrimary;
+		allocInfo.commandBufferCount = 1;
+
+		vk::raii::CommandBuffer commandBuffer = std::move(device.allocateCommandBuffers(allocInfo).front());
+
+		vk::CommandBufferBeginInfo beginInfo = {};
+		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+		commandBuffer.begin(beginInfo);
+
+		return commandBuffer;
+	}
+
+	void endSingleTimeCommands(vk::raii::CommandBuffer& commandBuffer) {
+		commandBuffer.end();
+
+		vk::SubmitInfo submitInfo = {};
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &*commandBuffer;
+
+		graphicsQueue.submit(submitInfo);
+		graphicsQueue.waitIdle();
 	}
 
 	void initVulkan() {
