@@ -145,6 +145,9 @@ private:
 	vk::raii::DescriptorPool descriptorPool = nullptr;
 	std::vector<vk::raii::DescriptorSet> descriptorSets;
 
+	vk::raii::Image textureImage = nullptr;
+	vk::raii::DeviceMemory textureImageMemory = nullptr;
+
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
 		vk::KHRSpirv14ExtensionName,
@@ -775,6 +778,38 @@ private:
 		buffer.bindMemory(*bufferMemory, 0);
 	}
 
+	void createImage(
+		uint32_t width,
+		uint32_t height,
+		vk::Format format,
+		vk::ImageTiling tiling,
+		vk::ImageUsageFlags usage,
+		vk::MemoryPropertyFlags properties,
+		vk::raii::Image& image,
+		vk::raii::DeviceMemory& imageMemory) {
+
+		vk::ImageCreateInfo imageInfo = {};
+		imageInfo.imageType = vk::ImageType::e2D;
+		imageInfo.format = format;
+		imageInfo.extent = vk::Extent3D{width, height, 1};
+		imageInfo.mipLevels = 1;
+		imageInfo.arrayLayers = 1;
+		imageInfo.samples = vk::SampleCountFlagBits::e1;
+		imageInfo.tiling = tiling;
+		imageInfo.usage = usage;
+		imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+		image = vk::raii::Image(device, imageInfo);
+
+		vk::MemoryRequirements memRequirements = image.getMemoryRequirements();
+		vk::MemoryAllocateInfo allocInfo = {};
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+		imageMemory = vk::raii::DeviceMemory(device, allocInfo);
+		image.bindMemory(*imageMemory, 0);
+	}
+
 	void createDescriptorSetLayout() {
 
 		vk::DescriptorSetLayoutBinding uboLayoutBinding;
@@ -878,6 +913,24 @@ private:
 			stagingBuffer,
 			stagingBufferMemory
 			);
+
+		void* data = stagingBufferMemory.mapMemory(0, imageSize);
+		memcpy(data,  pixels, imageSize);
+		stagingBufferMemory.unmapMemory();
+
+		stbi_image_free(pixels);
+
+		vk::raii::Image textureImageTemp({});
+		vk::raii::DeviceMemory textureImageMemoryTemp({});
+		
+		createImage(texWidth, texHeight,
+			vk::Format::eR8G8B8A8Srgb,
+			vk::ImageTiling::eOptimal,
+			vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			textureImageTemp,
+			textureImageMemoryTemp);
+
 	}
 
 	void initVulkan() {
