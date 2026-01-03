@@ -916,6 +916,9 @@ private:
 			textureImageTemp,
 			textureImageMemoryTemp);
 
+		transitionImageLayout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+		copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+		transitionImageLayout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
 
 	void transitionImageLayout(const vk::raii::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
@@ -926,6 +929,20 @@ private:
 		barrier.newLayout = newLayout;
 		barrier.image = image;
 		barrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+		commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {}, nullptr, {});
+		endSingleTimeCommands(commandBuffer);
+	}
+
+	void copyBufferToImage(const vk::raii::Buffer& buffer, vk::raii::Image& image, uint32_t width, uint32_t height) {
+		vk::BufferImageCopy region = {};
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+		region.imageSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+		region.imageOffset = vk::Offset3D{0, 0, 0};
+		region.imageExtent = vk::Extent3D{width, height, 1};
+
+		auto commandBuffer = beginSingleTimeCommands();
 
 		endSingleTimeCommands(commandBuffer);
 	}
