@@ -147,6 +147,7 @@ private:
 
 	vk::raii::Image textureImage = nullptr;
 	vk::raii::DeviceMemory textureImageMemory = nullptr;
+	vk::raii::ImageView textureImageView = nullptr;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -398,6 +399,7 @@ private:
 		imageViewCreateInfo.viewType = vk::ImageViewType::e2D;
 		imageViewCreateInfo.format = swapChainImageFormat;
 		imageViewCreateInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+
 		for (auto image : swapChainImages) {
 			imageViewCreateInfo.image = image;
 			swapChainImageViews.emplace_back(device, imageViewCreateInfo );
@@ -991,6 +993,20 @@ private:
 		graphicsQueue.waitIdle();
 	}
 
+	vk::raii::ImageView createImageView(vk::raii::Image& image, vk::Format format) {
+		vk::ImageViewCreateInfo viewInfo{};
+		viewInfo.image = image;
+		viewInfo.viewType = vk::ImageViewType::e2D;
+		viewInfo.format = format;
+		viewInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+
+		return vk::raii::ImageView(device, viewInfo);
+	}
+
+	void createTextureImageView() {
+		textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb);
+	}
+
 	void initVulkan() {
 		createInstance();
     	createSurface();
@@ -1002,6 +1018,7 @@ private:
 		createGraphicsPipeline();
 		createCommandPool();
 		createTextureImage();
+		createTextureImageView();
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffers();
