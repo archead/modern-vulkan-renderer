@@ -881,7 +881,7 @@ private:
 
 	void createTextureImage() {
 		int texWidth, texHeight, texChannels;
-		stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		stbi_uc* pixels = stbi_load("C:/dev/vulkan-doc-tutorial/textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 		vk::DeviceSize imageSize = texWidth * texHeight * 4;
 
 		if (!pixels) {
@@ -923,12 +923,30 @@ private:
 
 	void transitionImageLayout(const vk::raii::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
 		auto commandBuffer = beginSingleTimeCommands();
+		vk::PipelineStageFlags sourceStage, destinationStage;
 
 		vk::ImageMemoryBarrier barrier = {};
 		barrier.oldLayout = oldLayout;
 		barrier.newLayout = newLayout;
 		barrier.image = image;
 		barrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+
+		if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+			barrier.srcAccessMask = {};
+			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+			sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+			destinationStage = vk::PipelineStageFlagBits::eTransfer;
+		} else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+			barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+			barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+			sourceStage = vk::PipelineStageFlagBits::eTransfer;
+			destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+		}   else {
+			throw std::invalid_argument("unsupported layout transition!");
+		}
+
 		commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {}, nullptr, {});
 		endSingleTimeCommands(commandBuffer);
 	}
