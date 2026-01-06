@@ -804,18 +804,12 @@ private:
 
 	void createDescriptorSetLayout() {
 
-		vk::DescriptorSetLayoutBinding uboLayoutBinding;
-		uboLayoutBinding.binding = 0;
-		uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
-		uboLayoutBinding.descriptorCount = 1;
-		uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
-		uboLayoutBinding.pImmutableSamplers = nullptr;
+		std::array bindings = {
+			vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex, nullptr),
+			vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment, nullptr)
+		};
 
-		vk::DescriptorSetLayoutCreateInfo layoutInfo;
-		layoutInfo.flags = {};
-		layoutInfo.bindingCount = 1;
-		layoutInfo.pBindings = &uboLayoutBinding;
-
+		vk::DescriptorSetLayoutCreateInfo layoutInfo({}, bindings.size(), bindings.data());
 		descriptorSetLayout = vk::raii::DescriptorSetLayout(device, layoutInfo);
 	}
 
@@ -845,14 +839,11 @@ private:
 	}
 
 	void createDescriptorPool() {
-		vk::DescriptorPoolSize poolSize;
-		poolSize.type = vk::DescriptorType::eUniformBuffer;
-		poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT;
-
-		vk::DescriptorPoolCreateInfo poolInfo;
-		poolInfo.maxSets = MAX_FRAMES_IN_FLIGHT;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
+		std::array poolSize {
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, MAX_FRAMES_IN_FLIGHT),
+			vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, MAX_FRAMES_IN_FLIGHT)
+		};
+		vk::DescriptorPoolCreateInfo poolInfo(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, MAX_FRAMES_IN_FLIGHT, poolSize.size(), poolSize.data());
 
 		descriptorPool = vk::raii::DescriptorPool(device, poolInfo);
 	}
