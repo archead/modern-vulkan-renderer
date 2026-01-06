@@ -148,6 +148,7 @@ private:
 	vk::raii::Image textureImage = nullptr;
 	vk::raii::DeviceMemory textureImageMemory = nullptr;
 	vk::raii::ImageView textureImageView = nullptr;
+	vk::raii::Sampler textureSampler = nullptr;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -251,6 +252,7 @@ private:
 	}
 
 	void pickPhysicalDevice() {
+		//TODO add isDeviceSuitable() function to check what features are supported and compare to the ones we need
 		std::vector<vk::raii::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
 		const auto devIter = std::ranges::find_if(devices, [&](auto const& device) {
 			auto queueFamilies = device.getQueueFamilyProperties();
@@ -309,8 +311,11 @@ private:
 			vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain;
 
 		featureChain.get<vk::PhysicalDeviceFeatures2>();
+		featureChain.get<vk::PhysicalDeviceFeatures2>().features.samplerAnisotropy = VK_TRUE;
 		featureChain.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering = VK_TRUE;
+		featureChain.get<vk::PhysicalDeviceVulkan13Features>().synchronization2 = VK_TRUE;
 		featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState = VK_TRUE;
+
 
 		vk::DeviceCreateInfo deviceCreateInfo{};
 		deviceCreateInfo.pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>();
@@ -907,16 +912,13 @@ private:
 
 		stbi_image_free(pixels);
 
-		vk::raii::Image textureImageTemp({});
-		vk::raii::DeviceMemory textureImageMemoryTemp({});
-		
 		createImage(texWidth, texHeight,
 			vk::Format::eR8G8B8A8Srgb,
 			vk::ImageTiling::eOptimal,
 			vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
 			vk::MemoryPropertyFlagBits::eDeviceLocal,
-			textureImageTemp,
-			textureImageMemoryTemp);
+			textureImage,
+			textureImageMemory);
 
 		transitionImageLayout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 		copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
@@ -1007,6 +1009,35 @@ private:
 		textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb);
 	}
 
+	void createTextureSampler() {
+		vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
+
+		vk::SamplerCreateInfo samplerInfo = {};
+		samplerInfo.magFilter = vk::Filter::eLinear;
+		samplerInfo.minFilter = vk::Filter::eLinear;
+
+		samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+		samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+		samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+
+		samplerInfo.anisotropyEnable = vk::True;
+		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+
+		samplerInfo.compareEnable = vk::False;
+		samplerInfo.compareOp = vk::CompareOp::eAlways;
+
+		samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
+
+		samplerInfo.unnormalizedCoordinates = vk::False;
+
+		textureSampler = vk::raii::Sampler(device, samplerInfo);
+	}
+
 	void initVulkan() {
 		createInstance();
     	createSurface();
@@ -1019,6 +1050,7 @@ private:
 		createCommandPool();
 		createTextureImage();
 		createTextureImageView();
+		createTextureSampler();
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffers();
