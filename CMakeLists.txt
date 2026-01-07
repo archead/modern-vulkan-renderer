@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 4.0)
 project(vulkan_doc_tutorial)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 
 function (add_slang_shader_target TARGET)
     cmake_parse_arguments ("SHADER" "" "" "SOURCES" ${ARGN})
