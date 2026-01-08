@@ -938,7 +938,7 @@ private:
 			throw std::invalid_argument("unsupported layout transition!");
 		}
 
-		commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {}, nullptr, {});
+		commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {}, nullptr, barrier);
 		endSingleTimeCommands(commandBuffer);
 	}
 
