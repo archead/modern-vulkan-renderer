@@ -952,7 +952,7 @@ private:
 		region.imageExtent = vk::Extent3D{width, height, 1};
 
 		auto commandBuffer = beginSingleTimeCommands();
-
+		commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, {region});
 		endSingleTimeCommands(commandBuffer);
 	}
 
