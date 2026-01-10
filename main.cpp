@@ -15,6 +15,7 @@
 
 #include <fstream>
 
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -157,6 +158,10 @@ private:
 	vk::raii::DeviceMemory textureImageMemory = nullptr;
 	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler textureSampler = nullptr;
+
+	vk::raii::Image depthImage = nullptr;
+	vk::raii::DeviceMemory depthImageMemory = nullptr;
+	vk::raii::ImageView depthImageView = nullptr;
 
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
@@ -990,18 +995,18 @@ private:
 		graphicsQueue.waitIdle();
 	}
 
-	vk::raii::ImageView createImageView(vk::raii::Image& image, vk::Format format) {
+	vk::raii::ImageView createImageView(vk::raii::Image& image, vk::Format format, vk::ImageAspectFlags aspect) {
 		vk::ImageViewCreateInfo viewInfo{};
 		viewInfo.image = image;
 		viewInfo.viewType = vk::ImageViewType::e2D;
 		viewInfo.format = format;
-		viewInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+		viewInfo.subresourceRange = {aspect, 0, 1, 0, 1};
 
 		return vk::raii::ImageView(device, viewInfo);
 	}
 
 	void createTextureImageView() {
-		textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb);
+		textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
 	}
 
 	void createTextureSampler() {
@@ -1033,6 +1038,48 @@ private:
 		textureSampler = vk::raii::Sampler(device, samplerInfo);
 	}
 
+	void createDepthResources() {
+		vk::Format depthFormat = findDepthFormat();
+
+		createImage(
+			swapChainExtent.width,
+			swapChainExtent.height,
+			depthFormat,
+			vk::ImageTiling::eOptimal,
+			vk::ImageUsageFlagBits::eDepthStencilAttachment,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			depthImage,
+			depthImageMemory);
+		
+		depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
+	}
+
+	vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+		for (const auto format : candidates) {
+			vk::FormatProperties props = physicalDevice.getFormatProperties(format);
+
+			if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
+				return format;
+			}
+			if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
+				return format;
+			}
+		}
+		throw std::runtime_error("failed to find supported format!");
+	}
+
+	vk::Format findDepthFormat() {
+		return findSupportedFormat(
+		  {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+		  vk::ImageTiling::eOptimal,
+		  vk::FormatFeatureFlagBits::eDepthStencilAttachment
+		);
+	}
+
+	bool hasStencilComponent(vk::Format format) {
+		return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
+	}
+
 	void initVulkan() {
 		createInstance();
     	createSurface();
@@ -1043,6 +1090,7 @@ private:
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createCommandPool();
+		createDepthResources();
 		createTextureImage();
 		createTextureImageView();
 		createTextureSampler();
