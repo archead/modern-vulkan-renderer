@@ -565,6 +565,8 @@ private:
 			vk::PipelineStageFlagBits2::eColorAttachmentOutput);
 
 		vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+		vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
+
 		vk::RenderingAttachmentInfo attachmentInfo = {};
 		attachmentInfo.imageView = swapChainImageViews[imageIndex];
 		attachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
