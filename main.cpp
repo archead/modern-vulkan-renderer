@@ -472,6 +472,13 @@ private:
 		vk::Viewport{0.0f, 0.0, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f};
 		vk::PipelineViewportStateCreateInfo viewportState({}, 1,{},1);
 
+		vk::PipelineDepthStencilStateCreateInfo depthStencil = {};
+		depthStencil.depthTestEnable = vk::True;
+		depthStencil.depthWriteEnable = vk::True;
+		depthStencil.depthCompareOp = vk::CompareOp::eLess;
+		depthStencil.depthBoundsTestEnable = vk::False;
+		depthStencil.stencilTestEnable = vk::False;
+
 		vk::PipelineRasterizationStateCreateInfo rasterizer;
 		rasterizer.depthClampEnable = vk::False;
 		rasterizer.rasterizerDiscardEnable = vk::False;
