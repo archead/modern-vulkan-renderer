@@ -585,6 +585,13 @@ private:
 		attachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
 		attachmentInfo.clearValue = clearColor;
 
+		vk::RenderingAttachmentInfo depthAttachmentInfo = {};
+		depthAttachmentInfo.imageView = depthImageView;
+		depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
+		depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
+		depthAttachmentInfo.clearValue = clearDepth;
+
 		vk::RenderingInfo renderingInfo = {};
 		renderingInfo.renderArea.offset = vk::Offset2D(0, 0);
 		renderingInfo.renderArea.extent = swapChainExtent;
