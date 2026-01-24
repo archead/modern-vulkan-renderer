@@ -720,10 +720,9 @@ private:
 		device.waitIdle();
 
 		cleanupSwapchain();
-
 		createSwapChain();
 		createImageViews();
-
+		createDepthResources();
 	}
 
 	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
