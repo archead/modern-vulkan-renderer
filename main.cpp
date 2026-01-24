@@ -117,8 +117,8 @@ private:
 	vk::raii::Queue graphicsQueue = nullptr; // also responsible for the present queue (in my case they are in the same family)
 	vk::raii::Queue presentQueue = nullptr;
 
-	vk::SurfaceFormatKHR swapChainSurfaceFormat;
-	vk::Extent2D swapChainExtent;
+	vk::SurfaceFormatKHR swapChainSurfaceFormat{};
+	vk::Extent2D swapChainExtent{};
 
 	vk::raii::SwapchainKHR swapChain = nullptr;
 	std::vector<vk::Image> swapChainImages;
@@ -516,9 +516,13 @@ private:
 		
 		pipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
+
+		vk::Format depthFormat = findDepthFormat();
+
 		vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
 		pipelineRenderingCreateInfo.colorAttachmentCount = 1;
 		pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
+		pipelineRenderingCreateInfo.depthAttachmentFormat = depthFormat;
 
 		vk::GraphicsPipelineCreateInfo pipelineInfo;
 		pipelineInfo.pNext = &pipelineRenderingCreateInfo;
@@ -528,6 +532,7 @@ private:
 		pipelineInfo.pInputAssemblyState = &inputAssembly;
 		pipelineInfo.pViewportState = &viewportState;
 		pipelineInfo.pRasterizationState = &rasterizer;
+		pipelineInfo.pDepthStencilState = &depthStencil;
 		pipelineInfo.pMultisampleState = &multisampling;
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDynamicState = &dynamicState;
@@ -573,12 +578,12 @@ private:
 			vk::ImageAspectFlagBits::eColor);
 
 		transition_image_layout(
-			depthImage,
+			*depthImage,
 			vk::ImageLayout::eUndefined,
 			vk::ImageLayout::eDepthAttachmentOptimal,
+			{},
 			vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
-			vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
-			vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+			vk::PipelineStageFlagBits2::eTopOfPipe,
 			vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
 			vk::ImageAspectFlagBits::eDepth);
 
@@ -594,7 +599,7 @@ private:
 
 		vk::RenderingAttachmentInfo depthAttachmentInfo = {};
 		depthAttachmentInfo.imageView = depthImageView;
-		depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
 		depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
 		depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
 		depthAttachmentInfo.clearValue = clearDepth;
@@ -668,6 +673,7 @@ private:
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		barrier.image = image,
+
 		barrier.subresourceRange.aspectMask = image_aspect_flags;
 		barrier.subresourceRange.baseMipLevel = 0;
 		barrier.subresourceRange.levelCount = 1;
@@ -1025,12 +1031,12 @@ private:
 		graphicsQueue.waitIdle();
 	}
 
-	vk::raii::ImageView createImageView(vk::raii::Image& image, vk::Format format, vk::ImageAspectFlags aspect) {
+	vk::raii::ImageView createImageView(vk::raii::Image& image, vk::Format format, vk::ImageAspectFlags aspectFlags) {
 		vk::ImageViewCreateInfo viewInfo{};
 		viewInfo.image = image;
 		viewInfo.viewType = vk::ImageViewType::e2D;
 		viewInfo.format = format;
-		viewInfo.subresourceRange = {aspect, 0, 1, 0, 1};
+		viewInfo.subresourceRange = {aspectFlags, 0, 1, 0, 1};
 
 		return vk::raii::ImageView(device, viewInfo);
 	}
@@ -1213,7 +1219,7 @@ private:
 		ubo.proj = glm::perspective(
 			glm::radians(45.0f),
 			static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),
-			0.0f, 10.0f);
+			0.1f, 10.0f);
 		ubo.proj[1][1] *= -1;
 
 		memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
