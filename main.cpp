@@ -12,9 +12,11 @@
 #include <limits> // Necessary for std::numeric_limits
 #include <algorithm> // Necessary for std::clamp
 #include <chrono>
+#include <unordered_map> // Using for deduplicating OBJ vertices
 
 #include <fstream>
 
+#define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -24,6 +26,8 @@
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
+
+
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -74,7 +78,36 @@ struct Vertex {
 			vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord))
 		};
 	}
+
+	bool operator==(const Vertex& other) const {
+		return pos == other.pos && color == other.color && texCoord == other.texCoord;
+	}
 };
+
+struct VertexHasher {
+	size_t operator()(Vertex const& v) const noexcept {
+		size_t seed = 0;
+
+		auto combine = [&](size_t h) {
+			seed ^= h + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		};
+
+		combine(std::hash<float>{}(v.pos.x));
+		combine(std::hash<float>{}(v.pos.y));
+		combine(std::hash<float>{}(v.pos.z));
+
+		combine(std::hash<float>{}(v.color.x));
+		combine(std::hash<float>{}(v.color.y));
+		combine(std::hash<float>{}(v.color.z));
+
+		combine(std::hash<float>{}(v.texCoord.x));
+		combine(std::hash<float>{}(v.texCoord.y));
+
+		return seed;
+	}
+};
+
+
 
 struct UniformBufferObject {
 	glm::mat4 model;
@@ -1116,6 +1149,8 @@ private:
 			throw std::runtime_error(warn + err);
 		}
 
+		std::unordered_map<Vertex, uint32_t, VertexHasher> uniqueVertices{};
+
 		for (const auto& shape : shapes) {
 			for (const auto& index : shape.mesh.indices) {
 				Vertex vertex{};
@@ -1133,8 +1168,12 @@ private:
 
 				vertex.color = {1.0f, 1.0f, 1.0f};
 
-				vertices.push_back(vertex);
-				indices.push_back(indices.size()); // this does basically the same thing as int i++;
+				if (uniqueVertices.count(vertex) == 0) {
+					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+					vertices.push_back(vertex);
+				}
+
+				indices.push_back(uniqueVertices[vertex]); // this does basically the same thing as int i++;
 			}
 		}
 	}
