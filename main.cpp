@@ -1186,6 +1186,14 @@ private:
 	}
 
 	void generateMipmaps(vk::raii::Image& image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
+
+		// Check if image format supports linear blit-ing
+		vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(imageFormat);
+
+		if (!(formatProperties.linearTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
+			throw std::runtime_error("Texture image format does not support linear filtering");
+		}
+
 		vk::raii::CommandBuffer commandBuffer = beginSingleTimeCommands();
 
 		vk::ImageMemoryBarrier barrier(
