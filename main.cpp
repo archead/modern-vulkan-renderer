@@ -178,7 +178,7 @@ private:
 	vk::raii::DescriptorPool descriptorPool = nullptr;
 	std::vector<vk::raii::DescriptorSet> descriptorSets;
 
-	uint32_t mipLevels;
+	uint32_t mipLevels = 1;
 	vk::raii::Image textureImage = nullptr; //this might need to be std::unique_ptr<>
 	vk::raii::DeviceMemory textureImageMemory = nullptr;
 	vk::raii::ImageView textureImageView = nullptr;
@@ -1084,7 +1084,7 @@ private:
 		samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
 		samplerInfo.mipLodBias = 0.0f;
 		samplerInfo.minLod = 0.0f;
-		samplerInfo.maxLod = 0.0f;
+		samplerInfo.maxLod = vk::LodClampNone;
 
 		samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
 		samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
@@ -1109,7 +1109,7 @@ private:
 		createImage(
 			swapChainExtent.width,
 			swapChainExtent.height,
-			mipLevels,
+			1,
 			depthFormat,
 			vk::ImageTiling::eOptimal,
 			vk::ImageUsageFlagBits::eDepthStencilAttachment,
@@ -1117,7 +1117,7 @@ private:
 			depthImage,
 			depthImageMemory);
 		
-		depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth, mipLevels);
+		depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
 	}
 
 	vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
@@ -1190,7 +1190,7 @@ private:
 		// Check if image format supports linear blit-ing
 		vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(imageFormat);
 
-		if (!(formatProperties.linearTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
+		if (!(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
 			throw std::runtime_error("Texture image format does not support linear filtering");
 		}
 
@@ -1209,7 +1209,6 @@ private:
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.layerCount = 1;
 		barrier.subresourceRange.levelCount = 1;
-		endSingleTimeCommands(commandBuffer);
 
 		int32_t mipWidth = texWidth;
 		int32_t mipHeight = texHeight;
@@ -1255,6 +1254,7 @@ private:
 		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
 		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, barrier);
+		endSingleTimeCommands(commandBuffer);
 
 	}
 
