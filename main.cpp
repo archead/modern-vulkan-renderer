@@ -523,7 +523,7 @@ private:
 		rasterizer.lineWidth = 1.0f;
 
 		vk::PipelineMultisampleStateCreateInfo multisampling;
-		multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
+		multisampling.rasterizationSamples = msaaSamples;
 		multisampling.sampleShadingEnable = vk::False;
 
 		vk::PipelineColorBlendAttachmentState colorBlendAttachment;
@@ -624,11 +624,14 @@ private:
 		vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
 
 		vk::RenderingAttachmentInfo attachmentInfo = {};
-		attachmentInfo.imageView = swapChainImageViews[imageIndex];
+		attachmentInfo.imageView = colorImageView;
 		attachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 		attachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-		attachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
+		attachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
 		attachmentInfo.clearValue = clearColor;
+		attachmentInfo.resolveImageView = swapChainImageViews[imageIndex];
+		attachmentInfo.resolveImageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+		attachmentInfo.resolveMode = vk::ResolveModeFlagBits::eAverage;
 
 		vk::RenderingAttachmentInfo depthAttachmentInfo = {};
 		depthAttachmentInfo.imageView = depthImageView;
