@@ -188,6 +188,11 @@ private:
 	vk::raii::DeviceMemory depthImageMemory = nullptr;
 	vk::raii::ImageView depthImageView = nullptr;
 
+	vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
+	vk::raii::Image colorImage = nullptr;
+	vk::raii::DeviceMemory colorImageMemory = nullptr;
+	vk::raii::ImageView colorImageView = nullptr;
+
 	std::vector<const char*> deviceExtensions = {
 		vk::KHRSwapchainExtensionName,
 		vk::KHRSpirv14ExtensionName,
@@ -311,7 +316,10 @@ private:
 			}
 
 			isSuitable = isSuitable && found;
-			if (isSuitable) { physicalDevice = device; }
+			if (isSuitable) {
+				physicalDevice = device;
+				msaaSamples = getMaxUsableSampleCount();
+			}
 			return isSuitable;
 		});
 		if (devIter == devices.end()) { throw std::runtime_error("failed to find a suitable GPU!"); }
@@ -747,6 +755,7 @@ private:
 		cleanupSwapchain();
 		createSwapChain();
 		createImageViews();
+		createColorResources();
 		createDepthResources();
 	}
 
@@ -847,6 +856,7 @@ private:
 		uint32_t width,
 		uint32_t height,
 		uint32_t mipLevels,
+		vk::SampleCountFlagBits numSamples,
 		vk::Format format,
 		vk::ImageTiling tiling,
 		vk::ImageUsageFlags usage,
@@ -860,7 +870,7 @@ private:
 		imageInfo.extent = vk::Extent3D{width, height, 1};
 		imageInfo.mipLevels = mipLevels;
 		imageInfo.arrayLayers = 1;
-		imageInfo.samples = vk::SampleCountFlagBits::e1;
+		imageInfo.samples = numSamples;
 		imageInfo.tiling = tiling;
 		imageInfo.usage = usage;
 		imageInfo.sharingMode = vk::SharingMode::eExclusive;
@@ -976,8 +986,10 @@ private:
 
 		stbi_image_free(pixels);
 
-		createImage(texWidth, texHeight,
+		createImage(texWidth,
+			texHeight,
 			mipLevels,
+			vk::SampleCountFlagBits::e1,
 			vk::Format::eR8G8B8A8Srgb,
 			vk::ImageTiling::eOptimal,
 			vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
@@ -1110,6 +1122,7 @@ private:
 			swapChainExtent.width,
 			swapChainExtent.height,
 			1,
+			msaaSamples,
 			depthFormat,
 			vk::ImageTiling::eOptimal,
 			vk::ImageUsageFlagBits::eDepthStencilAttachment,
@@ -1258,6 +1271,38 @@ private:
 
 	}
 
+	vk::SampleCountFlagBits getMaxUsableSampleCount() {
+		vk::PhysicalDeviceProperties physicalDeviceProperties = physicalDevice.getProperties();
+
+		vk::SampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+		if (counts & vk::SampleCountFlagBits::e64) {return vk::SampleCountFlagBits::e64;}
+		if (counts & vk::SampleCountFlagBits::e32) {return vk::SampleCountFlagBits::e32;}
+		if (counts & vk::SampleCountFlagBits::e16) {return vk::SampleCountFlagBits::e16;}
+		if (counts & vk::SampleCountFlagBits::e8) {return vk::SampleCountFlagBits::e8;}
+		if (counts & vk::SampleCountFlagBits::e4) {return vk::SampleCountFlagBits::e4;}
+		if (counts & vk::SampleCountFlagBits::e2) {return vk::SampleCountFlagBits::e2;}
+
+		return vk::SampleCountFlagBits::e1;
+	}
+
+	void createColorResources() {
+		vk::Format colorFormat = swapChainImageFormat;
+
+		createImage(
+			swapChainExtent.width,
+			swapChainExtent.height,
+			1,
+			msaaSamples,
+			colorFormat,
+			vk::ImageTiling::eOptimal,
+			vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			colorImage,
+			colorImageMemory);
+
+		colorImageView = createImageView(colorImage, colorFormat, vk::ImageAspectFlagBits::eColor, 1);
+	}
+
 	void initVulkan() {
 		createInstance();
     	createSurface();
@@ -1268,6 +1313,7 @@ private:
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createCommandPool();
+		createColorResources();
 		createDepthResources();
 		createTextureImage();
 		createTextureImageView();
