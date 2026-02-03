@@ -349,6 +349,7 @@ private:
 		deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
 
 		vk::PhysicalDeviceFeatures deviceFeatures;
+		deviceFeatures.sampleRateShading = vk::True;
 
 		// Create a chain of feature structures
 		vk::StructureChain<
@@ -524,7 +525,8 @@ private:
 
 		vk::PipelineMultisampleStateCreateInfo multisampling;
 		multisampling.rasterizationSamples = msaaSamples;
-		multisampling.sampleShadingEnable = vk::False;
+		multisampling.sampleShadingEnable = vk::True;
+		multisampling.minSampleShading = 0.2f;
 
 		vk::PipelineColorBlendAttachmentState colorBlendAttachment;
 		colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
