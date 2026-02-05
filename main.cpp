@@ -27,7 +27,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-
+#include <VkBootstrap.h>
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -128,6 +128,7 @@ private:
 	GLFWwindow* window = nullptr;
 	vk::raii::Context context; // creates the RAII Vulkan_hpp context for the entire project
 	vk::raii::Instance instance = nullptr;
+	vkb::Instance vkbInstance = {};
 	vk::raii::SurfaceKHR surface = nullptr;
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
 	vk::raii::Device device = nullptr;
@@ -218,59 +219,25 @@ private:
 	}
 
 	void createInstance() {
-		vk::ApplicationInfo appInfo{};
-		appInfo.setPApplicationName("Hello Triangle")
-			   .setApplicationVersion(VK_MAKE_VERSION(1,0,0))
-			   .setPEngineName("No Engine")
-			   .setEngineVersion(VK_MAKE_VERSION(1,0,0))
-			   .setApiVersion(vk::ApiVersion14);
+		vkb::InstanceBuilder instance_builder;
 
-		// Get the required layers
-		std::vector<const char*> requiredLayers;
-		if (enableValidationLayers) {
-			requiredLayers.assign(validationLayers.begin(), validationLayers.end());
+		auto instance_ret = instance_builder.set_app_name("Hello Triangle")
+			.set_engine_name("No Engine")
+			.require_api_version(1,4,0)
+			.enable_validation_layers(enableValidationLayers)
+			.use_default_debug_messenger()
+			.build();
+
+		if (!instance_ret) {
+			throw std::runtime_error("Failed to create Vulkan instance: " +
+				instance_ret.error().message()
+			);
 		}
+		vkbInstance = instance_ret.value();
+		vk::Instance rawInstance = vkbInstance.instance;
+		instance = vk::raii::Instance(context, rawInstance);
 
-		// check if the required layers are supported by the vulkan implementation
-		auto layerProperties = context.enumerateInstanceLayerProperties();
-		if (std::ranges::any_of(requiredLayers, [&layerProperties](auto const& requiredLayer) {
-		return std::ranges::none_of(layerProperties,
-								   [requiredLayer](auto const& layerProperty)
-								   { return strcmp(layerProperty.layerName, requiredLayer) == 0; });
-		}))
-		{
-			throw std::runtime_error("One or more required layers are not supported!");
-		}
-
-		// Get the required instance extensions from GLFW
-		uint32_t glfwExtensionCount = 0;
-		auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-		// Check if the required GLFW extensions are supported by the Vulkan implementation.
-		auto extensionProperties = context.enumerateInstanceExtensionProperties();
-		for (uint32_t i = 0; i < glfwExtensionCount; ++i) {
-			if (std::ranges::none_of(extensionProperties,
-									[glfwExtension = glfwExtensions[i]](auto const& extensionProperty)
-									{ return strcmp(extensionProperty.extensionName, glfwExtension) == 0; })) {
-
-				throw std::runtime_error{"Required GLFW extension not supported"};
-									}
-		}
-
-		vk::InstanceCreateInfo createInfo{};
-		createInfo.pApplicationInfo = &appInfo;
-		createInfo.enabledLayerCount = static_cast<uint32_t>(requiredLayers.size());
-		createInfo.enabledExtensionCount  = glfwExtensionCount;
-		createInfo.ppEnabledExtensionNames = glfwExtensions;
-		createInfo.ppEnabledLayerNames = requiredLayers.data();
-
-		try {
-			instance = vk::raii::Instance(context, createInfo);
-		} catch (const vk::SystemError& err) {
-			std::cerr << "Vulkan error: " << err.what() << std::endl;
-		} catch (const std::exception& err) {
-			std::cerr << "Error: " << err.what() << std::endl;
-		}
+		std::cout << "Vulkan instance created with vk-bootstrap\n";
 	}
 
 	void createSurface() {
@@ -293,7 +260,7 @@ private:
 
 		return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
 	}
-
+/*
 	void pickPhysicalDevice() {
 		//TODO add isDeviceSuitable() function to check what features are supported and compare to the ones we need
 		std::vector<vk::raii::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
@@ -323,6 +290,18 @@ private:
 			return isSuitable;
 		});
 		if (devIter == devices.end()) { throw std::runtime_error("failed to find a suitable GPU!"); }
+	}
+*/
+
+	void pickPhysicalDevice() {
+
+		vkb::PhysicalDeviceSelector selector(vkbInstance);
+		auto phys_ret = selector
+			.set_minimum_version(1,3)
+			.add_required_extension(deviceExtensions)
+			.select();
+
+		if
 	}
 
 	void createLogicalDevice() {

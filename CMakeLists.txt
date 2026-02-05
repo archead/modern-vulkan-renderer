@@ -34,6 +34,7 @@ find_package(Vulkan REQUIRED)
 add_subdirectory(thirdparty/glfw)
 add_subdirectory(thirdparty/glm)
 add_subdirectory(thirdparty/tinyobjloader)
+add_subdirectory(thirdparty/vk-bootstrap)
 
 add_library(stb INTERFACE)
 target_include_directories(stb
@@ -53,4 +54,5 @@ target_link_libraries(vulkan_doc_tutorial
         glm::glm
         tinyobjloader
         stb
+        vk-bootstrap::vk-bootstrap
 )
