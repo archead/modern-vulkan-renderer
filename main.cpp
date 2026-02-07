@@ -127,10 +127,16 @@ public:
 private:
 	GLFWwindow* window = nullptr;
 	vk::raii::Context context; // creates the RAII Vulkan_hpp context for the entire project
+
 	vk::raii::Instance instance = nullptr;
-	vkb::Instance vkbInstance = {};
+	vkb::Instance vkbInstance{};
+
 	vk::raii::SurfaceKHR surface = nullptr;
+
+	vkb::PhysicalDevice vkbPhysicalDevice{};
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
+
+	vkb::Device vkbDevice{};
 	vk::raii::Device device = nullptr;
 
 	uint32_t graphicsFamilyIndex = 0;
@@ -221,7 +227,8 @@ private:
 	void createInstance() {
 		vkb::InstanceBuilder instance_builder;
 
-		auto instance_ret = instance_builder.set_app_name("Hello Triangle")
+		auto instance_ret = instance_builder
+			.set_app_name("Hello Triangle")
 			.set_engine_name("No Engine")
 			.require_api_version(1,4,0)
 			.enable_validation_layers(enableValidationLayers)
@@ -234,8 +241,7 @@ private:
 			);
 		}
 		vkbInstance = instance_ret.value();
-		vk::Instance rawInstance = vkbInstance.instance;
-		instance = vk::raii::Instance(context, rawInstance);
+		instance = vk::raii::Instance(context, vkbInstance.instance);
 
 		std::cout << "Vulkan instance created with vk-bootstrap\n";
 	}
@@ -260,48 +266,29 @@ private:
 
 		return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
 	}
-/*
-	void pickPhysicalDevice() {
-		//TODO add isDeviceSuitable() function to check what features are supported and compare to the ones we need
-		std::vector<vk::raii::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
-		const auto devIter = std::ranges::find_if(devices, [&](auto const& device) {
-			auto queueFamilies = device.getQueueFamilyProperties();
-			bool isSuitable = device.getProperties().apiVersion >= VK_API_VERSION_1_3;
-
-			const auto qfpIter = std::ranges::find_if(queueFamilies, [](vk::QueueFamilyProperties const& qfp) {
-				return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) != static_cast<vk::QueueFlags>(0);
-			});
-
-			isSuitable = isSuitable && (qfpIter != queueFamilies.end());
-
-			auto extensions = device.enumerateDeviceExtensionProperties();
-			bool found = true;
-
-			for (auto const& extension : deviceExtensions) {
-				auto extensionIter = std::ranges::find_if(extensions, [extension](auto const& ext) { return strcmp(ext.extensionName, extension) == 0; });
-				found = found && extensionIter != extensions.end();
-			}
-
-			isSuitable = isSuitable && found;
-			if (isSuitable) {
-				physicalDevice = device;
-				msaaSamples = getMaxUsableSampleCount();
-			}
-			return isSuitable;
-		});
-		if (devIter == devices.end()) { throw std::runtime_error("failed to find a suitable GPU!"); }
-	}
-*/
 
 	void pickPhysicalDevice() {
 
-		vkb::PhysicalDeviceSelector selector(vkbInstance);
+		vkb::PhysicalDeviceSelector selector{vkbInstance};
 		auto phys_ret = selector
-			.set_minimum_version(1,3)
-			.add_required_extension(deviceExtensions)
-			.select();
+		.set_surface(*surface)
+		.set_minimum_version(1,3)
+		.add_required_extensions(deviceExtensions)
+		.select();
+		if (!phys_ret) {
+			std::cerr << phys_ret.error().message() << "\n";
+			for (auto& r : phys_ret.detailed_failure_reasons())
+				std::cerr << "  - " << r << "\n";
+			throw std::runtime_error("failed to select physical device!");
+		}
 
-		if
+		vkbPhysicalDevice = phys_ret.value();
+		physicalDevice = vk::raii::PhysicalDevice(instance, vkbPhysicalDevice);
+		msaaSamples = getMaxUsableSampleCount();
+
+		std::cout << "Physical Device selected with vk-bootstrap\n";
+
+
 	}
 
 	void createLogicalDevice() {
