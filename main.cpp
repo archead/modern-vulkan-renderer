@@ -134,6 +134,7 @@ private:
 	vk::raii::SurfaceKHR surface = nullptr;
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
 	vk::raii::Device device = nullptr;
+	vkb::Device vkbDevice = {};
 
 	uint32_t graphicsFamilyIndex = 0;
 	uint32_t presentFamilyIndex = 0;
@@ -142,6 +143,7 @@ private:
 	vk::raii::Queue presentQueue = nullptr;
 
 	vk::raii::SwapchainKHR swapChain = nullptr;
+	vkb::Swapchain vkbSwapchain = {};
 	std::vector<vk::Image> swapChainImages;
 	vk::Extent2D swapChainExtent{};
 	vk::SurfaceFormatKHR swapChainSurfaceFormat{};
@@ -221,6 +223,15 @@ private:
 		app->framebufferResized = true;
 	}
 
+	void handleBootstrapErrors(auto obj_ret) {
+		if (!obj_ret) {
+			std::cerr << obj_ret.error().message() << "\n";
+			for (auto& r : obj_ret.detailed_failure_reasons())
+				std::cerr << "  - " << r << "\n";
+			throw std::runtime_error("failed to select physical device!");
+		}
+	}
+
 	void bootstrapVulkan() {
 		// ---- Create Instance
 		vkb::InstanceBuilder instance_builder;
@@ -251,6 +262,20 @@ private:
 
 		// ---- Select Physical Device
 
+		vkb::PhysicalDeviceSelector selector{vkbInstance};
+		auto phys_ret = selector
+		.set_surface(*surface)
+		.set_minimum_version(1,3)
+		.select();
+
+		handleBootstrapErrors(phys_ret);
+
+		const vkb::PhysicalDevice vkbPhysicalDevice = phys_ret.value();
+		physicalDevice = vk::raii::PhysicalDevice(instance, vkbPhysicalDevice);
+		msaaSamples = getMaxUsableSampleCount();
+
+		// ---- Create Logical Device
+
 		vk::PhysicalDeviceFeatures2 features{};
 		features.features.samplerAnisotropy = VK_TRUE;
 		features.features.sampleRateShading = VK_TRUE;
@@ -262,24 +287,6 @@ private:
 		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT featuresEXT{};
 		featuresEXT.extendedDynamicState = VK_TRUE;
 
-		vkb::PhysicalDeviceSelector selector{vkbInstance};
-		auto phys_ret = selector
-		.set_surface(*surface)
-		.set_minimum_version(1,3)
-		.select();
-		if (!phys_ret) {
-			std::cerr << phys_ret.error().message() << "\n";
-			for (auto& r : phys_ret.detailed_failure_reasons())
-				std::cerr << "  - " << r << "\n";
-			throw std::runtime_error("failed to select physical device!");
-		}
-
-		const vkb::PhysicalDevice vkbPhysicalDevice = phys_ret.value();
-		physicalDevice = vk::raii::PhysicalDevice(instance, vkbPhysicalDevice);
-		msaaSamples = getMaxUsableSampleCount();
-
-		// ---- Create Logical Device
-
 		vkb::DeviceBuilder device_builder{vkbPhysicalDevice};
 		auto dev_ret = device_builder
 		.add_pNext(&features)
@@ -287,15 +294,9 @@ private:
 		.add_pNext(&featuresEXT)
 		.build();
 
-		if (!dev_ret) {
-			std::cerr << dev_ret.error().message() << std::endl;
-			for (auto& r : dev_ret.detailed_failure_reasons()) {
-				std::cerr << "  - " << r << std::endl;
-			}
-			throw std::runtime_error("Failed to create device!");
-		}
+		handleBootstrapErrors(dev_ret);
 
-		vkb::Device vkbDevice = dev_ret.value();
+		vkbDevice = dev_ret.value();
 		device = vk::raii::Device(physicalDevice, vkbDevice.device);
 
 		auto queue_ret = vkbDevice.get_queue_index(vkb::QueueType::graphics);
@@ -303,11 +304,35 @@ private:
 		presentQueue = vk::raii::Queue(device, queue_ret.value(), 0);
 
 		// ---- Create Swapchain
+		// moved to separate function for easy swapchain recreation
+		bootstrapSwapchain();
+	}
+
+	void bootstrapSwapchain() {
+		auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
+		swapChainExtent = chooseSwapExtent(surfaceCapabilities);
+
+		swapChainSurfaceFormat = chooseSwapSurfaceFormat(physicalDevice.getSurfaceFormatsKHR(surface));
+
+		auto minImageCount = std::max(3u, surfaceCapabilities.minImageCount);
+		if (surfaceCapabilities.maxImageCount > 0 && minImageCount > surfaceCapabilities.maxImageCount) {
+			minImageCount = surfaceCapabilities.maxImageCount;
+		}
 
 		vkb::SwapchainBuilder swapchain_builder{vkbDevice};
 		auto swap_ret = swapchain_builder
-		.set_desired_min_image_count()
+			.set_desired_min_image_count(minImageCount)
+			.set_desired_extent(swapChainExtent.width, swapChainExtent.height)
+			.build();
 
+		handleBootstrapErrors(swap_ret);
+
+		vkb::destroy_swapchain(vkbSwapchain);
+		vkbSwapchain = swap_ret.value();
+
+		swapChain = vk::raii::SwapchainKHR(device, vkbSwapchain.swapchain);
+		swapChainImages = swapChain.getImages();
+		swapChainImageFormat = swapChainSurfaceFormat.format;
 	}
 
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
@@ -341,40 +366,6 @@ private:
 			std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
 			std::clamp<uint32_t>(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
 			};
-	}
-
-	void createSwapChain() {
-		auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
-		swapChainExtent = chooseSwapExtent(surfaceCapabilities);
-
-		swapChainSurfaceFormat = chooseSwapSurfaceFormat(physicalDevice.getSurfaceFormatsKHR(surface));
-
-		auto minImageCount = std::max(3u, surfaceCapabilities.minImageCount);
-		if (surfaceCapabilities.maxImageCount > 0 && minImageCount > surfaceCapabilities.maxImageCount) {
-			minImageCount = surfaceCapabilities.maxImageCount;
-		}
-
-		vk::SwapchainCreateInfoKHR swapChainCreateInfo{};
-		swapChainCreateInfo.flags = vk::SwapchainCreateFlagsKHR();
-		swapChainCreateInfo.surface = surface;
-		swapChainCreateInfo.minImageCount = minImageCount;
-		swapChainCreateInfo.imageFormat = swapChainSurfaceFormat.format;
-		swapChainCreateInfo.imageColorSpace = swapChainSurfaceFormat.colorSpace;
-		swapChainCreateInfo.imageExtent = swapChainExtent;
-		swapChainCreateInfo.imageArrayLayers = 1;
-		swapChainCreateInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-		swapChainCreateInfo.imageSharingMode = vk::SharingMode::eExclusive;
-		swapChainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
-		swapChainCreateInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-		swapChainCreateInfo.presentMode = chooseSwapPresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
-		swapChainCreateInfo.clipped = true;
-		swapChainCreateInfo.oldSwapchain = nullptr;
-
-		swapChain = vk::raii::SwapchainKHR(device, swapChainCreateInfo);
-		swapChainImages = swapChain.getImages();
-
-		swapChainImageFormat = swapChainSurfaceFormat.format;
-
 	}
 
 	void createImageViews() {
@@ -675,9 +666,6 @@ private:
 
 	}
 
-	void cleanupSwapchain() {
-
-	}
 
 	void recreateSwapChain() {
 
@@ -690,8 +678,7 @@ private:
 
 		device.waitIdle();
 
-		cleanupSwapchain();
-		createSwapChain();
+		bootstrapSwapchain();
 		createImageViews();
 		createColorResources();
 		createDepthResources();
@@ -1243,8 +1230,6 @@ private:
 
 	void initVulkan() {
 		bootstrapVulkan();
-    	//createLogicalDevice();
-		createSwapChain();
 		createImageViews();
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
@@ -1274,8 +1259,7 @@ private:
 	}
 
 	void cleanup() {
-		cleanupSwapchain();
-
+		vkb::destroy_swapchain(vkbSwapchain);
 		glfwDestroyWindow(window);
 		glfwTerminate();
 	}
