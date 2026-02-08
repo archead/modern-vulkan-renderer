@@ -146,7 +146,6 @@ private:
 	vkb::Swapchain vkbSwapchain = {};
 	std::vector<vk::Image> swapChainImages;
 	vk::Extent2D swapChainExtent{};
-	vk::SurfaceFormatKHR swapChainSurfaceFormat{};
 
 	vk::Format swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
@@ -312,8 +311,6 @@ private:
 		auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 		swapChainExtent = chooseSwapExtent(surfaceCapabilities);
 
-		swapChainSurfaceFormat = chooseSwapSurfaceFormat(physicalDevice.getSurfaceFormatsKHR(surface));
-
 		auto minImageCount = std::max(3u, surfaceCapabilities.minImageCount);
 		if (surfaceCapabilities.maxImageCount > 0 && minImageCount > surfaceCapabilities.maxImageCount) {
 			minImageCount = surfaceCapabilities.maxImageCount;
@@ -332,26 +329,7 @@ private:
 
 		swapChain = vk::raii::SwapchainKHR(device, vkbSwapchain.swapchain);
 		swapChainImages = swapChain.getImages();
-		swapChainImageFormat = swapChainSurfaceFormat.format;
-	}
-
-	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
-		for (const auto& availableFormat : availableFormats) {
-			if (availableFormat.format == vk::Format::eB8G8R8A8Srgb &&
-				availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
-				return availableFormat;
-				}
-		}
-		return availableFormats[0];
-	}
-
-	vk::PresentModeKHR chooseSwapPresentMode (const std::vector<vk::PresentModeKHR>& availablePresentModes) {
-		for (const auto& availablePresentMode : availablePresentModes) {
-			if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
-				return vk::PresentModeKHR::eMailbox;
-			}
-		}
-		return vk::PresentModeKHR::eFifo;
+		swapChainImageFormat = static_cast<vk::Format>(vkbSwapchain.image_format);
 	}
 
 	vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities) {
