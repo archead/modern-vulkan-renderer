@@ -125,18 +125,14 @@ public:
 	}
 
 private:
+
+	//region globalMembers
 	GLFWwindow* window = nullptr;
 	vk::raii::Context context; // creates the RAII Vulkan_hpp context for the entire project
 
 	vk::raii::Instance instance = nullptr;
-	vkb::Instance vkbInstance{};
-
 	vk::raii::SurfaceKHR surface = nullptr;
-
-	vkb::PhysicalDevice vkbPhysicalDevice{};
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
-
-	vkb::Device vkbDevice{};
 	vk::raii::Device device = nullptr;
 
 	uint32_t graphicsFamilyIndex = 0;
@@ -145,11 +141,10 @@ private:
 	vk::raii::Queue graphicsQueue = nullptr; // also responsible for the present queue (in my case they are in the same family)
 	vk::raii::Queue presentQueue = nullptr;
 
-	vk::SurfaceFormatKHR swapChainSurfaceFormat{};
-	vk::Extent2D swapChainExtent{};
-
 	vk::raii::SwapchainKHR swapChain = nullptr;
 	std::vector<vk::Image> swapChainImages;
+	vk::Extent2D swapChainExtent{};
+	vk::SurfaceFormatKHR swapChainSurfaceFormat{};
 
 	vk::Format swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
@@ -207,6 +202,8 @@ private:
 		vk::KHRCreateRenderpass2ExtensionName
 	};
 
+	//endregion
+
 	void initWindow() {
 		glfwInit();
 
@@ -224,7 +221,8 @@ private:
 		app->framebufferResized = true;
 	}
 
-	void createInstance() {
+	void bootstrapVulkan() {
+		// ---- Create Instance
 		vkb::InstanceBuilder instance_builder;
 
 		auto instance_ret = instance_builder
@@ -240,40 +238,34 @@ private:
 				instance_ret.error().message()
 			);
 		}
-		vkbInstance = instance_ret.value();
+		vkb::Instance vkbInstance = instance_ret.value();
 		instance = vk::raii::Instance(context, vkbInstance.instance);
 
-		std::cout << "Vulkan instance created with vk-bootstrap\n";
-	}
+		// ---- Create Surface
 
-	void createSurface() {
 		VkSurfaceKHR _surface;
 		if (glfwCreateWindowSurface(*instance, window, nullptr, &_surface) != 0) {
 			throw std::runtime_error("failed to create window surface!");
 		}
 		surface = vk::raii::SurfaceKHR(instance, _surface);
-	}
 
-	uint32_t findQueueFamilies(vk::raii::PhysicalDevice physicalDevice) {
-		// find the index of the first queue family that support graphics
-		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+		// ---- Select Physical Device
 
-		// get the first index into queueFamilyProperties which supports graphics
-		auto graphicsQueueFamilyProperty =
-			std::find_if(queueFamilyProperties.begin(),
-				queueFamilyProperties.end(),
-				[](vk::QueueFamilyProperties const& qfp) { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; });
+		vk::PhysicalDeviceFeatures2 features{};
+		features.features.samplerAnisotropy = VK_TRUE;
+		features.features.sampleRateShading = VK_TRUE;
 
-		return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
-	}
+		vk::PhysicalDeviceVulkan13Features features13{};
+		features13.dynamicRendering = VK_TRUE;
+		features13.synchronization2 = VK_TRUE;
 
-	void pickPhysicalDevice() {
+		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT featuresEXT{};
+		featuresEXT.extendedDynamicState = VK_TRUE;
 
 		vkb::PhysicalDeviceSelector selector{vkbInstance};
 		auto phys_ret = selector
 		.set_surface(*surface)
 		.set_minimum_version(1,3)
-		.add_required_extensions(deviceExtensions)
 		.select();
 		if (!phys_ret) {
 			std::cerr << phys_ret.error().message() << "\n";
@@ -282,64 +274,39 @@ private:
 			throw std::runtime_error("failed to select physical device!");
 		}
 
-		vkbPhysicalDevice = phys_ret.value();
+		const vkb::PhysicalDevice vkbPhysicalDevice = phys_ret.value();
 		physicalDevice = vk::raii::PhysicalDevice(instance, vkbPhysicalDevice);
 		msaaSamples = getMaxUsableSampleCount();
 
-		std::cout << "Physical Device selected with vk-bootstrap\n";
+		// ---- Create Logical Device
 
+		vkb::DeviceBuilder device_builder{vkbPhysicalDevice};
+		auto dev_ret = device_builder
+		.add_pNext(&features)
+		.add_pNext(&features13)
+		.add_pNext(&featuresEXT)
+		.build();
 
-	}
-
-	void createLogicalDevice() {
-		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
-		uint32_t graphicsIndex = findQueueFamilies(physicalDevice);
-
-		// this is SUPER hacky lmfao, ideally needs to be checked during the entire findQueueFamilies() process
-		// TODO make this actually work correctly
-		VkBool32 presentSupport = physicalDevice.getSurfaceSupportKHR(graphicsIndex, *surface);
-		if (presentSupport == VK_FALSE) {
-			throw std::runtime_error("can't find present queue in currently selected queue family index!");
-		} else {
-			std::cout << "present queue index: " << graphicsIndex << std::endl;
+		if (!dev_ret) {
+			std::cerr << dev_ret.error().message() << std::endl;
+			for (auto& r : dev_ret.detailed_failure_reasons()) {
+				std::cerr << "  - " << r << std::endl;
+			}
+			throw std::runtime_error("Failed to create device!");
 		}
 
-		graphicsFamilyIndex = graphicsIndex;
-		presentFamilyIndex = graphicsIndex;
+		vkb::Device vkbDevice = dev_ret.value();
+		device = vk::raii::Device(physicalDevice, vkbDevice.device);
 
-		vk::DeviceQueueCreateInfo deviceQueueCreateInfo{};
-		deviceQueueCreateInfo.queueFamilyIndex = graphicsIndex;
-		deviceQueueCreateInfo.queueCount = 1;
+		auto queue_ret = vkbDevice.get_queue_index(vkb::QueueType::graphics);
+		graphicsQueue = vk::raii::Queue(device, queue_ret.value(), 0);
+		presentQueue = vk::raii::Queue(device, queue_ret.value(), 0);
 
-		float queuePriority = 1.0f;
-		deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+		// ---- Create Swapchain
 
-		vk::PhysicalDeviceFeatures deviceFeatures;
-		deviceFeatures.sampleRateShading = vk::True;
-
-		// Create a chain of feature structures
-		vk::StructureChain<
-			vk::PhysicalDeviceFeatures2,
-			vk::PhysicalDeviceVulkan13Features,
-			vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain;
-
-		featureChain.get<vk::PhysicalDeviceFeatures2>();
-		featureChain.get<vk::PhysicalDeviceFeatures2>().features.samplerAnisotropy = VK_TRUE;
-		featureChain.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering = VK_TRUE;
-		featureChain.get<vk::PhysicalDeviceVulkan13Features>().synchronization2 = VK_TRUE;
-		featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState = VK_TRUE;
-
-
-		vk::DeviceCreateInfo deviceCreateInfo{};
-		deviceCreateInfo.pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>();
-		deviceCreateInfo.queueCreateInfoCount = 1;
-		deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
-		deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
-		deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
-
-		device = vk::raii::Device(physicalDevice, deviceCreateInfo);
-		graphicsQueue = vk::raii::Queue(device, graphicsIndex, 0);
-		presentQueue = vk::raii::Queue(device, graphicsIndex, 0); // this handle is the same as the graphicsQueue one cause they are in the same familyQueue
+		vkb::SwapchainBuilder swapchain_builder{vkbDevice};
+		auto swap_ret = swapchain_builder
+		.set_desired_min_image_count()
 
 	}
 
@@ -1275,10 +1242,8 @@ private:
 	}
 
 	void initVulkan() {
-		createInstance();
-    	createSurface();
-		pickPhysicalDevice();
-    	createLogicalDevice();
+		bootstrapVulkan();
+    	//createLogicalDevice();
 		createSwapChain();
 		createImageViews();
 		createDescriptorSetLayout();
