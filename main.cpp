@@ -29,6 +29,9 @@
 
 #include <VkBootstrap.h>
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 const std::string MODEL_PATH = "C:\\dev\\vulkan-doc-tutorial\\models\\viking_room.obj";
@@ -324,7 +327,7 @@ private:
 
 		handleBootstrapErrors(swap_ret);
 
-		vkb::destroy_swapchain(vkbSwapchain);
+		vkb::destroy_swapchain(vkbSwapchain); // destroying in case were are recreating the swapchain
 		vkbSwapchain = swap_ret.value();
 
 		swapChain = vk::raii::SwapchainKHR(device, vkbSwapchain.swapchain);
