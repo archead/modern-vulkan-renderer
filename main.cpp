@@ -65,6 +65,12 @@ static std::vector<char> readFile(const std::string& filename) {
 	return buffer;
 }
 
+struct AllocatedBuffer {
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocation allocation = VK_NULL_HANDLE;
+	VmaAllocationInfo allocInfo{}; // optional;
+};
+
 struct Vertex {
 	glm::vec3 pos;
 	glm::vec3 color;
@@ -110,8 +116,6 @@ struct VertexHasher {
 	}
 };
 
-
-
 struct UniformBufferObject {
 	glm::mat4 model;
 	glm::mat4 view;
@@ -153,6 +157,8 @@ private:
 
 	vk::Format swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
+
+	VmaAllocator allocator = {};
 
 	vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
 
@@ -1222,9 +1228,25 @@ private:
 		colorImageView = createImageView(colorImage, colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 	}
 
+	void createAllocator() {
+		VmaAllocatorCreateInfo info{};
+		info.instance = *instance;
+		info.physicalDevice = *physicalDevice;
+		info.device = *device;
+		info.vulkanApiVersion = VK_API_VERSION_1_3;
+
+		vmaCreateAllocator(&info, &allocator);
+	}
+
+	void destroyAllocator() {
+		vmaDestroyAllocator(allocator);
+		allocator = nullptr;
+	}
+
 	void initVulkan() {
 		bootstrapVulkan();
 		createImageViews();
+		createAllocator();
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createCommandPool();
@@ -1255,6 +1277,7 @@ private:
 	void cleanup() {
 		glfwDestroyWindow(window);
 		glfwTerminate();
+		destroyAllocator();
 	}
 
 	void drawFrame() {
