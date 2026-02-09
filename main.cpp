@@ -134,6 +134,7 @@ private:
 	vk::raii::Context context; // creates the RAII Vulkan_hpp context for the entire project
 
 	vk::raii::Instance instance = nullptr;
+	vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
 	vk::raii::SurfaceKHR surface = nullptr;
 	vk::raii::PhysicalDevice physicalDevice = nullptr;
 	vk::raii::Device device = nullptr;
@@ -253,6 +254,7 @@ private:
 		}
 		vkb::Instance vkbInstance = instance_ret.value();
 		instance = vk::raii::Instance(context, vkbInstance.instance);
+		debugMessenger = vk::raii::DebugUtilsMessengerEXT(instance,vkbInstance.debug_messenger);
 
 		// ---- Create Surface
 
@@ -1240,7 +1242,6 @@ private:
 	}
 
 	void cleanup() {
-		vkb::destroy_swapchain(vkbSwapchain);
 		glfwDestroyWindow(window);
 		glfwTerminate();
 	}
