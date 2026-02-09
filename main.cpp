@@ -316,20 +316,13 @@ private:
 		auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 		swapChainExtent = chooseSwapExtent(surfaceCapabilities);
 
-		auto minImageCount = std::max(3u, surfaceCapabilities.minImageCount);
-		if (surfaceCapabilities.maxImageCount > 0 && minImageCount > surfaceCapabilities.maxImageCount) {
-			minImageCount = surfaceCapabilities.maxImageCount;
-		}
-
 		vkb::SwapchainBuilder swapchain_builder{vkbDevice};
 		auto swap_ret = swapchain_builder
-			.set_desired_min_image_count(minImageCount)
 			.set_desired_extent(swapChainExtent.width, swapChainExtent.height)
 			.build();
 
 		handleBootstrapErrors(swap_ret);
 
-		vkb::destroy_swapchain(vkbSwapchain); // destroying in case were are recreating the swapchain
 		vkbSwapchain = swap_ret.value();
 
 		swapChain = vk::raii::SwapchainKHR(device, vkbSwapchain.swapchain);
@@ -661,10 +654,28 @@ private:
 
 		device.waitIdle();
 
-		bootstrapSwapchain();
+		cleanupSwapchain();
+
+		auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
+		swapChainExtent = chooseSwapExtent(surfaceCapabilities);
+
+		vkb::SwapchainBuilder swapchain_builder{vkbDevice};
+		auto swap_ret = swapchain_builder.set_old_swapchain(vkbSwapchain).build();
+
+		handleBootstrapErrors(swap_ret);
+
+		vkbSwapchain = swap_ret.value();
+		swapChain = vk::raii::SwapchainKHR(device, vkbSwapchain.swapchain);
+		swapChainImages = swapChain.getImages();
+
 		createImageViews();
 		createColorResources();
 		createDepthResources();
+	}
+
+	void cleanupSwapchain() {
+		swapChainImageViews.clear();
+		swapChain = nullptr;
 	}
 
 	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
