@@ -66,7 +66,7 @@ static std::vector<char> readFile(const std::string& filename) {
 }
 
 struct AllocatedBuffer {
-	VkBuffer buffer = VK_NULL_HANDLE;
+	VkBuffer buffer = nullptr;
 	VmaAllocation allocation = VK_NULL_HANDLE;
 	VmaAllocationInfo allocInfo{}; // optional;
 };
@@ -179,11 +179,13 @@ private:
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
-	vk::raii::Buffer vertexBuffer = nullptr;
-	vk::raii::DeviceMemory vertexBufferMemory = nullptr;
+	AllocatedBuffer vertexBuffer = {};
+	//vk::raii::Buffer vertexBuffer = nullptr;
+	//vk::raii::DeviceMemory vertexBufferMemory = nullptr;
 
-	vk::raii::Buffer indexBuffer = nullptr;
-	vk::raii::DeviceMemory indexBufferMemory = nullptr;
+	AllocatedBuffer indexBuffer = {};
+	//vk::raii::Buffer indexBuffer = nullptr;
+	//vk::raii::DeviceMemory indexBufferMemory = nullptr;
 
 	std::vector<vk::raii::Buffer> uniformBuffers;
 	std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
@@ -560,9 +562,9 @@ private:
 
 		commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
-		commandBuffers[currentFrame].bindVertexBuffers(0, *vertexBuffer, {0});
+		commandBuffers[currentFrame].bindVertexBuffers(0, vk::Buffer(vertexBuffer.buffer), {0});
 
-		commandBuffers[currentFrame].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint32);
+		commandBuffers[currentFrame].bindIndexBuffer(vk::Buffer(indexBuffer.buffer), 0, vk::IndexType::eUint32);
 
 		// Set the dynamic states of Scissor and Viewport
 		commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f,
@@ -698,60 +700,75 @@ private:
 	void createVertexBuffer() {
 		vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-		vk::raii::Buffer stagingBuffer = nullptr;
-		vk::raii::DeviceMemory stagingBufferMemory = nullptr;
+		AllocatedBuffer stagingBuffer = {};
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
 
-		createBuffer(
-			bufferSize,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-			stagingBuffer,
-			stagingBufferMemory);
+		void* data = nullptr;
+		vmaMapMemory(allocator, stagingBuffer.allocation, &data);
+		std::memcpy(data, vertices.data(), bufferSize);
+		vmaUnmapMemory(allocator, stagingBuffer.allocation);
 
-		void* data = stagingBufferMemory.mapMemory(0, bufferSize);
-		memcpy(data, vertices.data(), bufferSize);
-		stagingBufferMemory.unmapMemory();
+		vmaFlushAllocation(allocator, stagingBuffer.allocation, 0, bufferSize);
 
-		createBuffer(
-			bufferSize,
-			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::MemoryPropertyFlagBits::eDeviceLocal,
-			vertexBuffer,
-			vertexBufferMemory);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertexBuffer,false);
 
-		copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+		copyBuffer(stagingBuffer.buffer, vertexBuffer.buffer, bufferSize);
+		destroyBuffer(allocator, stagingBuffer);
 	}
 
 	void createIndexBuffer(){
 		vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-		vk::raii::Buffer stagingBuffer = nullptr;
-		vk::raii::DeviceMemory stagingBufferMemory = nullptr;
-		createBuffer(
-			bufferSize,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-			stagingBuffer,
-			stagingBufferMemory);
+		AllocatedBuffer stagingBuffer = {};
 
-		void* data = stagingBufferMemory.mapMemory(0, bufferSize);
-		memcpy(data, indices.data(), (size_t) bufferSize);
-		stagingBufferMemory.unmapMemory();
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
 
-		createBuffer(
-			bufferSize,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal,
-			indexBuffer,
-			indexBufferMemory);
+		void* data = nullptr;
+		vmaMapMemory(allocator, stagingBuffer.allocation, &data);
+		std::memcpy(data, indices.data(), bufferSize);
+		vmaUnmapMemory(allocator, stagingBuffer.allocation);
 
-		copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBuffer, false);
+
+		copyBuffer(stagingBuffer.buffer, indexBuffer.buffer, bufferSize);
+		destroyBuffer(allocator, stagingBuffer);
 	}
 
 	void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) {
-		vk::raii::CommandBuffer commandCopyBuffer = beginSingleTimeCommands();
-		commandCopyBuffer.copyBuffer(srcBuffer, dstBuffer, vk::BufferCopy(0, 0, size));
-		endSingleTimeCommands(commandCopyBuffer);
+		vk::raii::CommandBuffer cmd = beginSingleTimeCommands();
+		cmd.copyBuffer(srcBuffer, dstBuffer, vk::BufferCopy(0, 0, size));
+		endSingleTimeCommands(cmd);
+	}
+
+	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+		vk::raii::CommandBuffer cmd = beginSingleTimeCommands();
+		cmd.copyBuffer(vk::Buffer(srcBuffer), vk::Buffer(dstBuffer), vk::BufferCopy(0, 0, size));
+		endSingleTimeCommands(cmd);
+	}
+
+	void createBuffer(
+		VkDeviceSize size,
+		VkBufferUsageFlags usage,
+		AllocatedBuffer &allocBuff,
+		bool isHostVisible) {
+
+		VkBufferCreateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = size;
+		bufferInfo.usage = usage;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		VmaAllocationCreateInfo allocInfo = {};
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+		if (isHostVisible) {
+			allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		}
+
+		const VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &allocBuff.buffer, &allocBuff.allocation, nullptr);
+
+		if (res != VK_SUCCESS) {
+			throw std::runtime_error("vmaCreateBuffer failed!");
+		}
 	}
 
 	void createBuffer(
@@ -775,6 +792,10 @@ private:
 		bufferMemory = vk::raii::DeviceMemory(device, allocInfo);
 
 		buffer.bindMemory(*bufferMemory, 0);
+	}
+
+	void destroyBuffer(VmaAllocator allocator, AllocatedBuffer allocBuff) {
+		vmaDestroyBuffer(allocator, allocBuff.buffer, allocBuff.allocation);
 	}
 
 	void createImage(
@@ -841,9 +862,14 @@ private:
 				bufferMem
 				);
 
+			//AllocatedBuffer buffer;
+			//createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, buffer, true);
+
 			uniformBuffers.emplace_back(std::move(buffer));
 			uniformBuffersMemory.emplace_back(std::move(bufferMem));
 			uniformBuffersMapped.emplace_back(uniformBuffersMemory[i].mapMemory(0, bufferSize));
+
+			//destroyBuffer(allocator, buffer);
 		}
 	}
 
@@ -894,20 +920,13 @@ private:
 			throw std::runtime_error("failed to load texture image!");
 		}
 
-		vk::raii::Buffer stagingBuffer({});
-		vk::raii::DeviceMemory stagingBufferMemory({});
+		AllocatedBuffer stagingBuffer = {};
+		createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
 
-		createBuffer(
-			imageSize,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-			stagingBuffer,
-			stagingBufferMemory
-			);
-
-		void* data = stagingBufferMemory.mapMemory(0, imageSize);
-		memcpy(data,  pixels, imageSize);
-		stagingBufferMemory.unmapMemory();
+		void* data = nullptr;
+		vmaMapMemory(allocator, stagingBuffer.allocation, &data);
+		memcpy(data, pixels, imageSize);
+		vmaUnmapMemory(allocator, stagingBuffer.allocation);
 
 		stbi_image_free(pixels);
 
@@ -923,8 +942,10 @@ private:
 			textureImageMemory);
 
 		transitionImageLayout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
-		copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+		copyBufferToImage(vk::Buffer(stagingBuffer.buffer), textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 		generateMipmaps(textureImage,vk::Format::eR8G8B8A8Srgb, texWidth, texHeight, mipLevels);
+
+		destroyBuffer(allocator, stagingBuffer);
 	}
 
 	void transitionImageLayout(const vk::raii::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) {
@@ -957,7 +978,7 @@ private:
 		endSingleTimeCommands(commandBuffer);
 	}
 
-	void copyBufferToImage(const vk::raii::Buffer& buffer, vk::raii::Image& image, uint32_t width, uint32_t height) {
+	void copyBufferToImage(const vk::Buffer& buffer, vk::raii::Image& image, uint32_t width, uint32_t height) {
 		vk::BufferImageCopy region = {};
 		region.bufferOffset = 0;
 		region.bufferRowLength = 0;
@@ -1277,7 +1298,10 @@ private:
 	void cleanup() {
 		glfwDestroyWindow(window);
 		glfwTerminate();
+		destroyBuffer(allocator, vertexBuffer);
+		destroyBuffer(allocator, indexBuffer);
 		destroyAllocator();
+
 	}
 
 	void drawFrame() {
