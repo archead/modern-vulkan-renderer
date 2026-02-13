@@ -66,9 +66,15 @@ static std::vector<char> readFile(const std::string& filename) {
 }
 
 struct AllocatedBuffer {
-	VkBuffer buffer = nullptr;
+	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
 	VmaAllocationInfo allocInfo{}; // optional;
+};
+
+struct AllocatedImage {
+	VkImage image = VK_NULL_HANDLE;
+	VmaAllocation allocation = VK_NULL_HANDLE;
+	VmaAllocationInfo allocInfo{}; // optional
 };
 
 struct Vertex {
@@ -194,18 +200,21 @@ private:
 	std::vector<vk::raii::DescriptorSet> descriptorSets;
 
 	uint32_t mipLevels = 1;
-	vk::raii::Image textureImage = nullptr; //this might need to be std::unique_ptr<>
-	vk::raii::DeviceMemory textureImageMemory = nullptr;
+	// vk::raii::Image textureImage = nullptr;
+	// vk::raii::DeviceMemory textureImageMemory = nullptr;
+	AllocatedImage textureImage = {};
 	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler textureSampler = nullptr;
 
-	vk::raii::Image depthImage = nullptr;
-	vk::raii::DeviceMemory depthImageMemory = nullptr;
+	// vk::raii::Image depthImage = nullptr;
+	// vk::raii::DeviceMemory depthImageMemory = nullptr;
+	AllocatedImage depthImage = {};
 	vk::raii::ImageView depthImageView = nullptr;
 
 	vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
-	vk::raii::Image colorImage = nullptr;
-	vk::raii::DeviceMemory colorImageMemory = nullptr;
+	// vk::raii::Image colorImage = nullptr;
+	// vk::raii::DeviceMemory colorImageMemory = nullptr;
+	AllocatedImage colorImage = {};
 	vk::raii::ImageView colorImageView = nullptr;
 
 	std::vector<const char*> deviceExtensions = {
@@ -521,7 +530,7 @@ private:
 			vk::ImageAspectFlagBits::eColor);
 
 		transition_image_layout(
-			*depthImage,
+			vk::Image(depthImage.image),
 			vk::ImageLayout::eUndefined,
 			vk::ImageLayout::eDepthAttachmentOptimal,
 			{},
@@ -798,6 +807,10 @@ private:
 		vmaDestroyBuffer(allocator, allocBuff.buffer, allocBuff.allocation);
 	}
 
+	void destroyImage(VmaAllocator allocator, AllocatedImage allocImage) {
+		vmaDestroyImage(allocator, allocImage.image, allocImage.allocation);
+	}
+
 	void createImage(
 		uint32_t width,
 		uint32_t height,
@@ -832,6 +845,34 @@ private:
 		image.bindMemory(*imageMemory, 0);
 	}
 
+	void createImage(
+		uint32_t width,
+		uint32_t height,
+		uint32_t mipLevels,
+		VkSampleCountFlagBits numSamples,
+		VkFormat format,
+		VkImageTiling tiling,
+		VkImageUsageFlags usage,
+		AllocatedImage& image) {
+
+		VkImageCreateInfo imageInfo = {};
+		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imageInfo.imageType = VK_IMAGE_TYPE_2D;
+		imageInfo.format = format;
+		imageInfo.extent = VkExtent3D{width, height, 1};
+		imageInfo.mipLevels = mipLevels;
+		imageInfo.arrayLayers = 1;
+		imageInfo.samples = numSamples;
+		imageInfo.tiling = tiling;
+		imageInfo.usage = usage;
+		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		VmaAllocationCreateInfo allocInfo = {};
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		VkResult  res = vmaCreateImage(allocator, &imageInfo, &allocInfo, &image.image, &image.allocation, nullptr);
+		if (res != VK_SUCCESS) {throw std::runtime_error("vmaCreateImage failed");}
+	}
+
 	void createDescriptorSetLayout() {
 
 		std::array bindings = {
@@ -862,14 +903,9 @@ private:
 				bufferMem
 				);
 
-			//AllocatedBuffer buffer;
-			//createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, buffer, true);
-
 			uniformBuffers.emplace_back(std::move(buffer));
 			uniformBuffersMemory.emplace_back(std::move(bufferMem));
 			uniformBuffersMapped.emplace_back(uniformBuffersMemory[i].mapMemory(0, bufferSize));
-
-			//destroyBuffer(allocator, buffer);
 		}
 	}
 
@@ -933,21 +969,20 @@ private:
 		createImage(texWidth,
 			texHeight,
 			mipLevels,
-			vk::SampleCountFlagBits::e1,
-			vk::Format::eR8G8B8A8Srgb,
-			vk::ImageTiling::eOptimal,
-			vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-			vk::MemoryPropertyFlagBits::eDeviceLocal,
-			textureImage,
-			textureImageMemory);
+			VK_SAMPLE_COUNT_1_BIT,
+			VK_FORMAT_R8G8B8A8_SRGB,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			textureImage);
 
-		transitionImageLayout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
-		copyBufferToImage(vk::Buffer(stagingBuffer.buffer), textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-		generateMipmaps(textureImage,vk::Format::eR8G8B8A8Srgb, texWidth, texHeight, mipLevels);
+		transitionImageLayout(vk::Image(textureImage.image), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
+		copyBufferToImage(vk::Buffer(stagingBuffer.buffer), vk::Image(textureImage.image), static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+		generateMipmaps(vk::Image(textureImage.image),vk::Format::eR8G8B8A8Srgb, texWidth, texHeight, mipLevels);
 
 		destroyBuffer(allocator, stagingBuffer);
 	}
 
+	/*
 	void transitionImageLayout(const vk::raii::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) {
 		auto commandBuffer = beginSingleTimeCommands();
 		vk::PipelineStageFlags sourceStage, destinationStage;
@@ -977,8 +1012,38 @@ private:
 		commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {}, nullptr, barrier);
 		endSingleTimeCommands(commandBuffer);
 	}
+	*/
+	void transitionImageLayout(const vk::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) {
+		auto commandBuffer = beginSingleTimeCommands();
+		vk::PipelineStageFlags sourceStage, destinationStage;
 
-	void copyBufferToImage(const vk::Buffer& buffer, vk::raii::Image& image, uint32_t width, uint32_t height) {
+		vk::ImageMemoryBarrier barrier = {};
+		barrier.oldLayout = oldLayout;
+		barrier.newLayout = newLayout;
+		barrier.image = image;
+		barrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, mipLevels, 0, 1};
+
+		if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+			barrier.srcAccessMask = {};
+			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+			sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+			destinationStage = vk::PipelineStageFlagBits::eTransfer;
+		} else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+			barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+			barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+			sourceStage = vk::PipelineStageFlagBits::eTransfer;
+			destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+		}   else {
+			throw std::invalid_argument("unsupported layout transition!");
+		}
+
+		commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {}, nullptr, barrier);
+		endSingleTimeCommands(commandBuffer);
+	}
+
+	void copyBufferToImage(const vk::Buffer& buffer, vk::Image image, uint32_t width, uint32_t height) {
 		vk::BufferImageCopy region = {};
 		region.bufferOffset = 0;
 		region.bufferRowLength = 0;
@@ -1018,7 +1083,7 @@ private:
 		graphicsQueue.waitIdle();
 	}
 
-	vk::raii::ImageView createImageView(vk::raii::Image& image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels) {
+	vk::raii::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels) {
 		vk::ImageViewCreateInfo viewInfo{};
 		viewInfo.image = image;
 		viewInfo.viewType = vk::ImageViewType::e2D;
@@ -1029,7 +1094,7 @@ private:
 	}
 
 	void createTextureImageView() {
-		textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, mipLevels);
+		textureImageView = createImageView(vk::Image(textureImage.image), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, mipLevels);
 	}
 
 	void createTextureSampler() {
@@ -1068,15 +1133,13 @@ private:
 			swapChainExtent.width,
 			swapChainExtent.height,
 			1,
-			msaaSamples,
-			depthFormat,
-			vk::ImageTiling::eOptimal,
-			vk::ImageUsageFlagBits::eDepthStencilAttachment,
-			vk::MemoryPropertyFlagBits::eDeviceLocal,
-			depthImage,
-			depthImageMemory);
+			static_cast<VkSampleCountFlagBits>(msaaSamples),
+			static_cast<VkFormat>(depthFormat),
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			depthImage);
 		
-		depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
+		depthImageView = createImageView(vk::Image(depthImage.image), depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
 	}
 
 	vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
@@ -1144,7 +1207,7 @@ private:
 		}
 	}
 
-	void generateMipmaps(vk::raii::Image& image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
+	void generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
 
 		// Check if image format supports linear blit-ing
 		vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(imageFormat);
@@ -1238,15 +1301,13 @@ private:
 			swapChainExtent.width,
 			swapChainExtent.height,
 			1,
-			msaaSamples,
-			colorFormat,
-			vk::ImageTiling::eOptimal,
-			vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
-			vk::MemoryPropertyFlagBits::eDeviceLocal,
-			colorImage,
-			colorImageMemory);
+			static_cast<VkSampleCountFlagBits>(msaaSamples),
+			static_cast<VkFormat>(colorFormat),
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			colorImage);
 
-		colorImageView = createImageView(colorImage, colorFormat, vk::ImageAspectFlagBits::eColor, 1);
+		colorImageView = createImageView(vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 	}
 
 	void createAllocator() {
@@ -1300,6 +1361,9 @@ private:
 		glfwTerminate();
 		destroyBuffer(allocator, vertexBuffer);
 		destroyBuffer(allocator, indexBuffer);
+		destroyImage(allocator, textureImage);
+		destroyImage(allocator, depthImage);
+		destroyImage(allocator, colorImage);
 		destroyAllocator();
 
 	}
