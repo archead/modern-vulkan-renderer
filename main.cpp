@@ -191,12 +191,7 @@ private:
 	std::vector<uint32_t> indices;
 
 	AllocatedBuffer vertexBuffer = {};
-	//vk::raii::Buffer vertexBuffer = nullptr;
-	//vk::raii::DeviceMemory vertexBufferMemory = nullptr;
-
 	AllocatedBuffer indexBuffer = {};
-	//vk::raii::Buffer indexBuffer = nullptr;
-	//vk::raii::DeviceMemory indexBufferMemory = nullptr;
 
 	std::vector<AllocatedUniformBuffer> uniformBuffers = {};
 
@@ -204,20 +199,14 @@ private:
 	std::vector<vk::raii::DescriptorSet> descriptorSets;
 
 	uint32_t mipLevels = 1;
-	// vk::raii::Image textureImage = nullptr;
-	// vk::raii::DeviceMemory textureImageMemory = nullptr;
 	AllocatedImage textureImage = {};
 	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler textureSampler = nullptr;
 
-	// vk::raii::Image depthImage = nullptr;
-	// vk::raii::DeviceMemory depthImageMemory = nullptr;
 	AllocatedImage depthImage = {};
 	vk::raii::ImageView depthImageView = nullptr;
 
 	vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
-	// vk::raii::Image colorImage = nullptr;
-	// vk::raii::DeviceMemory colorImageMemory = nullptr;
 	AllocatedImage colorImage = {};
 	vk::raii::ImageView colorImageView = nullptr;
 
@@ -663,7 +652,6 @@ private:
 
 	}
 
-
 	void recreateSwapChain() {
 
 		int width = 0, height = 0;
@@ -697,17 +685,6 @@ private:
 	void cleanupSwapchain() {
 		swapChainImageViews.clear();
 		swapChain = nullptr;
-	}
-
-	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
-		vk::PhysicalDeviceMemoryProperties memProperties = physicalDevice.getMemoryProperties();
-		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-			if ((typeFilter & (1 << i)) &&
-				(memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-				return i;
-			}
-		}
-		throw std::runtime_error("failed to find suitable memory type!");
 	}
 
 	void createVertexBuffer() {
@@ -759,11 +736,7 @@ private:
 		endSingleTimeCommands(cmd);
 	}
 
-	void createBuffer(
-		VkDeviceSize size,
-		VkBufferUsageFlags usage,
-		AllocatedBuffer &allocBuff,
-		bool isHostVisible) {
+	void createBuffer( VkDeviceSize size, VkBufferUsageFlags usage, AllocatedBuffer &allocBuff, bool hostVisible) {
 
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -773,38 +746,15 @@ private:
 
 		VmaAllocationCreateInfo allocInfo = {};
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-		if (isHostVisible) {
-			allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		if (hostVisible) {
+			allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 		}
 
-		const VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &allocBuff.buffer, &allocBuff.allocation, nullptr);
+		const VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &allocBuff.buffer, &allocBuff.allocation, &allocBuff.allocInfo);
 
 		if (res != VK_SUCCESS) {
 			throw std::runtime_error("vmaCreateBuffer failed!");
 		}
-	}
-
-	void createBuffer(
-		vk::DeviceSize size,
-		vk::BufferUsageFlags usage,
-		vk::MemoryPropertyFlags properties,
-		vk::raii::Buffer& buffer,
-		vk::raii::DeviceMemory& bufferMemory) {
-
-		vk::BufferCreateInfo bufferInfo;
-		bufferInfo.size = size;
-		bufferInfo.usage = usage;
-		bufferInfo.sharingMode = vk::SharingMode::eExclusive;
-		buffer = vk::raii::Buffer(device, bufferInfo);
-
-		vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
-
-		vk::MemoryAllocateInfo allocInfo;
-		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-		bufferMemory = vk::raii::DeviceMemory(device, allocInfo);
-
-		buffer.bindMemory(*bufferMemory, 0);
 	}
 
 	void destroyBuffer(VmaAllocator allocator, AllocatedBuffer allocBuff) {
@@ -813,40 +763,6 @@ private:
 
 	void destroyImage(VmaAllocator allocator, AllocatedImage allocImage) {
 		vmaDestroyImage(allocator, allocImage.image, allocImage.allocation);
-	}
-
-	void createImage(
-		uint32_t width,
-		uint32_t height,
-		uint32_t mipLevels,
-		vk::SampleCountFlagBits numSamples,
-		vk::Format format,
-		vk::ImageTiling tiling,
-		vk::ImageUsageFlags usage,
-		vk::MemoryPropertyFlags properties,
-		vk::raii::Image& image,
-		vk::raii::DeviceMemory& imageMemory) {
-
-		vk::ImageCreateInfo imageInfo = {};
-		imageInfo.imageType = vk::ImageType::e2D;
-		imageInfo.format = format;
-		imageInfo.extent = vk::Extent3D{width, height, 1};
-		imageInfo.mipLevels = mipLevels;
-		imageInfo.arrayLayers = 1;
-		imageInfo.samples = numSamples;
-		imageInfo.tiling = tiling;
-		imageInfo.usage = usage;
-		imageInfo.sharingMode = vk::SharingMode::eExclusive;
-
-		image = vk::raii::Image(device, imageInfo);
-
-		vk::MemoryRequirements memRequirements = image.getMemoryRequirements();
-		vk::MemoryAllocateInfo allocInfo = {};
-		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-
-		imageMemory = vk::raii::DeviceMemory(device, allocInfo);
-		image.bindMemory(*imageMemory, 0);
 	}
 
 	void createImage(
@@ -972,37 +888,6 @@ private:
 		destroyBuffer(allocator, stagingBuffer);
 	}
 
-	/*
-	void transitionImageLayout(const vk::raii::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) {
-		auto commandBuffer = beginSingleTimeCommands();
-		vk::PipelineStageFlags sourceStage, destinationStage;
-
-		vk::ImageMemoryBarrier barrier = {};
-		barrier.oldLayout = oldLayout;
-		barrier.newLayout = newLayout;
-		barrier.image = image;
-		barrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, mipLevels, 0, 1};
-
-		if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-			barrier.srcAccessMask = {};
-			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-
-			sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-			destinationStage = vk::PipelineStageFlagBits::eTransfer;
-		} else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-			barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-			barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-
-			sourceStage = vk::PipelineStageFlagBits::eTransfer;
-			destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-		}   else {
-			throw std::invalid_argument("unsupported layout transition!");
-		}
-
-		commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {}, nullptr, barrier);
-		endSingleTimeCommands(commandBuffer);
-	}
-	*/
 	void transitionImageLayout(const vk::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) {
 		auto commandBuffer = beginSingleTimeCommands();
 		vk::PipelineStageFlags sourceStage, destinationStage;
@@ -1346,6 +1231,13 @@ private:
 		device.waitIdle();
 	}
 
+	void dumpAllocationStats() {
+		char* stats = nullptr;
+		vmaBuildStatsString(allocator, &stats, VK_TRUE);
+		std::cerr << stats << std::endl;
+		vmaFreeStatsString(allocator, stats);
+	}
+
 	void cleanup() {
 		glfwDestroyWindow(window);
 		glfwTerminate();
@@ -1355,8 +1247,8 @@ private:
 		destroyImage(allocator, textureImage);
 		destroyImage(allocator, depthImage);
 		destroyImage(allocator, colorImage);
+		// dumpAllocationStats();
 		destroyAllocator();
-
 	}
 
 	void drawFrame() {
