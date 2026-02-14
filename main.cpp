@@ -77,6 +77,11 @@ struct AllocatedImage {
 	VmaAllocationInfo allocInfo{}; // optional
 };
 
+struct AllocatedUniformBuffer {
+	AllocatedBuffer buffer;
+	void* mapped = nullptr;
+};
+
 struct Vertex {
 	glm::vec3 pos;
 	glm::vec3 color;
@@ -193,9 +198,8 @@ private:
 	//vk::raii::Buffer indexBuffer = nullptr;
 	//vk::raii::DeviceMemory indexBufferMemory = nullptr;
 
-	std::vector<vk::raii::Buffer> uniformBuffers;
-	std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
-	std::vector<void*> uniformBuffersMapped;
+	std::vector<AllocatedUniformBuffer> uniformBuffers = {};
+
 	vk::raii::DescriptorPool descriptorPool = nullptr;
 	std::vector<vk::raii::DescriptorSet> descriptorSets;
 
@@ -886,26 +890,12 @@ private:
 
 	void createUniformBuffers() {
 		uniformBuffers.clear();
-		uniformBuffersMemory.clear();
-		uniformBuffersMapped.clear();
+		uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
-
-			vk::raii::Buffer buffer({});
-			vk::raii::DeviceMemory bufferMem({});
-
-			createBuffer(
-				bufferSize,
-				vk::BufferUsageFlagBits::eUniformBuffer,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-				buffer,
-				bufferMem
-				);
-
-			uniformBuffers.emplace_back(std::move(buffer));
-			uniformBuffersMemory.emplace_back(std::move(bufferMem));
-			uniformBuffersMapped.emplace_back(uniformBuffersMemory[i].mapMemory(0, bufferSize));
+			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uniformBuffers[i].buffer, true);
+			uniformBuffers[i].mapped = uniformBuffers[i].buffer.allocInfo.pMappedData;
 		}
 	}
 
@@ -932,7 +922,7 @@ private:
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 
-			vk::DescriptorBufferInfo bufferInfo(uniformBuffers[i],0,sizeof(UniformBufferObject));
+			vk::DescriptorBufferInfo bufferInfo(uniformBuffers[i].buffer.buffer,0,sizeof(UniformBufferObject));
 			vk::DescriptorImageInfo imageInfo(textureSampler, textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 			std::array descriptorWrites{
@@ -1359,6 +1349,7 @@ private:
 	void cleanup() {
 		glfwDestroyWindow(window);
 		glfwTerminate();
+		for (auto& ub : uniformBuffers) { destroyBuffer(allocator, ub.buffer); }
 		destroyBuffer(allocator, vertexBuffer);
 		destroyBuffer(allocator, indexBuffer);
 		destroyImage(allocator, textureImage);
@@ -1435,7 +1426,7 @@ private:
 			0.1f, 10.0f);
 		ubo.proj[1][1] *= -1;
 
-		memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
+		memcpy(uniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
 	}
 };
 
