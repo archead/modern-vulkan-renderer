@@ -36,6 +36,7 @@ add_subdirectory(thirdparty/glm)
 add_subdirectory(thirdparty/tinyobjloader)
 add_subdirectory(thirdparty/vk-bootstrap)
 add_subdirectory(thirdparty/VulkanMemoryAllocator)
+add_subdirectory(thirdparty/SDL)
 
 add_library(stb INTERFACE)
 target_include_directories(stb
@@ -57,4 +58,5 @@ target_link_libraries(vulkan_doc_tutorial
         stb
         vk-bootstrap::vk-bootstrap
         GPUOpen::VulkanMemoryAllocator
+        SDL3::SDL3
 )

@@ -1,8 +1,6 @@
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
 #endif
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -15,6 +13,9 @@
 #include <unordered_map> // Using for deduplicating OBJ vertices
 
 #include <fstream>
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -145,7 +146,7 @@ public:
 private:
 
 	//region globalMembers
-	GLFWwindow* window = nullptr;
+	SDL_Window* window = nullptr;
 	vk::raii::Context context; // creates the RAII Vulkan_hpp context for the entire project
 
 	vk::raii::Instance instance = nullptr;
@@ -220,20 +221,8 @@ private:
 	//endregion
 
 	void initWindow() {
-		glfwInit();
-
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // we're not using OpenGL
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // dealing with resizable windows will come later
-
-		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-
-		glfwSetWindowUserPointer(window, this);
-		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-	}
-
-	static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-		auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
-		app->framebufferResized = true;
+		SDL_Init(SDL_INIT_VIDEO);
+		window = SDL_CreateWindow("Vulkan", WIDTH, HEIGHT, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 	}
 
 	void handleBootstrapErrors(auto obj_ret) {
@@ -268,9 +257,9 @@ private:
 
 		// ---- Create Surface
 
-		VkSurfaceKHR _surface;
-		if (glfwCreateWindowSurface(*instance, window, nullptr, &_surface) != 0) {
-			throw std::runtime_error("failed to create window surface!");
+		VkSurfaceKHR _surface = VK_NULL_HANDLE;
+		if (!SDL_Vulkan_CreateSurface(window, *instance, nullptr, &_surface)) {
+			throw std::runtime_error(SDL_GetError());
 		}
 		surface = vk::raii::SurfaceKHR(instance, _surface);
 
@@ -346,7 +335,7 @@ private:
 		}
 
 		int width, height;
-		glfwGetFramebufferSize(window, &width, &height);
+		SDL_GetWindowSizeInPixels(window, &width, &height);
 
 		return {
 			std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
@@ -653,12 +642,10 @@ private:
 	}
 
 	void recreateSwapChain() {
-
 		int width = 0, height = 0;
-		glfwGetFramebufferSize(window, &width, &height);
+		SDL_GetWindowSizeInPixels(window, &width, &height);
 		while (width == 0 || height == 0) {
-			glfwGetFramebufferSize(window, &width, &height);
-			glfwWaitEvents();
+			SDL_GetWindowSizeInPixels(window, &width, &height);
 		}
 
 		device.waitIdle();
@@ -683,6 +670,14 @@ private:
 	}
 
 	void cleanupSwapchain() {
+		device.waitIdle();
+
+		colorImageView = nullptr;
+		depthImageView = nullptr;
+
+		if (colorImage.image != VK_NULL_HANDLE) {destroyImage(allocator, colorImage);}
+		if (depthImage.image != VK_NULL_HANDLE) {destroyImage(allocator, depthImage);}
+
 		swapChainImageViews.clear();
 		swapChain = nullptr;
 	}
@@ -757,11 +752,11 @@ private:
 		}
 	}
 
-	void destroyBuffer(VmaAllocator allocator, AllocatedBuffer allocBuff) {
+	void destroyBuffer(VmaAllocator allocator, AllocatedBuffer& allocBuff) {
 		vmaDestroyBuffer(allocator, allocBuff.buffer, allocBuff.allocation);
 	}
 
-	void destroyImage(VmaAllocator allocator, AllocatedImage allocImage) {
+	void destroyImage(VmaAllocator allocator, AllocatedImage& allocImage) {
 		vmaDestroyImage(allocator, allocImage.image, allocImage.allocation);
 	}
 
@@ -1223,8 +1218,20 @@ private:
 	}
 
 	void mainLoop() {
-		while (!glfwWindowShouldClose(window)) {
-			glfwPollEvents();
+		bool running = true;
+		while (running) {
+			SDL_Event e;
+			while (SDL_PollEvent(&e)) {
+				switch (e.type) {
+					case SDL_EVENT_QUIT:
+						running = false;
+						break;
+					case SDL_EVENT_WINDOW_RESIZED:
+					case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+						framebufferResized = true;
+						break;
+				}
+			}
 			drawFrame();
 		}
 
@@ -1239,15 +1246,17 @@ private:
 	}
 
 	void cleanup() {
-		glfwDestroyWindow(window);
-		glfwTerminate();
+
+		SDL_DestroyWindow(window);
+		SDL_Quit();
+
 		for (auto& ub : uniformBuffers) { destroyBuffer(allocator, ub.buffer); }
 		destroyBuffer(allocator, vertexBuffer);
 		destroyBuffer(allocator, indexBuffer);
 		destroyImage(allocator, textureImage);
 		destroyImage(allocator, depthImage);
 		destroyImage(allocator, colorImage);
-		// dumpAllocationStats();
+		dumpAllocationStats();
 		destroyAllocator();
 	}
 
