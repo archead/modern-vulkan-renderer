@@ -51,6 +51,7 @@ add_executable(vulkan_doc_tutorial
     src/Renderer.cpp
     src/Buffers.cpp
     src/DescriptorSets.cpp
+    src/Allocator.cpp
 )
 
 target_include_directories(vulkan_doc_tutorial

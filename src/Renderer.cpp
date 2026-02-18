@@ -37,8 +37,6 @@
 #include "Renderer.hpp"
 #include "Config.hpp"
 
-
-
 static std::vector<char> readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -887,20 +885,7 @@ void Renderer::createColorResources() {
 	colorImageView = createImageView(vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
-void Renderer::createAllocator() {
-	VmaAllocatorCreateInfo info{};
-	info.instance = *instance;
-	info.physicalDevice = *physicalDevice;
-	info.device = *device;
-	info.vulkanApiVersion = VK_API_VERSION_1_3;
 
-	vmaCreateAllocator(&info, &allocator);
-}
-
-void Renderer::destroyAllocator() {
-	vmaDestroyAllocator(allocator);
-	allocator = nullptr;
-}
 
 void Renderer::initVulkan() {
 	bootstrapVulkan();
