@@ -39,11 +39,24 @@ add_subdirectory(thirdparty/VulkanMemoryAllocator)
 add_subdirectory(thirdparty/SDL)
 
 add_library(stb INTERFACE)
+
 target_include_directories(stb
     INTERFACE
         thirdparty/stb)
 
-add_executable(vulkan_doc_tutorial main.cpp)
+
+
+add_executable(vulkan_doc_tutorial
+    main.cpp
+    src/Renderer.cpp
+    src/Buffers.cpp
+    src/DescriptorSets.cpp
+)
+
+target_include_directories(vulkan_doc_tutorial
+    PRIVATE
+        include
+)
 
 set (SHADER_SLANG_SOURCES ${CMAKE_CURRENT_LIST_DIR}/shaders/shader.slang)
 add_slang_shader_target(shaders SOURCES ${SHADER_SLANG_SOURCES})
