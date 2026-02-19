@@ -87,8 +87,6 @@ private:
 
 	//endregion
 
-	void initWindow();
-
 	void handleBootstrapErrors(auto obj_ret);
 
 	void bootstrapVulkan();

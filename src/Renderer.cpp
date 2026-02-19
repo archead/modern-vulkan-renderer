@@ -54,15 +54,9 @@ static std::vector<char> readFile(const std::string& filename) {
 }
 
 void Renderer::run() {
-	initWindow();
 	initVulkan();
 	mainLoop();
 	cleanup();
-}
-
-void Renderer::initWindow() {
-	SDL_Init(SDL_INIT_VIDEO);
-	window = SDL_CreateWindow("Vulkan", WIDTH, HEIGHT, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 }
 
 void Renderer::handleBootstrapErrors(auto obj_ret) {
@@ -75,6 +69,10 @@ void Renderer::handleBootstrapErrors(auto obj_ret) {
 }
 
 void Renderer::bootstrapVulkan() {
+	// ---- Create Window
+	SDL_Init(SDL_INIT_VIDEO);
+	window = SDL_CreateWindow("Vulkan", WIDTH, HEIGHT, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+
 	// ---- Create Instance
 	vkb::InstanceBuilder instance_builder;
 
@@ -313,118 +311,6 @@ void Renderer::createGraphicsPipeline() {
 	graphicsPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
 }
 
-void Renderer::createCommandPool() {
-	vk::CommandPoolCreateInfo poolInfo;
-	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-	poolInfo.queueFamilyIndex = graphicsFamilyIndex;
-	commandPool = vk::raii::CommandPool(device, poolInfo);
-}
-
-void Renderer::createCommandBuffers() {
-	commandBuffers.clear();
-	commandBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
-
-	vk::CommandBufferAllocateInfo allocInfo;
-	allocInfo.commandPool = commandPool;
-	allocInfo.level = vk::CommandBufferLevel::ePrimary;
-	allocInfo.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
-
-	commandBuffers = vk::raii::CommandBuffers(device, allocInfo);
-}
-
-void Renderer::recordCommandBuffer(uint32_t imageIndex) {
-	commandBuffers[currentFrame].begin({});
-
-	// Before starting rendering, transition the swapchain image to COLOR_ATTACHMENT_OPTIMAL
-	transition_image_layout(
-		swapChainImages[imageIndex],
-		vk::ImageLayout::eUndefined,
-		vk::ImageLayout::eColorAttachmentOptimal,
-		{},
-		vk::AccessFlagBits2::eColorAttachmentWrite,
-		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-		vk::ImageAspectFlagBits::eColor);
-
-	transition_image_layout(
-		vk::Image(depthImage.image),
-		vk::ImageLayout::eUndefined,
-		vk::ImageLayout::eDepthAttachmentOptimal,
-		{},
-		vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
-		vk::PipelineStageFlagBits2::eTopOfPipe,
-		vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
-		vk::ImageAspectFlagBits::eDepth);
-
-	vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-	vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
-
-	vk::RenderingAttachmentInfo attachmentInfo = {};
-	attachmentInfo.imageView = colorImageView;
-	attachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-	attachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-	attachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
-	attachmentInfo.clearValue = clearColor;
-	attachmentInfo.resolveImageView = swapChainImageViews[imageIndex];
-	attachmentInfo.resolveImageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-	attachmentInfo.resolveMode = vk::ResolveModeFlagBits::eAverage;
-
-	vk::RenderingAttachmentInfo depthAttachmentInfo = {};
-	depthAttachmentInfo.imageView = depthImageView;
-	depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
-	depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-	depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
-	depthAttachmentInfo.clearValue = clearDepth;
-
-	vk::RenderingInfo renderingInfo = {};
-	renderingInfo.renderArea.offset = vk::Offset2D(0, 0);
-	renderingInfo.renderArea.extent = swapChainExtent;
-	renderingInfo.layerCount = 1;
-	renderingInfo.colorAttachmentCount = 1;
-	renderingInfo.pColorAttachments = &attachmentInfo;
-	renderingInfo.pDepthAttachment = &depthAttachmentInfo;
-
-	commandBuffers[currentFrame].beginRendering(renderingInfo);
-
-	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-
-	commandBuffers[currentFrame].bindVertexBuffers(0, vk::Buffer(vertexBuffer.buffer), {0});
-
-	commandBuffers[currentFrame].bindIndexBuffer(vk::Buffer(indexBuffer.buffer), 0, vk::IndexType::eUint32);
-
-	// Set the dynamic states of Scissor and Viewport
-	commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f,
-		static_cast<float>(swapChainExtent.width),
-		static_cast<float>(swapChainExtent.height),
-		0.0f, 1.0f));
-
-	commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
-
-	commandBuffers[currentFrame].bindDescriptorSets(
-				vk::PipelineBindPoint::eGraphics,
-				pipelineLayout,
-				0,
-				*descriptorSets[currentFrame],
-				nullptr
-				);
-
-	commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
-
-	commandBuffers[currentFrame].endRendering();
-
-	transition_image_layout(
-		swapChainImages[imageIndex],
-		vk::ImageLayout::eColorAttachmentOptimal,
-		vk::ImageLayout::ePresentSrcKHR,
-		vk::AccessFlagBits2::eColorAttachmentWrite,
-		{},
-		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-		vk::PipelineStageFlagBits2::eBottomOfPipe,
-		vk::ImageAspectFlagBits::eColor);
-
-	commandBuffers[currentFrame].end();
-}
-
 void Renderer::transition_image_layout(
 	vk::Image image,
 	vk::ImageLayout oldLayout,
@@ -517,39 +403,6 @@ void Renderer::cleanupSwapchain() {
 	swapChain = nullptr;
 }
 
-
-void Renderer::destroyImage(VmaAllocator allocator, AllocatedImage& allocImage) {
-	vmaDestroyImage(allocator, allocImage.image, allocImage.allocation);
-}
-
-void Renderer::createImage(
-	uint32_t width,
-	uint32_t height,
-	uint32_t mipLevels,
-	VkSampleCountFlagBits numSamples,
-	VkFormat format,
-	VkImageTiling tiling,
-	VkImageUsageFlags usage,
-	AllocatedImage& image) {
-
-	VkImageCreateInfo imageInfo = {};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.format = format;
-	imageInfo.extent = VkExtent3D{width, height, 1};
-	imageInfo.mipLevels = mipLevels;
-	imageInfo.arrayLayers = 1;
-	imageInfo.samples = numSamples;
-	imageInfo.tiling = tiling;
-	imageInfo.usage = usage;
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	VmaAllocationCreateInfo allocInfo = {};
-	allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-	VkResult  res = vmaCreateImage(allocator, &imageInfo, &allocInfo, &image.image, &image.allocation, nullptr);
-	if (res != VK_SUCCESS) {throw std::runtime_error("vmaCreateImage failed");}
-}
-
 void Renderer::createTextureImage() {
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(TEXTURE_PATH, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -632,31 +485,7 @@ void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, uint
 	endSingleTimeCommands(commandBuffer);
 }
 
-vk::raii::CommandBuffer Renderer::Renderer::beginSingleTimeCommands() {
-	vk::CommandBufferAllocateInfo allocInfo = {};
-	allocInfo.commandPool = commandPool;
-	allocInfo.level = vk::CommandBufferLevel::ePrimary;
-	allocInfo.commandBufferCount = 1;
 
-	vk::raii::CommandBuffer commandBuffer = std::move(device.allocateCommandBuffers(allocInfo).front());
-
-	vk::CommandBufferBeginInfo beginInfo = {};
-	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	commandBuffer.begin(beginInfo);
-
-	return commandBuffer;
-}
-
-void Renderer::endSingleTimeCommands(vk::raii::CommandBuffer& commandBuffer) {
-	commandBuffer.end();
-
-	vk::SubmitInfo submitInfo = {};
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &*commandBuffer;
-
-	graphicsQueue.submit(submitInfo);
-	graphicsQueue.waitIdle();
-}
 
 vk::raii::ImageView Renderer::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels) {
 	vk::ImageViewCreateInfo viewInfo{};
@@ -884,8 +713,6 @@ void Renderer::createColorResources() {
 
 	colorImageView = createImageView(vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
-
-
 
 void Renderer::initVulkan() {
 	bootstrapVulkan();
