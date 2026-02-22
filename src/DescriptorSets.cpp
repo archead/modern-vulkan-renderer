@@ -67,7 +67,7 @@ void Renderer::createDescriptorSets() {
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 
-		vk::DescriptorBufferInfo bufferInfo(uniformBuffers[i].buffer.buffer,0,sizeof(UniformBufferObject));
+		vk::DescriptorBufferInfo bufferInfo(uniformBuffers[i].buffer.buffer, 0, sizeof(UniformBufferObject));
 		vk::DescriptorImageInfo imageInfo(textureSampler, textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 		std::array descriptorWrites{

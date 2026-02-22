@@ -79,10 +79,7 @@ private:
 	vk::raii::ImageView colorImageView = nullptr;
 
 	std::vector<const char*> deviceExtensions = {
-		vk::KHRSwapchainExtensionName,
-		vk::KHRSpirv14ExtensionName,
-		vk::KHRSynchronization2ExtensionName,
-		vk::KHRCreateRenderpass2ExtensionName
+		vk::KHRSwapchainExtensionName
 	};
 
 	//endregion

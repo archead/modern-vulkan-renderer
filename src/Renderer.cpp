@@ -76,19 +76,21 @@ void Renderer::bootstrapVulkan() {
 	// ---- Create Instance
 	vkb::InstanceBuilder instance_builder;
 
+	uint32_t sdlExtCount = 0;
+	char const* const* sdlInstanceExtensions = {};
+	sdlInstanceExtensions = SDL_Vulkan_GetInstanceExtensions(&sdlExtCount);
+
 	auto instance_ret = instance_builder
 		.set_app_name("Hello Triangle")
 		.set_engine_name("No Engine")
 		.require_api_version(1,4,0)
 		.enable_validation_layers(enableValidationLayers)
 		.use_default_debug_messenger()
+		.enable_extensions(sdlExtCount, sdlInstanceExtensions)
 		.build();
 
-	if (!instance_ret) {
-		throw std::runtime_error("Failed to create Vulkan instance: " +
-			instance_ret.error().message()
-		);
-	}
+	handleBootstrapErrors(instance_ret);
+
 	vkb::Instance vkbInstance = instance_ret.value();
 	instance = vk::raii::Instance(context, vkbInstance.instance);
 	debugMessenger = vk::raii::DebugUtilsMessengerEXT(instance,vkbInstance.debug_messenger);
@@ -107,6 +109,7 @@ void Renderer::bootstrapVulkan() {
 	auto phys_ret = selector
 	.set_surface(*surface)
 	.set_minimum_version(1,3)
+	.add_required_extensions(deviceExtensions)
 	.select();
 
 	handleBootstrapErrors(phys_ret);
@@ -280,9 +283,7 @@ void Renderer::createGraphicsPipeline() {
 	pipelineLayoutInfo.setLayoutCount = 1;
 	pipelineLayoutInfo.pSetLayouts = &*descriptorSetLayout;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
-
 	pipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
-
 
 	vk::Format depthFormat = findDepthFormat();
 
@@ -484,8 +485,6 @@ void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, uint
 	commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, {region});
 	endSingleTimeCommands(commandBuffer);
 }
-
-
 
 vk::raii::ImageView Renderer::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels) {
 	vk::ImageViewCreateInfo viewInfo{};
@@ -775,7 +774,7 @@ void Renderer::cleanup() {
 	destroyImage(allocator, textureImage);
 	destroyImage(allocator, depthImage);
 	destroyImage(allocator, colorImage);
-	dumpAllocationStats();
+	//dumpAllocationStats();
 	destroyAllocator();
 }
 
@@ -810,10 +809,11 @@ void Renderer::drawFrame() {
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = &*presentCompleteSemaphores[currentFrame];
 	submitInfo.pWaitDstStageMask = &waitDestinationStageMask;
+	submitInfo.pWaitDstStageMask = &waitDestinationStageMask;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &*commandBuffers[currentFrame];
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo. pSignalSemaphores = &*renderCompleteSemaphores[currentFrame];
+	submitInfo.pSignalSemaphores = &*renderCompleteSemaphores[currentFrame];
 
 	graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
 
