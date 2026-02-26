@@ -78,3 +78,17 @@ void Renderer::createDescriptorSets() {
 		device.updateDescriptorSets(descriptorWrites, {});
 	}
 }
+
+class DescriptorSetLayoutBuilder {
+public:
+	void addBinding(vk::DescriptorType type, uint32_t count, vk::ShaderStageFlagBits shaderStage) {
+		bindings.emplace_back(bindings.size(), type, count, shaderStage);
+	}
+
+	[[nodiscard]] vk::raii::DescriptorSetLayout build(vk::raii::Device const& device) const {
+		vk::DescriptorSetLayoutCreateInfo layoutInfo({}, bindings.size(), bindings.data());
+		return vk::raii::DescriptorSetLayout(device, layoutInfo);
+	}
+private:
+	std::vector<vk::DescriptorSetLayoutBinding> bindings;
+};
