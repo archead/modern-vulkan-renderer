@@ -4,6 +4,16 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+struct PoolSizes {
+	uint32_t maxSets = 256;
+	std::vector<vk::DescriptorPoolSize> sizes = {
+		{vk::DescriptorType::eUniformBuffer, 256},
+		{vk::DescriptorType::eCombinedImageSampler, 256},
+		{vk::DescriptorType::eSampledImage, 256},
+		{vk::DescriptorType::eSampler, 256},
+	};
+};
+
 void Renderer::createDescriptorSetLayout() {
 
 	std::array bindings = {
@@ -91,4 +101,19 @@ public:
 	}
 private:
 	std::vector<vk::DescriptorSetLayoutBinding> bindings;
+};
+
+class DescriptorSetAllocator {
+public:
+	DescriptorSetAllocator(vk::raii::Device const& device, PoolSizes poolSize, vk::DescriptorSetLayoutCreateFlags flags):
+	m_device(device),
+	m_poolSizes(std::move(poolSize)),
+	m_flags(flags) {}
+private:
+	vk::raii::Device const& m_device = nullptr;
+	PoolSizes m_poolSizes;
+	vk::DescriptorSetLayoutCreateFlags m_flags;
+
+	std::vector<vk::raii::DescriptorPool> descriptorPools;
+	vk::raii::DescriptorPool* currentPool = nullptr;
 };
