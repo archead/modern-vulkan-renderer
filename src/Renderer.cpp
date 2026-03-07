@@ -4,7 +4,6 @@
 #pragma once
 #include <iostream>
 #include <stdexcept>
-#include <cstdlib>
 
 #include <cstdint> // Necessary for uint32_t
 #include <limits> // Necessary for std::numeric_limits
@@ -36,6 +35,7 @@
 #include "Types.hpp"
 #include "Renderer.hpp"
 #include "Config.hpp"
+#include "DescriptorSets.hpp"
 
 static std::vector<char> readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);

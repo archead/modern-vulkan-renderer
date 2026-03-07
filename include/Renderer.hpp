@@ -1,10 +1,10 @@
 #pragma once
 #include <vulkan/vulkan_raii.hpp>
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
 
 #include "Types.hpp"
+#include "DescriptorSets.hpp"
 
 class Renderer {
 public:
@@ -39,8 +39,6 @@ private:
 
 	VmaAllocator allocator = {};
 
-	vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
-
 	vk::raii::PipelineLayout pipelineLayout = nullptr;
 	vk::raii::Pipeline graphicsPipeline = nullptr;
 
@@ -62,8 +60,10 @@ private:
 	AllocatedBuffer indexBuffer = {};
 
 	std::vector<AllocatedUniformBuffer> uniformBuffers = {};
-
-	vk::raii::DescriptorPool descriptorPool = nullptr;
+	PoolSizes poolSize;
+	vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
+	DescriptorSetLayoutBuilder layoutBuilder;
+	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
 	std::vector<vk::raii::DescriptorSet> descriptorSets;
 
 	uint32_t mipLevels = 1;
