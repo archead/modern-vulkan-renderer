@@ -72,6 +72,7 @@ private:
 	vk::raii::Sampler textureSampler = nullptr;
 
 	AllocatedImage depthImage = {};
+
 	vk::raii::ImageView depthImageView = nullptr;
 
 	vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;

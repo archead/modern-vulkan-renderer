@@ -35,7 +35,6 @@
 #include "Types.hpp"
 #include "Renderer.hpp"
 #include "Config.hpp"
-#include "DescriptorSets.hpp"
 
 static std::vector<char> readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -189,7 +188,7 @@ void Renderer::createImageViews() {
 
 	for (auto image : swapChainImages) {
 		imageViewCreateInfo.image = image;
-		swapChainImageViews.emplace_back(device, imageViewCreateInfo );
+		swapChainImageViews.emplace_back(device, imageViewCreateInfo);
 	}
 }
 
@@ -360,7 +359,6 @@ void Renderer::createSyncObjects() {
 		renderCompleteSemaphores.emplace_back(device, vk::SemaphoreCreateInfo());
 		inFlightFences.emplace_back(device, fenceInfo);
 	}
-
 }
 
 void Renderer::recreateSwapChain() {
@@ -372,15 +370,11 @@ void Renderer::recreateSwapChain() {
 
 	device.waitIdle();
 
-	cleanupSwapchain();
-
-	auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
-	swapChainExtent = chooseSwapExtent(surfaceCapabilities);
-
 	vkb::SwapchainBuilder swapchain_builder{vkbDevice};
 	auto swap_ret = swapchain_builder.set_old_swapchain(vkbSwapchain).build();
-
 	handleBootstrapErrors(swap_ret);
+
+	cleanupSwapchain(); // needs to be cleaned up AFTER the build() since we are using the old swapchain as ref
 
 	vkbSwapchain = swap_ret.value();
 	swapChain = vk::raii::SwapchainKHR(device, vkbSwapchain.swapchain);
