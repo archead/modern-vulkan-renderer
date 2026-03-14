@@ -356,8 +356,11 @@ void Renderer::createSyncObjects() {
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		presentCompleteSemaphores.emplace_back(device, vk::SemaphoreCreateInfo());
-		renderCompleteSemaphores.emplace_back(device, vk::SemaphoreCreateInfo());
 		inFlightFences.emplace_back(device, fenceInfo);
+	}
+
+	for (size_t i = 0; i < swapChainImages.size(); i++) {
+		renderCompleteSemaphores.emplace_back(device, vk::SemaphoreCreateInfo());
 	}
 }
 
@@ -772,6 +775,9 @@ void Renderer::cleanup() {
 	destroyAllocator();
 }
 
+
+// https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html
+// fix for the validation errors caused by semaphore reuse
 void Renderer::drawFrame() {
 	auto fenceResult = device.waitForFences(*inFlightFences[currentFrame], vk::True, UINT64_MAX);
 
@@ -786,7 +792,7 @@ void Renderer::drawFrame() {
 	}
 
 	if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
-		throw std::runtime_error("failed ot acquire swap chain image");
+		throw std::runtime_error("failed to acquire swap chain image");
 	}
 
 	device.resetFences(*inFlightFences[currentFrame]); // this is only performed after we handle the return values of .acquireNextImageKHR()!
@@ -807,11 +813,11 @@ void Renderer::drawFrame() {
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &*commandBuffers[currentFrame];
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &*renderCompleteSemaphores[currentFrame];
+	submitInfo.pSignalSemaphores = &*renderCompleteSemaphores[imageIndex];
 
 	graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
 
-	const vk::PresentInfoKHR presentInfoKHR( *renderCompleteSemaphores[currentFrame], *swapChain, imageIndex);
+	const vk::PresentInfoKHR presentInfoKHR( *renderCompleteSemaphores[imageIndex], *swapChain, imageIndex);
 
 	result = presentQueue.presentKHR(presentInfoKHR);
 
