@@ -24,6 +24,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <tiny_gltf.h>
+
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
@@ -605,6 +609,49 @@ void Renderer::loadModel() {
 			indices.push_back(uniqueVertices[vertex]);
 		}
 	}
+}
+
+void Renderer::loadModel2() {
+	tinygltf::Model model;
+	tinygltf::TinyGLTF loader;
+	std::string err;
+	std::string warn;
+
+	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, MODEL_PATH);
+
+	if (!warn.empty()) {
+		std::cout << "glTF warning: " << warn << std::endl;
+	}
+
+	if (!err.empty()) {
+		std::cout << "glTF error: " << err << std::endl;
+	}
+
+	if (!ret) {
+		throw std::runtime_error("failed to load glTF model");
+	}
+
+	// Process all meshes in the model
+	std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+	for (const auto& mesh : model.meshes) {
+		for (const auto& primitive : mesh.primitives) {
+			// Get indices
+			const tinygltf::Accessor& indexAccessor = model.accessors[primitive.indices];
+			const tinygltf::BufferView& indexBufferView = model.bufferViews[indexAccessor.bufferView];
+			const tinygltf::Buffer& indexBuffer = model.buffers[indexBufferView.buffer];
+
+			// Get vertex positions
+			const tinygltf::Accessor& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
+			const tinygltf::BufferView& posBufferView = model.bufferViews[posAccessor.bufferView];
+			const tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
+
+			// Get texture coordinates if available
+			bool hasTexCoords = primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end();
+
+			
+		}
+	}
+
 }
 
 void Renderer::generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
