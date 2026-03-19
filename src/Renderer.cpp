@@ -24,6 +24,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <ktx.h>
+
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
@@ -406,41 +408,49 @@ void Renderer::cleanupSwapchain() {
 }
 
 void Renderer::createTextureImage() {
-	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(TEXTURE_PATH, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	// Load KTX texture instead of using std_image
+	ktxTexture* kTexture;
+	KTX_error_code result = ktxTexture_CreateFromNamedFile(TEXTURE_PATH, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &kTexture);
+	if (result != KTX_SUCCESS) { throw std::runtime_error("failed to load ktx texture image!"); }
+
+	uint32_t texWidth = kTexture->baseWidth;
+	uint32_t texHeight = kTexture->baseHeight;
+	ktx_size_t imageSize = ktxTexture_GetImageSize(kTexture, 0);
+	ktx_uint8_t* ktxTextureData = ktxTexture_GetData(kTexture);
 
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
-	vk::DeviceSize imageSize = texWidth * texHeight * 4;
+	// int texWidth, texHeight, texChannels;
+	// stbi_uc* pixels = stbi_load(TEXTURE_PATH, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
-	if (!pixels) {
+	// vk::DeviceSize imageSize = texWidth * texHeight * 4;
+	/*if (!pixels) {
 		throw std::runtime_error("failed to load texture image!");
-	}
+	}*/
 
 	AllocatedBuffer stagingBuffer = {};
 	createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
 
 	void* data = nullptr;
 	vmaMapMemory(allocator, stagingBuffer.allocation, &data);
-	memcpy(data, pixels, imageSize);
+	memcpy(data, ktxTextureData, imageSize);
 	vmaUnmapMemory(allocator, stagingBuffer.allocation);
 
-	stbi_image_free(pixels);
-
-	createImage(texWidth,
-		texHeight,
-		mipLevels,
+	createImage(texWidth, texHeight, mipLevels,
 		VK_SAMPLE_COUNT_1_BIT,
 		VK_FORMAT_R8G8B8A8_SRGB,
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		textureImage);
+		textureImage
+		);
 
 	transitionImageLayout(vk::Image(textureImage.image), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
 	copyBufferToImage(vk::Buffer(stagingBuffer.buffer), vk::Image(textureImage.image), static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 	generateMipmaps(vk::Image(textureImage.image),vk::Format::eR8G8B8A8Srgb, texWidth, texHeight, mipLevels);
 
+	// stbi_image_free(pixels);
 	destroyBuffer(allocator, stagingBuffer);
+	ktxTexture_Destroy(kTexture);
 }
 
 void Renderer::transitionImageLayout(const vk::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) {
@@ -665,12 +675,12 @@ void Renderer::loadModel() {
 				Vertex vertex{};
 
 				// Get position
-				const float* pos = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset + 1 * 12]);
+				const float* pos = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset + i * 12]);
 				vertex.pos = {pos[0], pos[1], pos[2]};
 
 				// Get texture coordinates if available
 				if (hasTexCoords) {
-					const float* texCoord = reinterpret_cast<const float*>(&texCoordBuffer->data[texCoordBufferView->byteOffset + texCoordAccessor->byteOffset + 1 * 8]);
+					const float* texCoord = reinterpret_cast<const float*>(&texCoordBuffer->data[texCoordBufferView->byteOffset + texCoordAccessor->byteOffset + i * 8]);
 					vertex.texCoord = {texCoord[0], 1.0f - texCoord[1]};
 				} else {
 					vertex.texCoord = {0.0f, 0.0f};
@@ -691,19 +701,19 @@ void Renderer::loadModel() {
 
 			// Handle different index component types
 			if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-				const uint16_t* indices16 = reinterpret_cast<const uint16_t*>(indexData);
+				const auto* indices16 = reinterpret_cast<const uint16_t*>(indexData);
 				for (size_t i = 0; i < indexAccessor.count; i++) {
 					Vertex vertex = vertices[indices16[i]];
 					indices.push_back(uniqueVertices[vertex]);
 				}
 			} else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-				const uint32_t* indices32 = reinterpret_cast<const uint32_t*>(indexData);
+				const auto* indices32 = reinterpret_cast<const uint32_t*>(indexData);
 				for (size_t i = 0; i < indexAccessor.count; i++) {
 					Vertex vertex = vertices[indices32[i]];
 					indices.push_back(uniqueVertices[vertex]);
 				}
 			} else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
-				const uint8_t* indices8 = reinterpret_cast<const uint8_t*>(indexData);
+				const auto* indices8 = reinterpret_cast<const uint8_t*>(indexData);
 				for (size_t i = 0; i < indexAccessor.count; i++) {
 					Vertex vertex = vertices[indices8[i]];
 					indices.push_back(uniqueVertices[vertex]);

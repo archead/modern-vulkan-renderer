@@ -38,6 +38,7 @@ add_subdirectory(thirdparty/vk-bootstrap)
 add_subdirectory(thirdparty/VulkanMemoryAllocator)
 add_subdirectory(thirdparty/SDL)
 add_subdirectory(thirdparty/tinygltf)
+add_subdirectory(thirdparty/ktx)
 
 add_library(stb INTERFACE)
 
@@ -76,4 +77,5 @@ target_link_libraries(vulkan_doc_tutorial
         GPUOpen::VulkanMemoryAllocator
         SDL3::SDL3
         tinygltf
+        ktx
 )
