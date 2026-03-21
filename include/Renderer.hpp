@@ -157,6 +157,9 @@ private:
 
 	void copyBufferToImage(const vk::Buffer& buffer, vk::Image image, uint32_t width, uint32_t height);
 
+	void copyBufferToImage(const vk::Buffer &buffer, vk::Image image, vk::ImageLayout layout,
+	                       std::vector<vk::BufferImageCopy> regions);
+
 	vk::raii::CommandBuffer beginSingleTimeCommands();
 
 	void endSingleTimeCommands(vk::raii::CommandBuffer& commandBuffer);

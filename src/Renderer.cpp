@@ -21,17 +21,17 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+// #define STB_IMAGE_IMPLEMENTATION
+// #include <stb_image.h>
 
 #include <ktx.h>
 
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+// #define TINYGLTF_IMPLEMENTATION
+// #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
+// #define TINYOBJLOADER_IMPLEMENTATION
+// #include <tiny_obj_loader.h>
 
 #include <VkBootstrap.h>
 
@@ -416,24 +416,16 @@ void Renderer::createTextureImage() {
 	uint32_t texWidth = kTexture->baseWidth;
 	uint32_t texHeight = kTexture->baseHeight;
 	ktx_size_t imageSize = ktxTexture_GetImageSize(kTexture, 0);
+	ktx_size_t totalImageSize = ktxTexture_GetDataSize(kTexture);
 	ktx_uint8_t* ktxTextureData = ktxTexture_GetData(kTexture);
-
-	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
-
-	// int texWidth, texHeight, texChannels;
-	// stbi_uc* pixels = stbi_load(TEXTURE_PATH, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-	// vk::DeviceSize imageSize = texWidth * texHeight * 4;
-	/*if (!pixels) {
-		throw std::runtime_error("failed to load texture image!");
-	}*/
+	mipLevels = kTexture->numLevels;
 
 	AllocatedBuffer stagingBuffer = {};
-	createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
+	createBuffer(totalImageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
 
 	void* data = nullptr;
 	vmaMapMemory(allocator, stagingBuffer.allocation, &data);
-	memcpy(data, ktxTextureData, imageSize);
+	memcpy(data, ktxTextureData, totalImageSize);
 	vmaUnmapMemory(allocator, stagingBuffer.allocation);
 
 	createImage(texWidth, texHeight, mipLevels,
@@ -445,10 +437,23 @@ void Renderer::createTextureImage() {
 		);
 
 	transitionImageLayout(vk::Image(textureImage.image), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
-	copyBufferToImage(vk::Buffer(stagingBuffer.buffer), vk::Image(textureImage.image), static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-	generateMipmaps(vk::Image(textureImage.image),vk::Format::eR8G8B8A8Srgb, texWidth, texHeight, mipLevels);
+	std::vector<vk::BufferImageCopy> regions;
+	regions.reserve(mipLevels);
 
-	// stbi_image_free(pixels);
+	for (uint32_t i = 0; i < mipLevels; i++) {
+		ktx_size_t offset;
+		ktxTexture_GetImageOffset(kTexture, i, 0, 0, &offset);
+
+		vk::BufferImageCopy r{};
+		r.bufferOffset = offset;
+		r.imageSubresource = {vk::ImageAspectFlagBits::eColor, i, 0, 1};
+		r.imageOffset = vk::Offset3D{0, 0, 0};
+		r.imageExtent = vk::Extent3D{ std::max(1u, texWidth >> i), std::max(1u, texHeight >> i), 1 };
+
+		regions.push_back(r);
+	}
+	copyBufferToImage(vk::Buffer(stagingBuffer.buffer), vk::Image(textureImage.image), vk::ImageLayout::eTransferDstOptimal, regions);
+	transitionImageLayout(textureImage.image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mipLevels);
 	destroyBuffer(allocator, stagingBuffer);
 	ktxTexture_Destroy(kTexture);
 }
@@ -494,6 +499,12 @@ void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, uint
 
 	auto commandBuffer = beginSingleTimeCommands();
 	commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, {region});
+	endSingleTimeCommands(commandBuffer);
+}
+
+void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, vk::ImageLayout layout, std::vector<vk::BufferImageCopy> regions) {
+	auto commandBuffer = beginSingleTimeCommands();
+	commandBuffer.copyBufferToImage(buffer, image, layout, regions);
 	endSingleTimeCommands(commandBuffer);
 }
 
@@ -793,7 +804,6 @@ void Renderer::generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t 
 
 	commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, barrier);
 	endSingleTimeCommands(commandBuffer);
-
 }
 
 vk::SampleCountFlagBits Renderer::getMaxUsableSampleCount() {
