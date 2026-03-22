@@ -13,73 +13,73 @@ public:
 private:
 
 	//region globalMembers
-	SDL_Window *window = nullptr;
+	SDL_Window *      window = nullptr;
 	vk::raii::Context context; // creates the RAII Vulkan_hpp context for the entire project
 
-	vk::raii::Instance instance = nullptr;
+	vk::raii::Instance               instance       = nullptr;
 	vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
-	vk::raii::SurfaceKHR surface = nullptr;
-	vk::raii::PhysicalDevice physicalDevice = nullptr;
-	vk::raii::Device device = nullptr;
-	vkb::Device vkbDevice = {};
+	vk::raii::SurfaceKHR             surface        = nullptr;
+	vk::raii::PhysicalDevice         physicalDevice = nullptr;
+	vk::raii::Device                 device         = nullptr;
+	vkb::Device                      vkbDevice      = {};
 
 	uint32_t graphicsFamilyIndex = 0;
-	uint32_t presentFamilyIndex = 0;
+	uint32_t presentFamilyIndex  = 0;
 
-	vk::raii::Queue graphicsQueue = nullptr; // also responsible for the present queue (in my case they are in the same family)
+	vk::raii::Queue graphicsQueue = nullptr;
+	// also responsible for the present queue (in my case they are in the same family)
 	vk::raii::Queue presentQueue = nullptr;
 
-	vk::raii::SwapchainKHR	swapChain		= nullptr;
-	vkb::Swapchain			vkbSwapchain	= {};
-	std::vector<vk::Image>	swapChainImages;
-	vk::Extent2D			swapChainExtent{};
+	vk::raii::SwapchainKHR swapChain    = nullptr;
+	vkb::Swapchain         vkbSwapchain = {};
+	std::vector<vk::Image> swapChainImages;
+	vk::Extent2D           swapChainExtent{};
 
-	vk::Format swapChainImageFormat = vk::Format::eUndefined;
+	vk::Format                       swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
 
 	VmaAllocator allocator = {};
 
-	vk::raii::PipelineLayout pipelineLayout = nullptr;
-	vk::raii::Pipeline graphicsPipeline = nullptr;
+	vk::raii::PipelineLayout pipelineLayout   = nullptr;
+	vk::raii::Pipeline       graphicsPipeline = nullptr;
 
 	vk::raii::CommandPool commandPool = nullptr;
 
 	std::vector<vk::raii::CommandBuffer> commandBuffers;
-	std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
-	std::vector<vk::raii::Semaphore> renderCompleteSemaphores;
-	std::vector<vk::raii::Fence> inFlightFences;
+	std::vector<vk::raii::Semaphore>     presentCompleteSemaphores;
+	std::vector<vk::raii::Semaphore>     renderCompleteSemaphores;
+	std::vector<vk::raii::Fence>         inFlightFences;
 
 	bool framebufferResized = false;
 
 	uint32_t currentFrame = 0;
 
-	std::vector<Vertex> vertices;
+	std::vector<Vertex>   vertices;
 	std::vector<uint32_t> indices;
 
 	AllocatedBuffer vertexBuffer = {};
-	AllocatedBuffer indexBuffer = {};
+	AllocatedBuffer indexBuffer  = {};
 
-	std::vector<AllocatedUniformBuffer> uniformBuffers = {};
-	PoolSizes poolSize;
-	vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
-	DescriptorSetLayoutBuilder layoutBuilder;
+	std::vector<AllocatedUniformBuffer>     uniformBuffers = {};
+	PoolSizes                               poolSize;
+	vk::raii::DescriptorSetLayout           descriptorSetLayout = nullptr;
+	DescriptorSetLayoutBuilder              layoutBuilder;
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
-	std::vector<vk::raii::DescriptorSet> descriptorSets;
+	std::vector<vk::raii::DescriptorSet>    descriptorSets;
 
-	uint32_t mipLevels = 1;
-	AllocatedImage textureImage = {};
+	uint32_t            mipLevels        = 1;
+	AllocatedImage      textureImage     = {};
 	vk::raii::ImageView textureImageView = nullptr;
-	vk::raii::Sampler textureSampler = nullptr;
+	vk::raii::Sampler   textureSampler   = nullptr;
 
-	AllocatedImage depthImage = {};
-
+	AllocatedImage      depthImage     = {};
 	vk::raii::ImageView depthImageView = nullptr;
 
-	vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
-	AllocatedImage colorImage = {};
-	vk::raii::ImageView colorImageView = nullptr;
+	vk::SampleCountFlagBits msaaSamples    = vk::SampleCountFlagBits::e1;
+	AllocatedImage          colorImage     = {};
+	vk::raii::ImageView     colorImageView = nullptr;
 
-	std::vector<const char*> deviceExtensions = {
+	std::vector<const char *> deviceExtensions = {
 		vk::KHRSwapchainExtensionName
 	};
 
@@ -104,14 +104,14 @@ private:
 	void recordCommandBuffer(uint32_t imageIndex);
 
 	void transition_image_layout(
-		vk::Image image,
-		vk::ImageLayout oldLayout,
-		vk::ImageLayout newLayout,
-		vk::AccessFlags2 srcAccessMask,
-		vk::AccessFlags2 dstAccessMask,
+		vk::Image               image,
+		vk::ImageLayout         oldLayout,
+		vk::ImageLayout         newLayout,
+		vk::AccessFlags2        srcAccessMask,
+		vk::AccessFlags2        dstAccessMask,
 		vk::PipelineStageFlags2 srcStageMask,
 		vk::PipelineStageFlags2 dstStageMask,
-		vk::ImageAspectFlags image_aspect_flags);
+		vk::ImageAspectFlags    image_aspect_flags);
 
 	void createSyncObjects();
 
@@ -134,14 +134,14 @@ private:
 	void destroyImage(VmaAllocator allocator, AllocatedImage& allocImage);
 
 	void createImage(
-		uint32_t width,
-		uint32_t height,
-		uint32_t mipLevels,
+		uint32_t              width,
+		uint32_t              height,
+		uint32_t              mipLevels,
 		VkSampleCountFlagBits numSamples,
-		VkFormat format,
-		VkImageTiling tiling,
-		VkImageUsageFlags usage,
-		AllocatedImage& image);
+		VkFormat              format,
+		VkImageTiling         tiling,
+		VkImageUsageFlags     usage,
+		AllocatedImage &      image);
 
 	void createDescriptorSetLayout();
 
