@@ -154,11 +154,13 @@ void Renderer::bootstrapVulkan() {
 
 	// ---- Create Swapchain
 	auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
+	std::cout << "supportedUsageFlags = " << vk::to_string(surfaceCapabilities.supportedUsageFlags) << "\n";
 	swapChainExtent = chooseSwapExtent(surfaceCapabilities);
 
 	vkb::SwapchainBuilder swapchain_builder{vkbDevice};
 	auto swap_ret = swapchain_builder
 		.set_desired_extent(swapChainExtent.width, swapChainExtent.height)
+		.set_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 		.build();
 
 	handleBootstrapErrors(swap_ret);
@@ -380,12 +382,19 @@ void Renderer::recreateSwapChain() {
 	device.waitIdle();
 
 	vkb::SwapchainBuilder swapchain_builder{vkbDevice};
-	auto swap_ret = swapchain_builder.set_old_swapchain(vkbSwapchain).build();
+	auto swap_ret = swapchain_builder
+	.set_old_swapchain(vkbSwapchain)
+	.set_desired_extent(width, height)
+	.set_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+	.build();
 	handleBootstrapErrors(swap_ret);
 
 	cleanupSwapchain(); // needs to be cleaned up AFTER the build() since we are using the old swapchain as ref
 
 	vkbSwapchain = swap_ret.value();
+	std::cout << "vkbSwapchain.image_format = " << vkbSwapchain.image_format << "\n";
+	std::cout << "vkbSwapchain.image_usage_flags = 0x" << std::hex
+			  << vkbSwapchain.image_usage_flags << std::dec << "\n";
 	swapChain = vk::raii::SwapchainKHR(device, vkbSwapchain.swapchain);
 	swapChainImages = swapChain.getImages();
 
@@ -640,17 +649,9 @@ void Renderer::loadModel2() {
 
 	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, MODEL_PATH);
 
-	if (!warn.empty()) {
-		std::cout << "glTF warning: " << warn << std::endl;
-	}
-
-	if (!err.empty()) {
-		std::cout << "glTF error: " << err << std::endl;
-	}
-
-	if (!ret) {
-		throw std::runtime_error("failed to load glTF model");
-	}
+	if (!warn.empty())	{ std::cout << "glTF warning: " << warn << std::endl; }
+	if (!err.empty())	{ std::cout << "glTF error: " << err << std::endl; }
+	if (!ret)			{ throw std::runtime_error("failed to load glTF model"); }
 
 	// Process all meshes in the model
 	std::unordered_map<Vertex, uint32_t, VertexHasher> uniqueVertices{};
@@ -750,7 +751,8 @@ void Renderer::generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t 
 		vk::ImageLayout::eTransferSrcOptimal,
 		vk::QueueFamilyIgnored,
 		vk::QueueFamilyIgnored,
-		image);
+		image
+		);
 
 	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
 	barrier.subresourceRange.baseArrayLayer = 0;
