@@ -641,12 +641,13 @@ void Renderer::loadModel() {
 	}
 }
 
-void Renderer::loadModel2() {
+void Renderer::loadModelKTX() {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err;
 	std::string warn;
 
+	std::cout << "Loading Model: " << MODEL_PATH << std::endl;
 	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, MODEL_PATH);
 
 	if (!warn.empty())	{ std::cout << "glTF warning: " << warn << std::endl; }
@@ -680,6 +681,8 @@ void Renderer::loadModel2() {
 				texCoordBuffer = &model.buffers[texCoordBufferView->buffer];
 			}
 
+			std::vector<uint32_t> remap(posAccessor.count); // used to deduplicate indices as well
+
 			// Process vertices
 			for (size_t i = 0; i < posAccessor.count; i++) {
 				Vertex vertex{};
@@ -691,7 +694,7 @@ void Renderer::loadModel2() {
 				// Get texture coordinates if available
 				if (hasTexCoords) {
 					const float* texCoord = reinterpret_cast<const float*>(&texCoordBuffer->data[texCoordBufferView->byteOffset + texCoordAccessor->byteOffset + i * 8]);
-					vertex.texCoord = {texCoord[0], 1.0f - texCoord[1]};
+					vertex.texCoord = {texCoord[0], texCoord[1]};
 				} else {
 					vertex.texCoord = {0.0f, 0.0f};
 				}
@@ -701,8 +704,11 @@ void Renderer::loadModel2() {
 
 				// Add vertex if unique
 				if (!uniqueVertices.contains(vertex)) {
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+					remap[i] = static_cast<uint32_t>(vertices.size());
+					uniqueVertices[vertex] = remap[i];
 					vertices.push_back(vertex);
+				} else {
+					remap[i] = uniqueVertices[vertex];
 				}
 			}
 
@@ -712,22 +718,15 @@ void Renderer::loadModel2() {
 			// Handle different index component types
 			if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
 				const auto* indices16 = reinterpret_cast<const uint16_t*>(indexData);
-				for (size_t i = 0; i < indexAccessor.count; i++) {
-					Vertex vertex = vertices[indices16[i]];
-					indices.push_back(uniqueVertices[vertex]);
-				}
-			} else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+				for (size_t i = 0; i < indexAccessor.count; i++) { indices.push_back(remap[indices16[i]]); }
+			}
+			else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
 				const auto* indices32 = reinterpret_cast<const uint32_t*>(indexData);
-				for (size_t i = 0; i < indexAccessor.count; i++) {
-					Vertex vertex = vertices[indices32[i]];
-					indices.push_back(uniqueVertices[vertex]);
-				}
-			} else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+				for (size_t i = 0; i < indexAccessor.count; i++) { indices.push_back(remap[indices32[i]]); }
+			}
+			else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
 				const auto* indices8 = reinterpret_cast<const uint8_t*>(indexData);
-				for (size_t i = 0; i < indexAccessor.count; i++) {
-					Vertex vertex = vertices[indices8[i]];
-					indices.push_back(uniqueVertices[vertex]);
-				}
+				for (size_t i = 0; i < indexAccessor.count; i++) { indices.push_back(remap[indices8[i]]); }
 			}
 		}
 	}
@@ -848,7 +847,7 @@ void Renderer::initVulkan() {
 	createTextureImage();
 	createTextureImageView();
 	createTextureSampler();
-	loadModel();
+	loadModel2();
 	createVertexBuffer();
 	createIndexBuffer();
 	createUniformBuffers();

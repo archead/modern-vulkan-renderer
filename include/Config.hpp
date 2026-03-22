@@ -1,10 +1,9 @@
 #pragma once
 #include <cstdint>
-#include <cstdlib>
 
 inline constexpr uint32_t WIDTH = 800;
 inline constexpr uint32_t HEIGHT = 600;
-inline constexpr const char* MODEL_PATH = "C:\\dev\\vulkan-doc-tutorial\\models\\viking_room.obj";
+inline constexpr const char* MODEL_PATH = R"(C:\dev\vulkan-doc-tutorial\models\viking_room.gltf)";
 inline constexpr const char* TEXTURE_PATH = "C:\\dev\\vulkan-doc-tutorial\\textures\\viking_room.ktx";
 
 inline const std::array<const char*, 1> validationLayers = {
