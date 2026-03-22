@@ -13,7 +13,7 @@ public:
 private:
 
 	//region globalMembers
-	SDL_Window* window = nullptr;
+	SDL_Window *window = nullptr;
 	vk::raii::Context context; // creates the RAII Vulkan_hpp context for the entire project
 
 	vk::raii::Instance instance = nullptr;
@@ -29,10 +29,10 @@ private:
 	vk::raii::Queue graphicsQueue = nullptr; // also responsible for the present queue (in my case they are in the same family)
 	vk::raii::Queue presentQueue = nullptr;
 
-	vk::raii::SwapchainKHR swapChain = nullptr;
-	vkb::Swapchain vkbSwapchain = {};
-	std::vector<vk::Image> swapChainImages;
-	vk::Extent2D swapChainExtent{};
+	vk::raii::SwapchainKHR	swapChain		= nullptr;
+	vkb::Swapchain			vkbSwapchain	= {};
+	std::vector<vk::Image>	swapChainImages;
+	vk::Extent2D			swapChainExtent{};
 
 	vk::Format swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
@@ -158,7 +158,7 @@ private:
 	void copyBufferToImage(const vk::Buffer& buffer, vk::Image image, uint32_t width, uint32_t height);
 
 	void copyBufferToImage(const vk::Buffer &buffer, vk::Image image, vk::ImageLayout layout,
-	                       std::vector<vk::BufferImageCopy> regions);
+	                       const std::vector<vk::BufferImageCopy> &regions);
 
 	vk::raii::CommandBuffer beginSingleTimeCommands();
 
@@ -179,6 +179,8 @@ private:
 	bool hasStencilComponent(vk::Format format);
 
 	void loadModel();
+
+	void loadModel2();
 
 	void generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 

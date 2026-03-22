@@ -30,8 +30,8 @@
 // #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
 
-// #define TINYOBJLOADER_IMPLEMENTATION
-// #include <tiny_obj_loader.h>
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 
 #include <VkBootstrap.h>
 
@@ -502,7 +502,7 @@ void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, uint
 	endSingleTimeCommands(commandBuffer);
 }
 
-void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, vk::ImageLayout layout, std::vector<vk::BufferImageCopy> regions) {
+void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, vk::ImageLayout layout, const std::vector<vk::BufferImageCopy>& regions) {
 	auto commandBuffer = beginSingleTimeCommands();
 	commandBuffer.copyBufferToImage(buffer, image, layout, regions);
 	endSingleTimeCommands(commandBuffer);
@@ -593,7 +593,6 @@ bool Renderer::hasStencilComponent(vk::Format format) {
 	return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
 }
 
-/*
 void Renderer::loadModel() {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -632,9 +631,8 @@ void Renderer::loadModel() {
 		}
 	}
 }
-*/
 
-void Renderer::loadModel() {
+void Renderer::loadModel2() {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err;
