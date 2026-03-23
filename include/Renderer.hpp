@@ -31,7 +31,7 @@ private:
 	vk::raii::Queue presentQueue = nullptr;
 
 	vk::raii::SwapchainKHR swapChain    = nullptr;
-	vkb::Swapchain         vkbSwapchain = {};
+	vkb::Swapchain         vkbSwapchain{};
 	std::vector<vk::Image> swapChainImages;
 	vk::Extent2D           swapChainExtent{};
 
@@ -61,9 +61,9 @@ private:
 	AllocatedBuffer indexBuffer  = {};
 
 	std::vector<AllocatedUniformBuffer>     uniformBuffers = {};
-	PoolSizes                               poolSize;
+	PoolSizes                               poolSize{};
 	vk::raii::DescriptorSetLayout           descriptorSetLayout = nullptr;
-	DescriptorSetLayoutBuilder              layoutBuilder;
+	DescriptorSetLayoutBuilder              layoutBuilder{};
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
 	std::vector<vk::raii::DescriptorSet>    descriptorSets;
 
@@ -180,7 +180,7 @@ private:
 
 	void loadModel();
 
-	void loadModelKTX();
+	void loadModelGLTF();
 
 	void generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 

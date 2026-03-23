@@ -641,7 +641,7 @@ void Renderer::loadModel() {
 	}
 }
 
-void Renderer::loadModelKTX() {
+void Renderer::loadModelGLTF() {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err;
@@ -847,7 +847,7 @@ void Renderer::initVulkan() {
 	createTextureImage();
 	createTextureImageView();
 	createTextureSampler();
-	loadModel2();
+	loadModelGLTF();
 	createVertexBuffer();
 	createIndexBuffer();
 	createUniformBuffers();
