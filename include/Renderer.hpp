@@ -83,6 +83,32 @@ private:
 		vk::KHRSwapchainExtensionName
 	};
 
+	struct GameObject {
+		glm::vec3 position = {0.0f, 0.0f, 0.0f};
+		glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
+		glm::vec3 scale = {1.0f, 1.0f, 1.0f};
+
+		// Uniform buffer for this object (one per frame in flight)
+		std::vector<vk::raii::Buffer> uniformBuffers;
+		std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
+		std::vector<void*> uniformBuffersMapped;
+
+		// Descriptor sets for this object (one per frame in flight)
+		std::vector<vk::raii::DescriptorSet> descriptorSets;
+
+		// Calculate model matrix based on position, rotation and scale
+		[[nodiscard]] glm::mat4 getModelMatrix() const {
+			auto model = glm::mat4(1.0f);
+			model = glm::translate(model, position);
+			model = glm::rotate(model, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::rotate(model, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+			model = glm::rotate(model, rotation.x, glm::vec3(0.0f, 0.0f, 1.0f));
+			model = glm::scale(model, scale);
+			return model;
+		}
+
+	};
+
 	//endregion
 
 	void handleBootstrapErrors(auto obj_ret);
