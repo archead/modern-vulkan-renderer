@@ -659,6 +659,8 @@ void Renderer::loadModelGLTF() {
 
 	for (const auto& mesh : model.meshes) {
 		for (const auto& primitive : mesh.primitives) {
+			if (primitive.indices == -1) { continue; } // doesn't handle cases where there is no index data but should prevent out of range vector reads
+
 			// Get indices
 			const tinygltf::Accessor& indexAccessor = model.accessors[primitive.indices];
 			const tinygltf::BufferView& indexBufferView = model.bufferViews[indexAccessor.bufferView];
