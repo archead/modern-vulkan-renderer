@@ -40,7 +40,6 @@
 
 #include "Types.hpp"
 #include "Renderer.hpp"
-#include "Config.hpp"
 
 static std::vector<char> readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -57,6 +56,17 @@ static std::vector<char> readFile(const std::string& filename) {
 	file.close();
 	return buffer;
 }
+
+glm::mat4 Renderer::GameObject::getModelMatrix() const {
+	auto model = glm::mat4(1.0f);
+	model = glm::translate(model, position);
+	model = glm::rotate(model, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+	model = glm::rotate(model, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+	model = glm::rotate(model, rotation.x, glm::vec3(0.0f, 0.0f, 1.0f));
+	model = glm::scale(model, scale);
+	return model;
+}
+
 
 void Renderer::run() {
 	initVulkan();
@@ -837,6 +847,20 @@ void Renderer::createColorResources() {
 	colorImageView = createImageView(vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
+void Renderer::setupGameObjects() {
+	gameObjects[0].position = {0.0f, 0.0f, 0.0f};
+	gameObjects[0].rotation = {0.0f, 0.0f, 0.0f};
+	gameObjects[0].scale = {1.0f, 1.0f, 1.0f};
+
+	gameObjects[1].position = {-2.0f, 0.0f, -1.0f};
+	gameObjects[1].position = {0.0f, glm::radians(45.0f), 0.0f};
+	gameObjects[1].rotation = {0.75f, 0.75f, 0.75f};
+
+	gameObjects[2].position = {2.0f, 0.0f, -1.0f};
+	gameObjects[2].position = {0.0f, glm::radians(-45.0f), 0.0f};
+	gameObjects[2].rotation = {0.75f, 0.75f, 0.75f};
+}
+
 void Renderer::initVulkan() {
 	bootstrapVulkan();
 	createImageViews();
@@ -850,6 +874,7 @@ void Renderer::initVulkan() {
 	createTextureImageView();
 	createTextureSampler();
 	loadModelGLTF();
+	setupGameObjects();
 	createVertexBuffer();
 	createIndexBuffer();
 	createUniformBuffers();

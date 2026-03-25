@@ -5,6 +5,7 @@
 
 #include "Types.hpp"
 #include "DescriptorSets.hpp"
+#include "Config.hpp"
 
 class Renderer {
 public:
@@ -89,25 +90,16 @@ private:
 		glm::vec3 scale = {1.0f, 1.0f, 1.0f};
 
 		// Uniform buffer for this object (one per frame in flight)
-		std::vector<vk::raii::Buffer> uniformBuffers;
-		std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
-		std::vector<void*> uniformBuffersMapped;
+		std::vector<AllocatedUniformBuffer> uniformBuffers;
 
 		// Descriptor sets for this object (one per frame in flight)
 		std::vector<vk::raii::DescriptorSet> descriptorSets;
 
 		// Calculate model matrix based on position, rotation and scale
-		[[nodiscard]] glm::mat4 getModelMatrix() const {
-			auto model = glm::mat4(1.0f);
-			model = glm::translate(model, position);
-			model = glm::rotate(model, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-			model = glm::rotate(model, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::rotate(model, rotation.x, glm::vec3(0.0f, 0.0f, 1.0f));
-			model = glm::scale(model, scale);
-			return model;
-		}
-
+		[[nodiscard]] glm::mat4 getModelMatrix() const;
 	};
+
+	std::array<GameObject, MAX_OBJECTS> gameObjects;
 
 	//endregion
 
@@ -217,6 +209,8 @@ private:
 	void createAllocator();
 
 	void destroyAllocator();
+
+	void setupGameObjects();
 
 	void initVulkan();
 
