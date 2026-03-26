@@ -4,6 +4,26 @@
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 
+void Renderer::createGameObjectDescriptorSets() {
+	for (auto& gameObject : gameObjects) {
+		// Create descriptor sets for each FIF
+		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
+		gameObject.descriptorSets.clear();
+		gameObject.descriptorSets = descriptorSetAllocator->Allocate(layouts);
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			vk::DescriptorBufferInfo bufferInfo(gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(UniformBufferObject));
+			vk::DescriptorImageInfo imageInfo(textureSampler, textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+			std::array descriptorWrites{
+				vk::WriteDescriptorSet(gameObject.descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo),
+				vk::WriteDescriptorSet(gameObject.descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr)
+			};
+			device.updateDescriptorSets(descriptorWrites, {});
+		}
+	}
+}
+
 void Renderer::createDescriptorSetLayout() {
 	DescriptorSetLayoutBuilder builder;
 	builder.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);

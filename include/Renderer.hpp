@@ -161,6 +161,8 @@ private:
 		VkImageUsageFlags     usage,
 		AllocatedImage &      image);
 
+	void createGameObjectDescriptorSets();
+
 	void createDescriptorSetLayout();
 
 	void createUniformBuffers();
