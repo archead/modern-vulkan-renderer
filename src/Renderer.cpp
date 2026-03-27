@@ -877,9 +877,9 @@ void Renderer::initVulkan() {
 	setupGameObjects();
 	createVertexBuffer();
 	createIndexBuffer();
-	createUniformBuffers();
+	createGameObjectUniformBuffers();
 	createDescriptorPool();
-	createDescriptorSets();
+	createGameObjectDescriptorSets();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -954,7 +954,7 @@ void Renderer::drawFrame() {
 
 	vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
-	updateUniformBuffer(currentFrame);
+	updateGameObjectUniformBuffer(currentFrame);
 
 	vk::SubmitInfo submitInfo;
 

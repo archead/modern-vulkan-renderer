@@ -169,6 +169,8 @@ private:
 
 	void createUniformBuffers();
 
+	void updateGameObjectUniformBuffer(uint32_t imageIndex);
+
 	void createDescriptorPool();
 
 	void createDescriptorSets();

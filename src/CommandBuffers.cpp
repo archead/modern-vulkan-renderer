@@ -114,16 +114,16 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 		0.0f, 1.0f));
 
 	commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
-
-	commandBuffers[currentFrame].bindDescriptorSets(
-				vk::PipelineBindPoint::eGraphics,
-				pipelineLayout,
-				0,
-				*descriptorSets[currentFrame],
-				nullptr
-				);
-
-	commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
+	for (const auto& gameObject : gameObjects) {
+		commandBuffers[currentFrame].bindDescriptorSets(
+					vk::PipelineBindPoint::eGraphics,
+					pipelineLayout,
+					0,
+					*gameObject.descriptorSets[currentFrame],
+					nullptr
+					);
+		commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
+	}
 
 	commandBuffers[currentFrame].endRendering();
 
