@@ -31,6 +31,19 @@ void Renderer::createDescriptorSetLayout() {
 	descriptorSetLayout = builder.build(device);
 }
 
+void Renderer::createGameObjectUniformBuffers() {
+	for (auto& gameObject : gameObjects) {
+		gameObject.uniformBuffers.clear();
+		gameObject.uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, gameObject.uniformBuffers[i].buffer, true);
+			gameObject.uniformBuffers[i].mapped = uniformBuffers[i].buffer.allocInfo.pMappedData;
+		}
+	}
+}
+
 void Renderer::createUniformBuffers() {
 	uniformBuffers.clear();
 	uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);

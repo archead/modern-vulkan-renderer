@@ -165,6 +165,8 @@ private:
 
 	void createDescriptorSetLayout();
 
+	void createGameObjectUniformBuffers();
+
 	void createUniformBuffers();
 
 	void createDescriptorPool();
