@@ -4,6 +4,7 @@ project(vulkan_doc_tutorial)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui)
 
 function (add_slang_shader_target TARGET)
     cmake_parse_arguments ("SHADER" "" "" "SOURCES" ${ARGN})
@@ -39,12 +40,30 @@ add_subdirectory(thirdparty/SDL)
 add_subdirectory(thirdparty/tinygltf)
 add_subdirectory(thirdparty/ktx)
 
-add_library(stb INTERFACE)
 
+add_library(imgui STATIC
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_demo.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+
+    ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
+)
+target_include_directories(imgui PUBLIC
+    ${IMGUI_DIR}
+    ${IMGUI_DIR}/backends
+)
+target_link_libraries(imgui PUBLIC
+    Vulkan::Vulkan
+    SLD3:SDL3
+)
+
+add_library(stb INTERFACE)
 target_include_directories(stb
     INTERFACE
         thirdparty/stb
-        thirdparty/imgui
 )
 
 add_executable(vulkan_doc_tutorial
@@ -77,4 +96,5 @@ target_link_libraries(vulkan_doc_tutorial
         SDL3::SDL3
         tinygltf
         ktx
+        imgui
 )
