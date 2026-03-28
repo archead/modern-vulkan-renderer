@@ -4,9 +4,6 @@
 [submodule "thirdparty/tinyobjloader"]
 	path = thirdparty/tinyobjloader
 	url = https://github.com/tinyobjloader/tinyobjloader.git
-[submodule "thirdparty/glfw"]
-	path = thirdparty/glfw
-	url = https://github.com/glfw/glfw.git
 [submodule "thirdparty/glm"]
 	path = thirdparty/glm
 	url = https://github.com/g-truc/glm.git
@@ -25,3 +22,6 @@
 [submodule "thirdparty/ktx"]
 	path = thirdparty/ktx
 	url = https://github.com/KhronosGroup/KTX-Software.git
+[submodule "thirdparty/imgui"]
+	path = thirdparty/imgui
+	url = https://github.com/ocornut/imgui.git

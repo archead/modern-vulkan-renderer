@@ -31,7 +31,6 @@ function (add_slang_shader_target TARGET)
 endfunction()
 
 find_package(Vulkan REQUIRED)
-add_subdirectory(thirdparty/glfw)
 add_subdirectory(thirdparty/glm)
 add_subdirectory(thirdparty/tinyobjloader)
 add_subdirectory(thirdparty/vk-bootstrap)
@@ -45,6 +44,7 @@ add_library(stb INTERFACE)
 target_include_directories(stb
     INTERFACE
         thirdparty/stb
+        thirdparty/imgui
 )
 
 add_executable(vulkan_doc_tutorial
@@ -68,7 +68,6 @@ add_dependencies(vulkan_doc_tutorial shaders)
 
 target_link_libraries(vulkan_doc_tutorial
         PRIVATE
-        glfw
         Vulkan::Vulkan
         glm::glm
         tinyobjloader
