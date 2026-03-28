@@ -842,8 +842,8 @@ void Renderer::createColorResources() {
 		static_cast<VkFormat>(colorFormat),
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-		colorImage);
-
+		colorImage
+	);
 	colorImageView = createImageView(vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
@@ -852,13 +852,13 @@ void Renderer::setupGameObjects() {
 	gameObjects[0].rotation = {0.0f, 0.0f, 0.0f};
 	gameObjects[0].scale = {1.0f, 1.0f, 1.0f};
 
-	gameObjects[1].position = {-2.0f, 0.0f, -1.0f};
-	gameObjects[1].position = {0.0f, glm::radians(45.0f), 0.0f};
-	gameObjects[1].rotation = {0.75f, 0.75f, 0.75f};
+	gameObjects[1].position = {1.0f, 0.0f, -1.0f};
+	gameObjects[1].rotation = {0.0f, glm::radians(10.0f), glm::radians(30.0f)};
+	gameObjects[1].scale = {0.5f, 0.5f, 0.5f};
 
-	gameObjects[2].position = {2.0f, 0.0f, -1.0f};
-	gameObjects[2].position = {0.0f, glm::radians(-45.0f), 0.0f};
-	gameObjects[2].rotation = {0.75f, 0.75f, 0.75f};
+	gameObjects[2].position = {-2.0f, 0.0f, -2.0f};
+	gameObjects[2].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
+	gameObjects[2].scale = {0.75f, 0.75f, 0.75f};
 }
 
 void Renderer::initVulkan() {
@@ -917,7 +917,12 @@ void Renderer::cleanup() {
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 
-	for (auto& ub : uniformBuffers) { destroyBuffer(allocator, ub.buffer); }
+	for (auto& gameObject : gameObjects) {
+		for (auto& ub : gameObject.uniformBuffers) {
+			destroyBuffer(allocator, ub.buffer);
+		}
+	}
+
 	destroyBuffer(allocator, vertexBuffer);
 	destroyBuffer(allocator, indexBuffer);
 	destroyImage(allocator, textureImage);

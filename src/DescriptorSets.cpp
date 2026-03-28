@@ -39,7 +39,7 @@ void Renderer::createGameObjectUniformBuffers() {
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
 			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, gameObject.uniformBuffers[i].buffer, true);
-			gameObject.uniformBuffers[i].mapped = uniformBuffers[i].buffer.allocInfo.pMappedData;
+			gameObject.uniformBuffers[i].mapped = gameObject.uniformBuffers[i].buffer.allocInfo.pMappedData;
 		}
 	}
 }
@@ -73,13 +73,13 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 
 	for (auto& gameObject : gameObjects) {
 		// add some rotation to each object
-		gameObject.rotation.y += 0.001f;
+		gameObject.rotation.y = time;
 		glm::mat4 initialRotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 		glm::mat4 model = gameObject.getModelMatrix() * initialRotation;
 
 		UniformBufferObject ubo{ model, view, proj };
 
-		memcpy(uniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
+		memcpy(gameObject.uniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
 	}
 }
 
