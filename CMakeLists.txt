@@ -57,7 +57,7 @@ target_include_directories(imgui PUBLIC
 )
 target_link_libraries(imgui PUBLIC
     Vulkan::Vulkan
-    SLD3:SDL3
+    SDL3::SDL3
 )
 
 add_library(stb INTERFACE)

@@ -7,6 +7,10 @@
 #include "DescriptorSets.hpp"
 #include "Config.hpp"
 
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
+#include <imgui_impl_vulkan.h>
+
 class Renderer {
 public:
 	void run();
@@ -68,6 +72,7 @@ private:
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
 	std::vector<vk::raii::DescriptorSet>    descriptorSets;
 
+	vk::raii::DescriptorPool imGuiDescriptorPool = nullptr;
 	uint32_t            mipLevels        = 1;
 	AllocatedImage      textureImage     = {};
 	vk::raii::ImageView textureImageView = nullptr;
@@ -217,6 +222,8 @@ private:
 	void destroyAllocator();
 
 	void setupGameObjects();
+
+	void createImGuiInstance();
 
 	void initVulkan();
 

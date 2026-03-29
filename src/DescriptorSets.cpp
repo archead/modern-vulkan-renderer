@@ -147,6 +147,10 @@ void DescriptorSetAllocator::CreatePool() {
 	currentPool = &descriptorPools.back();
 }
 
+vk::DescriptorPool DescriptorSetAllocator::getCurrentPool() const {
+	return **currentPool;
+}
+
 std::vector<vk::raii::DescriptorSet> DescriptorSetAllocator::Allocate(std::vector<vk::DescriptorSetLayout> layouts) {
 	if (!currentPool) { CreatePool(); }
 

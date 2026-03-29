@@ -125,6 +125,8 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 		commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
 	}
 
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]);
+
 	commandBuffers[currentFrame].endRendering();
 
 	transition_image_layout(

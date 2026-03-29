@@ -4,13 +4,11 @@
 #pragma once
 #include <iostream>
 #include <stdexcept>
-
 #include <cstdint> // Necessary for uint32_t
 #include <limits> // Necessary for std::numeric_limits
 #include <algorithm> // Necessary for std::clamp
 #include <chrono>
 #include <unordered_map> // Using for deduplicating OBJ vertices
-
 #include <fstream>
 
 #include <SDL3/SDL.h>
@@ -38,8 +36,17 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+
 #include "Types.hpp"
 #include "Renderer.hpp"
+
+#include <queue>
+
+static void check_vk_result(VkResult err) {
+	if (err == 0) { return; }
+	fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
+	if (err < 0){ abort(); }
+}
 
 static std::vector<char> readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -861,6 +868,57 @@ void Renderer::setupGameObjects() {
 	gameObjects[2].scale = {0.75f, 0.75f, 0.75f};
 }
 
+void Renderer::createImGuiInstance() {
+
+	vk::DescriptorPoolCreateInfo poolInfo{};
+	poolInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+
+	std::array<vk::DescriptorPoolSize, 11> sizes = {{
+		{ vk::DescriptorType::eSampler, 1000 },
+		{ vk::DescriptorType::eCombinedImageSampler, 1000 },
+		{ vk::DescriptorType::eSampledImage, 1000 },
+		{ vk::DescriptorType::eStorageImage, 1000 },
+		{ vk::DescriptorType::eUniformTexelBuffer, 1000 },
+		{ vk::DescriptorType::eStorageTexelBuffer, 1000 },
+		{ vk::DescriptorType::eUniformBuffer, 1000 },
+		{ vk::DescriptorType::eStorageBuffer, 1000 },
+		{ vk::DescriptorType::eUniformBufferDynamic, 1000 },
+		{ vk::DescriptorType::eStorageBufferDynamic, 1000 },
+		{ vk::DescriptorType::eInputAttachment, 1000 },
+	}};
+
+	poolInfo.maxSets = 1000 * static_cast<uint32_t>(sizes.size());
+	poolInfo.poolSizeCount = static_cast<uint32_t>(sizes.size());
+	poolInfo.pPoolSizes = sizes.data();
+
+	imGuiDescriptorPool = vk::raii::DescriptorPool(device, poolInfo);
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplSDL3_InitForVulkan(window);
+	ImGui_ImplVulkan_InitInfo init_info = {};
+	init_info.Instance = *instance;
+	init_info.PhysicalDevice = *physicalDevice;
+	init_info.Device = *device;
+	init_info.QueueFamily = graphicsFamilyIndex;
+	init_info.Queue = *graphicsQueue;
+	init_info.PipelineCache = nullptr;
+	init_info.DescriptorPool = *imGuiDescriptorPool;
+	init_info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
+	init_info.ImageCount = MAX_FRAMES_IN_FLIGHT;
+	init_info.Allocator = nullptr;
+	init_info.PipelineInfoMain.RenderPass = nullptr; // Ignored if using dynamic rendering
+	init_info.UseDynamicRendering = true;
+	init_info.PipelineInfoMain.Subpass = 0;
+	init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	init_info.CheckVkResultFn = check_vk_result;
+	ImGui_ImplVulkan_Init(&init_info);
+}
+
 void Renderer::initVulkan() {
 	bootstrapVulkan();
 	createImageViews();
@@ -868,6 +926,7 @@ void Renderer::initVulkan() {
 	createDescriptorSetLayout();
 	createGraphicsPipeline();
 	createCommandPool();
+	createImGuiInstance();
 	createColorResources();
 	createDepthResources();
 	createTextureImage();
@@ -889,6 +948,9 @@ void Renderer::mainLoop() {
 	while (running) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
+
+			ImGui_ImplSDL3_ProcessEvent(&e);
+
 			switch (e.type) {
 				case SDL_EVENT_QUIT:
 					running = false;
@@ -930,6 +992,10 @@ void Renderer::cleanup() {
 	destroyImage(allocator, colorImage);
 	//dumpAllocationStats();
 	destroyAllocator();
+
+	ImGui_ImplVulkan_Shutdown();
+	ImGui_ImplSDL3_Shutdown();
+	ImGui::DestroyContext();
 }
 
 
@@ -954,18 +1020,25 @@ void Renderer::drawFrame() {
 
 	device.resetFences(*inFlightFences[currentFrame]); // this is only performed after we handle the return values of .acquireNextImageKHR()!
 
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplSDL3_NewFrame();
+	ImGui::NewFrame();
+	ImGui::ShowDemoWindow();
+	ImGui::Render();
+
 	commandBuffers[currentFrame].reset();
 	recordCommandBuffer(imageIndex);
+
+	ImGui::Render();
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]);
 
 	vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
 	updateGameObjectUniformBuffer(currentFrame);
 
 	vk::SubmitInfo submitInfo;
-
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = &*presentCompleteSemaphores[currentFrame];
-	submitInfo.pWaitDstStageMask = &waitDestinationStageMask;
 	submitInfo.pWaitDstStageMask = &waitDestinationStageMask;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &*commandBuffers[currentFrame];
