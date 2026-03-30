@@ -856,11 +856,11 @@ void Renderer::createColorResources() {
 
 void Renderer::setupGameObjects() {
 	gameObjects[0].position = {0.0f, 0.0f, 0.0f};
-	gameObjects[0].rotation = {0.0f, 0.0f, 0.0f};
+	gameObjects[0].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[0].scale = {1.0f, 1.0f, 1.0f};
 
 	gameObjects[1].position = {1.0f, 0.0f, -1.0f};
-	gameObjects[1].rotation = {0.0f, glm::radians(10.0f), glm::radians(30.0f)};
+	gameObjects[1].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[1].scale = {0.5f, 0.5f, 0.5f};
 
 	gameObjects[2].position = {-2.0f, 0.0f, -2.0f};
@@ -869,30 +869,6 @@ void Renderer::setupGameObjects() {
 }
 
 void Renderer::createImGuiInstance() {
-
-	vk::DescriptorPoolCreateInfo poolInfo{};
-	poolInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-
-	std::array<vk::DescriptorPoolSize, 11> sizes = {{
-		{ vk::DescriptorType::eSampler, 1000 },
-		{ vk::DescriptorType::eCombinedImageSampler, 1000 },
-		{ vk::DescriptorType::eSampledImage, 1000 },
-		{ vk::DescriptorType::eStorageImage, 1000 },
-		{ vk::DescriptorType::eUniformTexelBuffer, 1000 },
-		{ vk::DescriptorType::eStorageTexelBuffer, 1000 },
-		{ vk::DescriptorType::eUniformBuffer, 1000 },
-		{ vk::DescriptorType::eStorageBuffer, 1000 },
-		{ vk::DescriptorType::eUniformBufferDynamic, 1000 },
-		{ vk::DescriptorType::eStorageBufferDynamic, 1000 },
-		{ vk::DescriptorType::eInputAttachment, 1000 },
-	}};
-
-	poolInfo.maxSets = 1000 * static_cast<uint32_t>(sizes.size());
-	poolInfo.poolSizeCount = static_cast<uint32_t>(sizes.size());
-	poolInfo.pPoolSizes = sizes.data();
-
-	imGuiDescriptorPool = vk::raii::DescriptorPool(device, poolInfo);
-
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
@@ -900,22 +876,28 @@ void Renderer::createImGuiInstance() {
 
 	// Setup Platform/Renderer backends
 	ImGui_ImplSDL3_InitForVulkan(window);
-	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = *instance;
-	init_info.PhysicalDevice = *physicalDevice;
-	init_info.Device = *device;
-	init_info.QueueFamily = graphicsFamilyIndex;
-	init_info.Queue = *graphicsQueue;
-	init_info.PipelineCache = nullptr;
-	init_info.DescriptorPool = *imGuiDescriptorPool;
-	init_info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
-	init_info.ImageCount = MAX_FRAMES_IN_FLIGHT;
-	init_info.Allocator = nullptr;
-	init_info.PipelineInfoMain.RenderPass = nullptr; // Ignored if using dynamic rendering
-	init_info.UseDynamicRendering = true;
-	init_info.PipelineInfoMain.Subpass = 0;
-	init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	init_info.CheckVkResultFn = check_vk_result;
+	ImGui_ImplVulkan_InitInfo init_info    = {};
+	init_info.Instance                     = *instance;
+	init_info.PhysicalDevice               = *physicalDevice;
+	init_info.Device                       = *device;
+	init_info.QueueFamily                  = graphicsFamilyIndex;
+	init_info.Queue                        = *graphicsQueue;
+	init_info.DescriptorPool               = *imGuiDescriptorPool;
+	init_info.DescriptorPoolSize           = 100; // Setting >0 will automatically create the required pool
+	init_info.MinImageCount                = MAX_FRAMES_IN_FLIGHT;
+	init_info.ImageCount                   = MAX_FRAMES_IN_FLIGHT;
+
+	init_info.UseDynamicRendering          = true;
+	init_info.PipelineInfoMain.Subpass     = 0;
+	init_info.PipelineInfoMain.MSAASamples = static_cast<VkSampleCountFlagBits>(msaaSamples);
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+	VkFormat imguiColorFormat = static_cast<VkFormat>(swapChainImageFormat);
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.pColorAttachmentFormats = &imguiColorFormat;
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.depthAttachmentFormat = static_cast<VkFormat>(findDepthFormat());
+
+	init_info.CheckVkResultFn              = check_vk_result;
+
 	ImGui_ImplVulkan_Init(&init_info);
 }
 
@@ -1028,9 +1010,6 @@ void Renderer::drawFrame() {
 
 	commandBuffers[currentFrame].reset();
 	recordCommandBuffer(imageIndex);
-
-	ImGui::Render();
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]);
 
 	vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
