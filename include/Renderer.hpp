@@ -10,7 +10,6 @@
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_sdl3.h>
 
-
 class Renderer {
 public:
 	void run();
@@ -28,28 +27,23 @@ private:
 	vk::raii::Device                 device         = nullptr;
 	vkb::Device                      vkbDevice      = {};
 
-	uint32_t graphicsFamilyIndex = 0;
-	uint32_t presentFamilyIndex  = 0;
-
-	vk::raii::Queue graphicsQueue = nullptr;
+	uint32_t        graphicsFamilyIndex = 0;
+	uint32_t        presentFamilyIndex  = 0;
+	vk::raii::Queue graphicsQueue       = nullptr;
+	vk::raii::Queue presentQueue        = nullptr;
 	// also responsible for the present queue (in my case they are in the same family)
-	vk::raii::Queue presentQueue = nullptr;
 
-	vk::raii::SwapchainKHR swapChain    = nullptr;
-	vkb::Swapchain         vkbSwapchain{};
-	std::vector<vk::Image> swapChainImages;
-	vk::Extent2D           swapChainExtent{};
-
+	vk::raii::SwapchainKHR           swapChain = nullptr;
+	vkb::Swapchain                   vkbSwapchain{};
+	std::vector<vk::Image>           swapChainImages;
+	vk::Extent2D                     swapChainExtent{};
 	vk::Format                       swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
-
-	VmaAllocator allocator = {};
 
 	vk::raii::PipelineLayout pipelineLayout   = nullptr;
 	vk::raii::Pipeline       graphicsPipeline = nullptr;
 
-	vk::raii::CommandPool commandPool = nullptr;
-
+	vk::raii::CommandPool                commandPool = nullptr;
 	std::vector<vk::raii::CommandBuffer> commandBuffers;
 	std::vector<vk::raii::Semaphore>     presentCompleteSemaphores;
 	std::vector<vk::raii::Semaphore>     renderCompleteSemaphores;
@@ -62,6 +56,7 @@ private:
 	std::vector<Vertex>   vertices;
 	std::vector<uint32_t> indices;
 
+	VmaAllocator    allocator    = {};
 	AllocatedBuffer vertexBuffer = {};
 	AllocatedBuffer indexBuffer  = {};
 
@@ -71,16 +66,15 @@ private:
 	DescriptorSetLayoutBuilder              layoutBuilder{};
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
 	std::vector<vk::raii::DescriptorSet>    descriptorSets;
+	vk::raii::DescriptorPool                imGuiDescriptorPool = nullptr;
 
-	vk::raii::DescriptorPool imGuiDescriptorPool = nullptr;
 	uint32_t            mipLevels        = 1;
 	AllocatedImage      textureImage     = {};
 	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler   textureSampler   = nullptr;
 
-	AllocatedImage      depthImage     = {};
-	vk::raii::ImageView depthImageView = nullptr;
-
+	AllocatedImage          depthImage     = {};
+	vk::raii::ImageView     depthImageView = nullptr;
 	vk::SampleCountFlagBits msaaSamples    = vk::SampleCountFlagBits::e1;
 	AllocatedImage          colorImage     = {};
 	vk::raii::ImageView     colorImageView = nullptr;
@@ -92,7 +86,7 @@ private:
 	struct GameObject {
 		glm::vec3 position = {0.0f, 0.0f, 0.0f};
 		glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
-		glm::vec3 scale = {1.0f, 1.0f, 1.0f};
+		glm::vec3 scale    = {1.0f, 1.0f, 1.0f};
 
 		// Uniform buffer for this object (one per frame in flight)
 		std::vector<AllocatedUniformBuffer> uniformBuffers;
