@@ -980,6 +980,16 @@ void Renderer::cleanup() {
 	ImGui::DestroyContext();
 }
 
+void Renderer::drawDebugMenu() {
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplSDL3_NewFrame();
+	ImGui::NewFrame();
+	static float value = 0.5f;
+	ImGui::Begin("Debug Manu");
+	ImGui::SliderFloat("Value", &value, 0.0f, 1.0f);
+	ImGui::End();
+	ImGui::Render();
+}
 
 // https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html
 // fix for the validation errors caused by semaphore reuse
@@ -1002,11 +1012,7 @@ void Renderer::drawFrame() {
 
 	device.resetFences(*inFlightFences[currentFrame]); // this is only performed after we handle the return values of .acquireNextImageKHR()!
 
-	ImGui_ImplVulkan_NewFrame();
-	ImGui_ImplSDL3_NewFrame();
-	ImGui::NewFrame();
-	ImGui::ShowDemoWindow();
-	ImGui::Render();
+	drawDebugMenu();
 
 	commandBuffers[currentFrame].reset();
 	recordCommandBuffer(imageIndex);

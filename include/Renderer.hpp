@@ -227,6 +227,8 @@ private:
 
 	void cleanup();
 
+	void drawDebugMenu();
+
 	void drawFrame();
 
 	void updateUniformBuffer(uint32_t imageIndex);
