@@ -42,6 +42,8 @@
 
 #include <queue>
 
+#include "glm/gtc/type_ptr.inl"
+
 static void check_vk_result(VkResult err) {
 	if (err == 0) { return; }
 	fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
@@ -392,9 +394,7 @@ void Renderer::createSyncObjects() {
 void Renderer::recreateSwapChain() {
 	int width = 0, height = 0;
 	SDL_GetWindowSizeInPixels(window, &width, &height);
-	while (width == 0 || height == 0) {
-		SDL_GetWindowSizeInPixels(window, &width, &height);
-	}
+	while (width == 0 || height == 0) { SDL_GetWindowSizeInPixels(window, &width, &height); }
 
 	device.waitIdle();
 
@@ -404,14 +404,15 @@ void Renderer::recreateSwapChain() {
 	.set_desired_extent(width, height)
 	.set_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 	.build();
+
 	handleBootstrapErrors(swap_ret);
 
 	cleanupSwapchain(); // needs to be cleaned up AFTER the build() since we are using the old swapchain as ref
 
 	vkbSwapchain = swap_ret.value();
-	std::cout << "vkbSwapchain.image_format = " << vkbSwapchain.image_format << "\n";
-	std::cout << "vkbSwapchain.image_usage_flags = 0x" << std::hex
-			  << vkbSwapchain.image_usage_flags << std::dec << "\n";
+
+	swapChainExtent = vk::Extent2D(width, height);
+
 	swapChain = vk::raii::SwapchainKHR(device, vkbSwapchain.swapchain);
 	swapChainImages = swapChain.getImages();
 
@@ -857,15 +858,15 @@ void Renderer::createColorResources() {
 void Renderer::setupGameObjects() {
 	gameObjects[0].position = {0.0f, 0.0f, 0.0f};
 	gameObjects[0].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
-	gameObjects[0].scale = {1.0f, 1.0f, 1.0f};
+	gameObjects[0].scale    = {1.0f, 1.0f, 1.0f};
 
 	gameObjects[1].position = {1.0f, 0.0f, -1.0f};
 	gameObjects[1].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
-	gameObjects[1].scale = {0.5f, 0.5f, 0.5f};
+	gameObjects[1].scale    = {0.5f, 0.5f, 0.5f};
 
 	gameObjects[2].position = {-2.0f, 0.0f, -2.0f};
 	gameObjects[2].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
-	gameObjects[2].scale = {0.75f, 0.75f, 0.75f};
+	gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
 }
 
 void Renderer::createImGuiInstance() {
@@ -984,9 +985,14 @@ void Renderer::drawDebugMenu() {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
-	static float value = 0.5f;
 	ImGui::Begin("Debug Manu");
-	ImGui::SliderFloat("Value", &value, 0.0f, 1.0f);
+	for (int i = 0; i < gameObjects.size(); i++) {
+		ImGui::PushID(i);
+		ImGui::SliderFloat3("Object Position", glm::value_ptr(gameObjects[i].position), -10.0f, 10.0f);
+		ImGui::SliderFloat3("Object Rotation", glm::value_ptr(gameObjects[i].rotation), -10.0f, 10.0f);
+		ImGui::SliderFloat3("Object Scale", glm::value_ptr(gameObjects[i].scale), 0.0f, 10.0f);
+		ImGui::PopID();
+	}
 	ImGui::End();
 	ImGui::Render();
 }
@@ -1033,7 +1039,6 @@ void Renderer::drawFrame() {
 	graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
 
 	const vk::PresentInfoKHR presentInfoKHR( *renderCompleteSemaphores[imageIndex], *swapChain, imageIndex);
-
 	result = presentQueue.presentKHR(presentInfoKHR);
 
 	if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
