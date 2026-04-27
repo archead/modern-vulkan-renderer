@@ -695,10 +695,21 @@ void Renderer::loadModelGLTF() {
 			const tinygltf::BufferView* texCoordBufferView = nullptr;
 			const tinygltf::Buffer* texCoordBuffer = nullptr;
 
+			bool hasNormals = primitive.attributes.find("NORMAL") != primitive.attributes.end();
+			const tinygltf::Accessor* normalAccessor = nullptr;
+			const tinygltf::BufferView* normalBufferView = nullptr;
+			const tinygltf::Buffer* normalBuffer = nullptr;
+
 			if (hasTexCoords) {
 				texCoordAccessor = &model.accessors[primitive.attributes.at("TEXCOORD_0")];
 				texCoordBufferView = &model.bufferViews[texCoordAccessor->bufferView];
 				texCoordBuffer = &model.buffers[texCoordBufferView->buffer];
+			}
+
+			if (hasNormals) {
+				normalAccessor = &model.accessors[primitive.attributes.at("NORMAL")];
+				normalBufferView = &model.bufferViews[normalAccessor->bufferView];
+				normalBuffer = &model.buffers[texCoordBufferView->buffer];
 			}
 
 			std::vector<uint32_t> remap(posAccessor.count); // used to deduplicate indices as well
@@ -858,7 +869,7 @@ void Renderer::createColorResources() {
 void Renderer::setupGameObjects() {
 	gameObjects[0].position = {0.0f, 0.0f, 0.0f};
 	gameObjects[0].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
-	gameObjects[0].scale    = {1.0f, 1.0f, 1.0f};
+	gameObjects[0].scale    = {0.5f, 0.5f, 0.5f};
 
 	gameObjects[1].position = {1.0f, 0.0f, -1.0f};
 	gameObjects[1].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
