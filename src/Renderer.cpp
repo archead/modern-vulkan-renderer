@@ -733,6 +733,13 @@ void Renderer::loadModelGLTF() {
 				// Set default color
 				vertex.color = {1.0f, 1.0f, 1.0f};
 
+				if (hasNormals) {
+					const float* normal = reinterpret_cast<const float*>(&normalBuffer->data[normalBufferView->byteOffset + normalAccessor->byteOffset + i * 12]);
+					vertex.normal = {normal[0], normal[1], normal[2]};
+				} else {
+					vertex.normal = {0.0f, 0.0f, 0.0f};
+				}
+
 				// Add vertex if unique
 				if (!uniqueVertices.contains(vertex)) {
 					remap[i] = static_cast<uint32_t>(vertices.size());
