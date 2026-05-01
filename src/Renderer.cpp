@@ -695,6 +695,7 @@ void Renderer::loadModelGLTF() {
 			const tinygltf::BufferView* texCoordBufferView = nullptr;
 			const tinygltf::Buffer* texCoordBuffer = nullptr;
 
+			// Get normals if available
 			bool hasNormals = primitive.attributes.find("NORMAL") != primitive.attributes.end();
 			const tinygltf::Accessor* normalAccessor = nullptr;
 			const tinygltf::BufferView* normalBufferView = nullptr;
@@ -709,7 +710,7 @@ void Renderer::loadModelGLTF() {
 			if (hasNormals) {
 				normalAccessor = &model.accessors[primitive.attributes.at("NORMAL")];
 				normalBufferView = &model.bufferViews[normalAccessor->bufferView];
-				normalBuffer = &model.buffers[texCoordBufferView->buffer];
+				normalBuffer = &model.buffers[normalBufferView->buffer];
 			}
 
 			std::vector<uint32_t> remap(posAccessor.count); // used to deduplicate indices as well
