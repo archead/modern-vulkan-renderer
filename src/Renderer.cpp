@@ -76,7 +76,6 @@ glm::mat4 Renderer::GameObject::getModelMatrix() const {
 	return model;
 }
 
-
 void Renderer::run() {
 	initVulkan();
 	mainLoop();
@@ -233,107 +232,112 @@ void Renderer::createGraphicsPipeline() {
 	vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
 
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
-	vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
+	vertShaderStageInfo.stage  = vk::ShaderStageFlagBits::eVertex;
 	vertShaderStageInfo.module = shaderModule;
-	vertShaderStageInfo.pName = "vertMain";
+	vertShaderStageInfo.pName  = "vertMain";
 
 	vk::PipelineShaderStageCreateInfo fragShaderStageInfo;
-	fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
+	fragShaderStageInfo.stage  = vk::ShaderStageFlagBits::eFragment;
 	fragShaderStageInfo.module = shaderModule;
-	fragShaderStageInfo.pName = "fragMain";
+	fragShaderStageInfo.pName  = "fragMain";
 
-	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,fragShaderStageInfo};
+	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
 	vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
-	auto bindingDescription = Vertex::getBindingDescription();
-	auto attributeDescriptions = Vertex::getAttributeDescriptions();
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+	auto                                   bindingDescription    = Vertex::getBindingDescription();
+	auto                                   attributeDescriptions = Vertex::getAttributeDescriptions();
+	vertexInputInfo.vertexBindingDescriptionCount                = 1;
+	vertexInputInfo.pVertexBindingDescriptions                   = &bindingDescription;
+	vertexInputInfo.vertexAttributeDescriptionCount              = attributeDescriptions.size();
+	vertexInputInfo.pVertexAttributeDescriptions                 = attributeDescriptions.data();
 
-	std::vector dynamicStates= {
+	std::vector dynamicStates = {
 		vk::DynamicState::eViewport,
 		vk::DynamicState::eScissor
 	};
 
 	vk::PipelineDynamicStateCreateInfo dynamicState;
 	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-	dynamicState.pDynamicStates = dynamicStates.data();
+	dynamicState.pDynamicStates    = dynamicStates.data();
 
 	vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
 	inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
 
-	vk::Viewport{0.0f, 0.0, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f};
-	vk::PipelineViewportStateCreateInfo viewportState({}, 1,{},1);
+	vk::Viewport{
+		0.0f, 0.0, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f
+	};
+	vk::PipelineViewportStateCreateInfo viewportState({}, 1, {}, 1);
 
-	vk::PipelineDepthStencilStateCreateInfo depthStencil = {};
-	depthStencil.depthTestEnable = vk::True;
-	depthStencil.depthWriteEnable = vk::True;
-	depthStencil.depthCompareOp = vk::CompareOp::eLess;
+	vk::PipelineDepthStencilStateCreateInfo depthStencil;
+	depthStencil.depthTestEnable       = vk::True;
+	depthStencil.depthWriteEnable      = vk::True;
+	depthStencil.depthCompareOp        = vk::CompareOp::eLess;
 	depthStencil.depthBoundsTestEnable = vk::False;
-	depthStencil.stencilTestEnable = vk::False;
+	depthStencil.stencilTestEnable     = vk::False;
 
 	vk::PipelineRasterizationStateCreateInfo rasterizer;
-	rasterizer.depthClampEnable = vk::False;
+	rasterizer.depthClampEnable        = vk::False;
 	rasterizer.rasterizerDiscardEnable = vk::False;
-	rasterizer.polygonMode = vk::PolygonMode::eFill;
-	rasterizer.cullMode = vk::CullModeFlagBits::eBack;
-	rasterizer.frontFace = vk::FrontFace::eCounterClockwise; // this needs to be counterClockwise since we are using GLM for our uniform buffers which is originally designed for OpenGL where Y-axis is flipped
-	rasterizer.depthBiasEnable = vk::False;
+	rasterizer.polygonMode             = vk::PolygonMode::eFill;
+	rasterizer.cullMode                = vk::CullModeFlagBits::eBack;
+	rasterizer.frontFace               = vk::FrontFace::eCounterClockwise;
+	// this needs to be counterClockwise since we are using GLM for our uniform buffers which is originally designed for OpenGL where Y-axis is flipped
+	rasterizer.depthBiasEnable      = vk::False;
 	rasterizer.depthBiasSlopeFactor = 1.0f;
-	rasterizer.lineWidth = 1.0f;
+	rasterizer.lineWidth            = 1.0f;
 
 	vk::PipelineMultisampleStateCreateInfo multisampling;
 	multisampling.rasterizationSamples = msaaSamples;
-	multisampling.sampleShadingEnable = vk::True;
-	multisampling.minSampleShading = 0.2f;
+	multisampling.sampleShadingEnable  = vk::True;
+	multisampling.minSampleShading     = 0.2f;
 
 	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
-	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-	colorBlendAttachment.blendEnable = vk::False; // disabling color blending for now.
+	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+	                                      vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+	colorBlendAttachment.blendEnable         = vk::False; // disabling color blending for now.
 	colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
 	colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
-	colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd;
+	colorBlendAttachment.colorBlendOp        = vk::BlendOp::eAdd;
 	colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
 	colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
-	colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd;
+	colorBlendAttachment.alphaBlendOp        = vk::BlendOp::eAdd;
 
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
-	colorBlending.logicOpEnable = VK_FALSE;
-	colorBlending.logicOp = vk::LogicOp::eCopy;
+	colorBlending.logicOpEnable   = VK_FALSE;
+	colorBlending.logicOp         = vk::LogicOp::eCopy;
 	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments =  &colorBlendAttachment;
+	colorBlending.pAttachments    = &colorBlendAttachment;
+
+	std::array<vk::DescriptorSetLayout, 2> setLayouts = {*descriptorSetLayout0, *descriptorSetLayout1};
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &*descriptorSetLayout;
-	pipelineLayoutInfo.pushConstantRangeCount = 0;
-	pipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
+	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
+	pipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
 	vk::Format depthFormat = findDepthFormat();
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
-	pipelineRenderingCreateInfo.colorAttachmentCount = 1;
+	pipelineRenderingCreateInfo.colorAttachmentCount    = 1;
 	pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
-	pipelineRenderingCreateInfo.depthAttachmentFormat = depthFormat;
+	pipelineRenderingCreateInfo.depthAttachmentFormat   = depthFormat;
 
 	vk::GraphicsPipelineCreateInfo pipelineInfo;
-	pipelineInfo.pNext = &pipelineRenderingCreateInfo;
-	pipelineInfo.stageCount = 2;
-	pipelineInfo.pStages = shaderStages;
-	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pNext               = &pipelineRenderingCreateInfo;
+	pipelineInfo.stageCount          = 2;
+	pipelineInfo.pStages             = shaderStages;
+	pipelineInfo.pVertexInputState   = &vertexInputInfo;
 	pipelineInfo.pInputAssemblyState = &inputAssembly;
-	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pViewportState      = &viewportState;
 	pipelineInfo.pRasterizationState = &rasterizer;
-	pipelineInfo.pDepthStencilState = &depthStencil;
-	pipelineInfo.pMultisampleState = &multisampling;
-	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.pDynamicState = &dynamicState;
-	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = nullptr;
-	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-	pipelineInfo.basePipelineIndex = -1;
+	pipelineInfo.pDepthStencilState  = &depthStencil;
+	pipelineInfo.pMultisampleState   = &multisampling;
+	pipelineInfo.pColorBlendState    = &colorBlending;
+	pipelineInfo.pDynamicState       = &dynamicState;
+	pipelineInfo.layout              = pipelineLayout;
+	pipelineInfo.renderPass          = nullptr;
+	pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
+	pipelineInfo.basePipelineIndex   = -1;
 
 	graphicsPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
 }
@@ -925,7 +929,7 @@ void Renderer::initVulkan() {
 	bootstrapVulkan();
 	createImageViews();
 	createAllocator();
-	createDescriptorSetLayout();
+	createDescriptorSetLayout(); // used during pipeline creation, also responsible for game object descriptor set layouts
 	createGraphicsPipeline();
 	createCommandPool();
 	createImGuiInstance();
@@ -935,13 +939,20 @@ void Renderer::initVulkan() {
 	createTextureImageView();
 	createTextureSampler();
 	loadModelGLTF();
+
 	setupGameObjects();
+
 	createVertexBuffer();
 	createIndexBuffer();
+
 	createGameObjectUniformBuffers();
+	createUniformBuffers();
+
 	createDescriptorPool();
 	createGameObjectDescriptorSets();
+	createDescriptorSets();
 	createCommandBuffers();
+
 	createSyncObjects();
 }
 
@@ -987,8 +998,17 @@ void Renderer::cleanup() {
 		}
 	}
 
+	for (auto& buffer : lightingUniformBuffers) {
+		destroyBuffer(allocator, buffer.buffer);
+	}
+
+	for (auto& buffer : matrixAndSamplerUniformBuffers) {
+		destroyBuffer(allocator, buffer.buffer);
+	}
+
 	destroyBuffer(allocator, vertexBuffer);
 	destroyBuffer(allocator, indexBuffer);
+
 	destroyImage(allocator, textureImage);
 	destroyImage(allocator, depthImage);
 	destroyImage(allocator, colorImage);
@@ -1012,6 +1032,11 @@ void Renderer::drawDebugMenu() {
 		ImGui::SliderFloat3("Object Scale", glm::value_ptr(gameObjects[i].scale), 0.0f, 10.0f);
 		ImGui::PopID();
 	}
+	ImGui::ColorEdit3("Light Color", glm::value_ptr(lightColor));
+	ImGui::SliderFloat3("Light Position", glm::value_ptr(lightPos), -5.0f, 5.0f);
+	ImGui::SliderFloat("Light Intensity", &lightIntesity, 0.0f, 1.0f);
+	ImGui::SliderFloat("Attenuation K", &lightAttenK, 0.0f, 1.0f);
+
 	ImGui::End();
 	ImGui::Render();
 }
@@ -1045,6 +1070,7 @@ void Renderer::drawFrame() {
 	vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
 	updateGameObjectUniformBuffer(currentFrame);
+	updateUniformBuffer(currentFrame);
 
 	vk::SubmitInfo submitInfo;
 	submitInfo.waitSemaphoreCount = 1;

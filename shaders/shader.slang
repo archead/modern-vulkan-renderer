@@ -10,7 +10,21 @@ struct UniformBuffer{
     float4x4 view;
     float4x4 proj;
 };
-ConstantBuffer<UniformBuffer> ubo;
+ConstantBuffer<UniformBuffer> ubo : register(b0, space0);
+
+struct Light {
+  float3 pos;
+  float intensity;
+  float3 color;
+  float attenK;
+};
+
+struct LightBuffer {
+    Light light;
+    float3 cameraPos;
+    float _pad0; // data padding (everything needs to be aligned to sets of 16 bytes (float3 + float = 16 bytes)
+};
+ConstantBuffer<LightBuffer> lightUbo : register(b0, space1);
 
 struct VSOutput {
     float4 pos : SV_Position;
@@ -42,9 +56,14 @@ Sampler2D texture;
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
     // point light properties
-    float3 diffuseColor = float3(0.96, 0.89, 0.54);
-    float3 pointLcoord = float3(0.5, 0.2, 0.4);
-    float pointLightIntensity = 0.75;
+
+    //float3 diffuseColor = float3(0.96, 0.89, 0.54);
+    float3 diffuseColor = float3(lightUbo.light.color);
+
+    //float3 pointLcoord = float3(0.5, 0.2, 0.4);
+    float3 pointLcoord = float3(lightUbo.light.pos);
+
+    float pointLightIntensity = lightUbo.light.intensity;
 
     // angle of coincidence
     float3 L = normalize(pointLcoord - vertIn.fragPos);
@@ -52,7 +71,7 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     float NdotL = saturate(dot(normal, L));
 
     // attenuation
-    float K = 0.25;
+    float K = lightUbo.light.attenK;
     float3 lightDistance = (pointLcoord - vertIn.fragPos);
     float RSq = dot(lightDistance, lightDistance);
     float attenIntensity = pointLightIntensity/(1.0 + K * RSq);

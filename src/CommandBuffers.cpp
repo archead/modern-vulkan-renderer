@@ -75,29 +75,29 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 	vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
 
 	vk::RenderingAttachmentInfo attachmentInfo = {};
-	attachmentInfo.imageView = colorImageView;
-	attachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-	attachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-	attachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
-	attachmentInfo.clearValue = clearColor;
-	attachmentInfo.resolveImageView = swapChainImageViews[imageIndex];
-	attachmentInfo.resolveImageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-	attachmentInfo.resolveMode = vk::ResolveModeFlagBits::eAverage;
+	attachmentInfo.imageView                   = colorImageView;
+	attachmentInfo.imageLayout                 = vk::ImageLayout::eColorAttachmentOptimal;
+	attachmentInfo.loadOp                      = vk::AttachmentLoadOp::eClear;
+	attachmentInfo.storeOp                     = vk::AttachmentStoreOp::eDontCare;
+	attachmentInfo.clearValue                  = clearColor;
+	attachmentInfo.resolveImageView            = swapChainImageViews[imageIndex];
+	attachmentInfo.resolveImageLayout          = vk::ImageLayout::eColorAttachmentOptimal;
+	attachmentInfo.resolveMode                 = vk::ResolveModeFlagBits::eAverage;
 
 	vk::RenderingAttachmentInfo depthAttachmentInfo = {};
-	depthAttachmentInfo.imageView = depthImageView;
-	depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
-	depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-	depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
-	depthAttachmentInfo.clearValue = clearDepth;
+	depthAttachmentInfo.imageView                   = depthImageView;
+	depthAttachmentInfo.imageLayout                 = vk::ImageLayout::eDepthAttachmentOptimal;
+	depthAttachmentInfo.loadOp                      = vk::AttachmentLoadOp::eClear;
+	depthAttachmentInfo.storeOp                     = vk::AttachmentStoreOp::eDontCare;
+	depthAttachmentInfo.clearValue                  = clearDepth;
 
-	vk::RenderingInfo renderingInfo = {};
-	renderingInfo.renderArea.offset = vk::Offset2D(0, 0);
-	renderingInfo.renderArea.extent = swapChainExtent;
-	renderingInfo.layerCount = 1;
+	vk::RenderingInfo renderingInfo    = {};
+	renderingInfo.renderArea.offset    = vk::Offset2D(0, 0);
+	renderingInfo.renderArea.extent    = swapChainExtent;
+	renderingInfo.layerCount           = 1;
 	renderingInfo.colorAttachmentCount = 1;
-	renderingInfo.pColorAttachments = &attachmentInfo;
-	renderingInfo.pDepthAttachment = &depthAttachmentInfo;
+	renderingInfo.pColorAttachments    = &attachmentInfo;
+	renderingInfo.pDepthAttachment     = &depthAttachmentInfo;
 
 	commandBuffers[currentFrame].beginRendering(renderingInfo);
 
@@ -114,14 +114,20 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 		0.0f, 1.0f));
 
 	commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
+
+
 	for (const auto& gameObject : gameObjects) {
+		std::array<vk::DescriptorSet, 2> descriptorSets = {
+			*gameObject.descriptorSets[currentFrame],
+			*descriptorSets1[currentFrame]
+		};
 		commandBuffers[currentFrame].bindDescriptorSets(
-					vk::PipelineBindPoint::eGraphics,
-					pipelineLayout,
-					0,
-					*gameObject.descriptorSets[currentFrame],
-					nullptr
-					);
+			vk::PipelineBindPoint::eGraphics,
+			pipelineLayout,
+			0,
+			descriptorSets,
+			nullptr
+		);
 		commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
 	}
 

@@ -4,10 +4,11 @@
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 
+// per-game object descriptors
 void Renderer::createGameObjectDescriptorSets() {
 	for (auto& gameObject : gameObjects) {
 		// Create descriptor sets for each FIF
-		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
+		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout0);
 		gameObject.descriptorSets.clear();
 		gameObject.descriptorSets = descriptorSetAllocator->Allocate(layouts);
 
@@ -24,13 +25,6 @@ void Renderer::createGameObjectDescriptorSets() {
 	}
 }
 
-void Renderer::createDescriptorSetLayout() {
-	DescriptorSetLayoutBuilder builder;
-	builder.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
-	builder.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
-	descriptorSetLayout = builder.build(device);
-}
-
 void Renderer::createGameObjectUniformBuffers() {
 	for (auto& gameObject : gameObjects) {
 		gameObject.uniformBuffers.clear();
@@ -44,17 +38,6 @@ void Renderer::createGameObjectUniformBuffers() {
 	}
 }
 
-void Renderer::createUniformBuffers() {
-	uniformBuffers.clear();
-	uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
-		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uniformBuffers[i].buffer, true);
-		uniformBuffers[i].mapped = uniformBuffers[i].buffer.allocInfo.pMappedData;
-	}
-}
-
 void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 	// Probably not needed
 	static auto startTime = std::chrono::high_resolution_clock::now();
@@ -62,7 +45,7 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 	// Camera and proj matrices that are shared among all objects
-	glm::mat4 view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	glm::mat4 proj = glm::perspective(
 	glm::radians(45.0f),
 		static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),
@@ -83,6 +66,71 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 	}
 }
 
+
+// per-frame descriptors
+void Renderer::createDescriptorSetLayout() {
+	// configure layout for the transformation matrix + sampler, this layout is used for the gameobject
+	DescriptorSetLayoutBuilder builder;
+	builder.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
+	builder.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
+	descriptorSetLayout0 = builder.build(device);
+
+	// configure layout for the lighting descriptor
+	builder.clearBindings();
+	builder.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment);
+	descriptorSetLayout1 = builder.build(device);
+}
+
+void Renderer::createDescriptorSets() {
+	std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout0);
+	descriptorSets0.clear();
+	descriptorSets0 = descriptorSetAllocator->Allocate(layouts);
+
+	layouts.clear();
+	layouts = std::vector<vk::DescriptorSetLayout>(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout1);
+	descriptorSets1.clear();
+	descriptorSets1 = descriptorSetAllocator->Allocate(layouts);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+		vk::DescriptorBufferInfo bufferInfo(matrixAndSamplerUniformBuffers[i].buffer.buffer, 0, sizeof(UniformBufferObject));
+		vk::DescriptorImageInfo imageInfo(textureSampler, textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+		std::array descriptorWrites0{
+			vk::WriteDescriptorSet(descriptorSets0[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr ,&bufferInfo),
+			vk::WriteDescriptorSet(descriptorSets0[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr)
+		};
+		device.updateDescriptorSets(descriptorWrites0, {});
+
+		// do the same for the lighting uniform / descriptor set
+		bufferInfo = vk::DescriptorBufferInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightUbo));
+		std::array descriptorWrites1 = {vk::WriteDescriptorSet(descriptorSets1[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr ,&bufferInfo)};
+		device.updateDescriptorSets(descriptorWrites1, {});
+	}
+}
+
+void Renderer::createUniformBuffers() {
+	// config transformation matrices + sampler ubo
+	matrixAndSamplerUniformBuffers.clear();
+	matrixAndSamplerUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, matrixAndSamplerUniformBuffers[i].buffer, true);
+		matrixAndSamplerUniformBuffers[i].mapped = matrixAndSamplerUniformBuffers[i].buffer.allocInfo.pMappedData;
+	}
+
+	// config light props ubo
+	lightingUniformBuffers.clear();
+	lightingUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		vk::DeviceSize bufferSize = sizeof(LightUbo);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, lightingUniformBuffers[i].buffer, true);
+		lightingUniformBuffers[i].mapped = lightingUniformBuffers[i].buffer.allocInfo.pMappedData;
+	}
+}
+
 void Renderer::updateUniformBuffer(uint32_t imageIndex) {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
@@ -90,38 +138,28 @@ void Renderer::updateUniformBuffer(uint32_t imageIndex) {
 
 	UniformBufferObject ubo = {};
 	ubo.model = glm::rotate(glm::mat4(1.0f), sin(time * glm::radians(90.0f) * 0.5f) * 0.8f, glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.proj = glm::perspective(
 		glm::radians(45.0f),
 		static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),
 		0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
 
-	memcpy(uniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
+	memcpy(matrixAndSamplerUniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
+
+	LightUbo light_ubo            = {};
+	light_ubo.light.color_attenK  = glm::vec4(lightColor, lightAttenK);
+	light_ubo.cameraPos           = glm::vec4(cameraPos, 0.0f);
+	light_ubo.light.pos_intensity = glm::vec4(lightPos, lightIntesity);
+
+	memcpy(lightingUniformBuffers[imageIndex].mapped, &light_ubo, sizeof(light_ubo));
 }
 
+
+// init helpers
 void Renderer::createDescriptorPool() {
 	descriptorSetAllocator = std::make_unique<DescriptorSetAllocator>(device, poolSize, vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
 	descriptorSetAllocator->CreatePool();
-}
-
-void Renderer::createDescriptorSets() {
-	std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
-	descriptorSets.clear();
-	descriptorSets = descriptorSetAllocator->Allocate(layouts);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-
-		vk::DescriptorBufferInfo bufferInfo(uniformBuffers[i].buffer.buffer, 0, sizeof(UniformBufferObject));
-		vk::DescriptorImageInfo imageInfo(textureSampler, textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-		std::array descriptorWrites{
-			vk::WriteDescriptorSet(descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr ,&bufferInfo),
-			vk::WriteDescriptorSet(descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr)
-		};
-
-		device.updateDescriptorSets(descriptorWrites, {});
-	}
 }
 
 // Descriptor Set Layout Builder
@@ -129,7 +167,11 @@ void DescriptorSetLayoutBuilder::addBinding(uint32_t binding, vk::DescriptorType
 	bindings.emplace_back(binding, type, count, shaderStage, nullptr);
 }
 
-	vk::raii::DescriptorSetLayout DescriptorSetLayoutBuilder::build(vk::raii::Device const& device) const {
+void DescriptorSetLayoutBuilder::clearBindings() {
+		bindings.clear();
+}
+
+vk::raii::DescriptorSetLayout DescriptorSetLayoutBuilder::build(vk::raii::Device const& device) const {
 	vk::DescriptorSetLayoutCreateInfo layoutInfo({}, bindings.size(), bindings.data());
 	return {vk::raii::DescriptorSetLayout(device, layoutInfo)};
 }

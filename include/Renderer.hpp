@@ -60,12 +60,15 @@ private:
 	AllocatedBuffer vertexBuffer = {};
 	AllocatedBuffer indexBuffer  = {};
 
-	std::vector<AllocatedUniformBuffer>     uniformBuffers = {};
+	std::vector<AllocatedUniformBuffer>     matrixAndSamplerUniformBuffers = {};
+	std::vector<AllocatedUniformBuffer>		lightingUniformBuffers = {};
 	PoolSizes                               poolSize{};
-	vk::raii::DescriptorSetLayout           descriptorSetLayout = nullptr;
+	vk::raii::DescriptorSetLayout           descriptorSetLayout0 = nullptr; // used for matrices and the textureSampler
+	vk::raii::DescriptorSetLayout			descriptorSetLayout1 = nullptr; // used for Light properties
 	DescriptorSetLayoutBuilder              layoutBuilder{};
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
-	std::vector<vk::raii::DescriptorSet>    descriptorSets;
+	std::vector<vk::raii::DescriptorSet>    descriptorSets0;
+	std::vector<vk::raii::DescriptorSet>    descriptorSets1;
 	vk::raii::DescriptorPool                imGuiDescriptorPool = nullptr;
 
 	uint32_t            mipLevels        = 1;
@@ -79,9 +82,7 @@ private:
 	AllocatedImage          colorImage     = {};
 	vk::raii::ImageView     colorImageView = nullptr;
 
-	std::vector<const char *> deviceExtensions = {
-		vk::KHRSwapchainExtensionName
-	};
+	std::vector<const char *> deviceExtensions = { vk::KHRSwapchainExtensionName };
 
 	struct GameObject {
 		glm::vec3 position = {0.0f, 0.0f, 0.0f};
@@ -99,6 +100,22 @@ private:
 	};
 
 	std::array<GameObject, MAX_OBJECTS> gameObjects;
+
+	struct Light {
+		glm::vec4 pos_intensity; // using vec4 to align the data xyz = pos, w = intensity
+		glm::vec4 color_attenK;
+	};
+
+	struct LightUbo {
+		Light light;
+		glm::vec4 cameraPos;
+	};
+
+	glm::vec3 cameraPos     = {2.0f, 2.0f, 2.0f};
+	glm::vec3 lightColor    = {0.96, 0.89, 0.54};
+	float     lightAttenK   = 0.25f;
+	glm::vec3 lightPos      = {0.5, 0.2, 0.4};
+	float     lightIntesity = 0.75;
 
 	//endregion
 

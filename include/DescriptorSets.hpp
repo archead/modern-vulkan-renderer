@@ -15,8 +15,8 @@ struct PoolSizes {
 class DescriptorSetLayoutBuilder {
 public:
     void addBinding(uint32_t binding, vk::DescriptorType type, uint32_t count, vk::ShaderStageFlagBits shaderStage);
-
     [[nodiscard]] vk::raii::DescriptorSetLayout build(vk::raii::Device const& device) const;
+    void clearBindings();
 private:
     std::vector<vk::DescriptorSetLayoutBinding> bindings;
 };
@@ -32,7 +32,6 @@ private:
     vk::raii::Device const& m_device = nullptr;
     PoolSizes m_poolSizes;
     vk::DescriptorPoolCreateFlags m_flags;
-
     std::vector<vk::raii::DescriptorPool> descriptorPools;
     vk::raii::DescriptorPool* currentPool = nullptr;
 };
