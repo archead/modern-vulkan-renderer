@@ -731,9 +731,7 @@ void Renderer::loadModelGLTF() {
 				if (hasTexCoords) {
 					const float* texCoord = reinterpret_cast<const float*>(&texCoordBuffer->data[texCoordBufferView->byteOffset + texCoordAccessor->byteOffset + i * 8]);
 					vertex.texCoord = {texCoord[0], texCoord[1]};
-				} else {
-					vertex.texCoord = {0.0f, 0.0f};
-				}
+				} else { vertex.texCoord = {0.0f, 0.0f}; }
 
 				// Set default color
 				vertex.color = {1.0f, 1.0f, 1.0f};
@@ -741,9 +739,7 @@ void Renderer::loadModelGLTF() {
 				if (hasNormals) {
 					const float* normal = reinterpret_cast<const float*>(&normalBuffer->data[normalBufferView->byteOffset + normalAccessor->byteOffset + i * 12]);
 					vertex.normal = {normal[0], normal[1], normal[2]};
-				} else {
-					vertex.normal = {0.0f, 0.0f, 0.0f};
-				}
+				} else { vertex.normal = {0.0f, 0.0f, 0.0f}; }
 
 				// Add vertex if unique
 				if (!uniqueVertices.contains(vertex)) {
@@ -1027,15 +1023,16 @@ void Renderer::drawDebugMenu() {
 	ImGui::Begin("Debug Manu");
 	for (int i = 0; i < gameObjects.size(); i++) {
 		ImGui::PushID(i);
-		ImGui::SliderFloat3("Object Position", glm::value_ptr(gameObjects[i].position), -10.0f, 10.0f);
-		ImGui::SliderFloat3("Object Rotation", glm::value_ptr(gameObjects[i].rotation), -10.0f, 10.0f);
-		ImGui::SliderFloat3("Object Scale", glm::value_ptr(gameObjects[i].scale), 0.0f, 10.0f);
+		ImGui::DragFloat3("Object Position", glm::value_ptr(gameObjects[i].position),0.025f);
+		ImGui::DragFloat3("Object Rotation", glm::value_ptr(gameObjects[i].rotation), 0.025f);
+		ImGui::DragFloat3("Object Scale", glm::value_ptr(gameObjects[i].scale), 0.025f);
 		ImGui::PopID();
 	}
 	ImGui::ColorEdit3("Light Color", glm::value_ptr(lightColor));
-	ImGui::SliderFloat3("Light Position", glm::value_ptr(lightPos), -5.0f, 5.0f);
-	ImGui::SliderFloat("Light Intensity", &lightIntesity, 0.0f, 1.0f);
-	ImGui::SliderFloat("Attenuation K", &lightAttenK, 0.0f, 1.0f);
+	ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.025f);
+	ImGui::DragFloat("Light Intensity", &lightIntesity, 0.025f);
+	ImGui::DragFloat("Attenuation K", &lightAttenK, 0.025f);
+	ImGui::DragFloat3("Camera Position", glm::value_ptr(cameraPosOffset), 0.025f);
 
 	ImGui::End();
 	ImGui::Render();

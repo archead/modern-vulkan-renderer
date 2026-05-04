@@ -39,7 +39,6 @@ VSOutput vertMain(VSInput input) {
     VSOutput output;
     output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPosition, 1.0))));
 
-
     float4 worldPos = mul(ubo.model, float4(input.inPosition, 1.0));
     output.fragPos = worldPos.xyz;
     output.fragTexCoord = input.inTexCoord;
@@ -56,13 +55,8 @@ Sampler2D texture;
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
     // point light properties
-
-    //float3 diffuseColor = float3(0.96, 0.89, 0.54);
     float3 diffuseColor = float3(lightUbo.light.color);
-
-    //float3 pointLcoord = float3(0.5, 0.2, 0.4);
     float3 pointLcoord = float3(lightUbo.light.pos);
-
     float pointLightIntensity = lightUbo.light.intensity;
 
     // angle of coincidence
@@ -77,9 +71,9 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     float attenIntensity = pointLightIntensity/(1.0 + K * RSq);
 
     // Blinn-Phong
-    float3 cameraPos = float3(2.0, 2.0, 2.0);
+    float3 cameraPos = float3(lightUbo.cameraPos);
     float shineFactor = 128;
-    float3 specColor = float3(0.25, 0.25, 0.25);
+    float3 specColor = float3(1.0, 1.0, 1.0);
 
     float3 viewDir = normalize(cameraPos - vertIn.fragPos);
     float3 halfAngle = normalize(L + viewDir);

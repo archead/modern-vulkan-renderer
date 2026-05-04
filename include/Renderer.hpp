@@ -112,6 +112,9 @@ private:
 	};
 
 	glm::vec3 cameraPos     = {2.0f, 2.0f, 2.0f};
+	glm::vec3 cameraCenter	= {0.0f, 0.0f, 0.0f};
+	glm::vec3 cameraPosOffset	= {0.0f, 0.0f, 0.0f};
+
 	glm::vec3 lightColor    = {0.96, 0.89, 0.54};
 	float     lightAttenK   = 0.25f;
 	glm::vec3 lightPos      = {0.5, 0.2, 0.4};
