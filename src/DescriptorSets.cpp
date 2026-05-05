@@ -49,7 +49,7 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 	glm::mat4 proj = glm::perspective(
 	glm::radians(45.0f),
 		static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),
-		0.1f, 10.0f
+		0.1f, 50.0f
 	);
 
 	proj[1][1] *= -1;
@@ -68,7 +68,7 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 
 
 // per-frame descriptors
-void Renderer::createDescriptorSetLayout() {
+void Renderer::createDescriptorSetLayouts() {
 	// configure layout for the transformation matrix + sampler, this layout is used for the gameobject
 	DescriptorSetLayoutBuilder builder;
 	builder.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
@@ -142,7 +142,7 @@ void Renderer::updateUniformBuffer(uint32_t imageIndex) {
 	ubo.proj = glm::perspective(
 		glm::radians(45.0f),
 		static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),
-		0.1f, 10.0f);
+		0.1f, 50.0f);
 	ubo.proj[1][1] *= -1;
 
 	memcpy(matrixAndSamplerUniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));

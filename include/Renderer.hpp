@@ -111,7 +111,7 @@ private:
 		glm::vec4 cameraPos;
 	};
 
-	glm::vec3 cameraPos     = {2.0f, 2.0f, 2.0f};
+	glm::vec3 cameraPos     = {0.0f, 2.0f, 2.0f};
 	glm::vec3 cameraCenter	= {0.0f, 0.0f, 0.0f};
 	glm::vec3 cameraPosOffset	= {0.0f, 0.0f, 0.0f};
 
@@ -182,7 +182,7 @@ private:
 
 	void createGameObjectDescriptorSets();
 
-	void createDescriptorSetLayout();
+	void createDescriptorSetLayouts();
 
 	void createGameObjectUniformBuffers();
 

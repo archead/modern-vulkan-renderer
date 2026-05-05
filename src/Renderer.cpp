@@ -925,7 +925,7 @@ void Renderer::initVulkan() {
 	bootstrapVulkan();
 	createImageViews();
 	createAllocator();
-	createDescriptorSetLayout(); // used during pipeline creation, also responsible for game object descriptor set layouts
+	createDescriptorSetLayouts(); // used during pipeline creation, also responsible for game object descriptor set layouts
 	createGraphicsPipeline();
 	createCommandPool();
 	createImGuiInstance();
