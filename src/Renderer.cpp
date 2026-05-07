@@ -34,14 +34,9 @@
 #include <VkBootstrap.h>
 
 #define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h>
-
-
-#include "Types.hpp"
 #include "Renderer.hpp"
-
-#include <queue>
-
+#include <vk_mem_alloc.h>
+#include "Types.hpp"
 #include "glm/gtc/type_ptr.inl"
 
 static void check_vk_result(VkResult err) {
@@ -961,6 +956,11 @@ void Renderer::mainLoop() {
 			ImGui_ImplSDL3_ProcessEvent(&e);
 
 			switch (e.type) {
+				case SDL_EVENT_KEY_DOWN:
+					if (e.key.key == SDLK_Q) {
+						running = false;
+					}
+					break;
 				case SDL_EVENT_QUIT:
 					running = false;
 					break;
@@ -970,10 +970,36 @@ void Renderer::mainLoop() {
 					break;
 			}
 		}
+		cameraPosOffset+= getKeyboardInput();
 		drawFrame();
 	}
 
 	device.waitIdle();
+}
+
+glm::vec3 Renderer::getKeyboardInput() {
+	const bool* key_states = SDL_GetKeyboardState(NULL);
+	auto dir_vector = glm::vec3(0.0f);
+
+	if (key_states[SDL_SCANCODE_W]) {
+		dir_vector -= glm::vec3(0.0f, 0.1f, 0.0f);
+	}
+	else if (key_states[SDL_SCANCODE_S]) {
+		dir_vector += glm::vec3(0.0f, 0.1f, 0.0f);
+	}
+	else if (key_states[SDL_SCANCODE_A]) {
+		dir_vector += glm::vec3(0.1f, 0.0f, 0.0f);
+	}
+	else if (key_states[SDL_SCANCODE_D]) {
+		dir_vector -= glm::vec3(0.1f, 0.0f, 0.0f);
+	}
+	else if (key_states[SDL_SCANCODE_SPACE]) {
+		dir_vector += glm::vec3(0.0f, 0.0f, 0.1f);
+	}
+	else if (key_states[SDL_SCANCODE_LCTRL]) {
+		dir_vector -= glm::vec3(0.0f, 0.0f, 0.1f);
+	}
+	return dir_vector;
 }
 
 void Renderer::dumpAllocationStats() {

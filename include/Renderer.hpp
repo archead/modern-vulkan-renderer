@@ -243,6 +243,8 @@ private:
 
 	void mainLoop();
 
+	glm::vec3 getKeyboardInput();
+
 	void dumpAllocationStats();
 
 	void cleanup();

@@ -41,11 +41,10 @@ VSOutput vertMain(VSInput input) {
 
     float4 worldPos = mul(ubo.model, float4(input.inPosition, 1.0));
     output.fragPos = worldPos.xyz;
+
     output.fragTexCoord = input.inTexCoord;
     output.color = input.inColor;
-
-    float3 N = normalize(mul((float3x3)ubo.model, input.inNormal));
-    output.normal = N;
+    output.normal = normalize(mul((float3x3)ubo.model, input.inNormal));
 
     return output;
 }
@@ -56,17 +55,20 @@ Sampler2D texture;
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
     // point light properties
     float3 diffuseColor = float3(lightUbo.light.color);
-    float3 pointLcoord = float3(lightUbo.light.pos);
+    float3 pointLightCoord = float3(lightUbo.light.pos);
     float pointLightIntensity = lightUbo.light.intensity;
 
+    // fragment position
+    float3 fragmentCoord = float3(vertIn.fragPos);
+
     // angle of coincidence
-    float3 L = normalize(pointLcoord - vertIn.fragPos);
+    float3 L = normalize(pointLightCoord - fragmentCoord);
     float3 normal = normalize(vertIn.normal);
-    float NdotL = saturate(dot(normal, L));
+    float angleOfCoincidence = saturate(dot(normal, L));
 
     // attenuation
     float K = lightUbo.light.attenK;
-    float3 lightDistance = (pointLcoord - vertIn.fragPos);
+    float3 lightDistance = (pointLightCoord - fragmentCoord);
     float RSq = dot(lightDistance, lightDistance);
     float attenIntensity = pointLightIntensity/(1.0 + K * RSq);
 
@@ -75,15 +77,15 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     float shineFactor = 128;
     float3 specColor = float3(1.0, 1.0, 1.0);
 
-    float3 viewDir = normalize(cameraPos - vertIn.fragPos);
+    float3 viewDir = normalize(cameraPos - fragmentCoord);
     float3 halfAngle = normalize(L + viewDir);
     float blinnTerm = saturate(dot(normal, halfAngle));
-    blinnTerm = NdotL > 0.0 ? blinnTerm : 0.0;
+    blinnTerm = angleOfCoincidence > 0.0 ? blinnTerm : 0.0;
     blinnTerm = pow(blinnTerm, shineFactor);
 
     // ambient + diffuse Blinn-phong config
-    float3 ambient = 0.01 * diffuseColor;
-    float3 diffuse = NdotL * diffuseColor * attenIntensity;
+    float3 ambient = 0.005 * diffuseColor;
+    float3 diffuse = angleOfCoincidence * diffuseColor * attenIntensity;
     float3 specular = specColor * blinnTerm * attenIntensity;
 
     //return texture.Sample(vertIn.fragTexCoord);
