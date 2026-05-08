@@ -45,7 +45,7 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 	// Camera and proj matrices that are shared among all objects
-	glm::mat4 view = glm::lookAt(cameraPos + cameraPosOffset, cameraCenter + cameraPosOffset, glm::vec3(0.0f, 0.0f, 1.0f));
+	glm::mat4 view = glm::lookAt(cameraPos + cameraPosOffset, cameraCenter + cameraCenterOffset, glm::vec3(0.0f, 0.0f, 1.0f));
 	glm::mat4 proj = glm::perspective(
 	glm::radians(45.0f),
 		static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),

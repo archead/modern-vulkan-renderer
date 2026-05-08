@@ -870,7 +870,7 @@ void Renderer::createColorResources() {
 }
 
 void Renderer::setupGameObjects() {
-	gameObjects[0].position = {0.0f, 0.0f, 0.0f};
+	gameObjects[0].position = {2.0f, 0.0f, 0.0f};
 	gameObjects[0].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[0].scale    = {0.5f, 0.5f, 0.5f};
 
@@ -881,6 +881,10 @@ void Renderer::setupGameObjects() {
 	gameObjects[2].position = {-2.0f, 0.0f, -2.0f};
 	gameObjects[2].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
+
+	gameObjects[3].position = {0.0f, -1.0f, -1.0f};
+	gameObjects[3].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
+	gameObjects[3].scale    = {0.15f, 0.15f, 0.15f};
 }
 
 void Renderer::createImGuiInstance() {
@@ -970,7 +974,7 @@ void Renderer::mainLoop() {
 					break;
 			}
 		}
-		cameraPosOffset+= getKeyboardInput();
+		getKeyboardInput();
 		drawFrame();
 	}
 
@@ -979,26 +983,26 @@ void Renderer::mainLoop() {
 
 glm::vec3 Renderer::getKeyboardInput() {
 	const bool* key_states = SDL_GetKeyboardState(NULL);
-	auto dir_vector = glm::vec3(0.0f);
+	auto dir_vector = glm::vec3(0.0f, 0.0f, 0.0f);
+	auto dir_vector_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
+	float cameraSpeed = 0.1f;
 
-	if (key_states[SDL_SCANCODE_W]) {
-		dir_vector -= glm::vec3(0.0f, 0.1f, 0.0f);
-	}
-	else if (key_states[SDL_SCANCODE_S]) {
-		dir_vector += glm::vec3(0.0f, 0.1f, 0.0f);
-	}
-	else if (key_states[SDL_SCANCODE_A]) {
-		dir_vector += glm::vec3(0.1f, 0.0f, 0.0f);
-	}
-	else if (key_states[SDL_SCANCODE_D]) {
-		dir_vector -= glm::vec3(0.1f, 0.0f, 0.0f);
-	}
-	else if (key_states[SDL_SCANCODE_SPACE]) {
-		dir_vector += glm::vec3(0.0f, 0.0f, 0.1f);
-	}
-	else if (key_states[SDL_SCANCODE_LCTRL]) {
-		dir_vector -= glm::vec3(0.0f, 0.0f, 0.1f);
-	}
+	if (key_states[SDL_SCANCODE_W]) { dir_vector -= glm::vec3(0.0f, 1.0f, 0.0f); }
+	if (key_states[SDL_SCANCODE_S]) { dir_vector += glm::vec3(0.0f, 1.0f, 0.0f); }
+	if (key_states[SDL_SCANCODE_A]) { dir_vector += glm::vec3(1.0f, 0.0f, 0.0f); }
+	if (key_states[SDL_SCANCODE_D]) { dir_vector -= glm::vec3(1.0f, 0.0f, 0.0f); }
+	if (key_states[SDL_SCANCODE_SPACE]) { dir_vector += glm::vec3(0.0f, 0.0f, 1.0f); }
+	if (key_states[SDL_SCANCODE_LCTRL]) { dir_vector -= glm::vec3(0.0f, 0.0f, 1.0f); }
+	if (key_states[SDL_SCANCODE_UP]) { dir_vector_look_at -= glm::vec3(0.0f, 1.0f, 0.0f); }
+	if (key_states[SDL_SCANCODE_DOWN]) { dir_vector_look_at += glm::vec3(0.0f, 1.0f, 0.0f); }
+	if (key_states[SDL_SCANCODE_LEFT]) { dir_vector_look_at += glm::vec3(1.0f, 0.0f, 0.0f); }
+	if (key_states[SDL_SCANCODE_RIGHT]) { dir_vector_look_at -= glm::vec3(1.0f, 0.0f, 0.0f); }
+
+	if (glm::length(dir_vector) > 0.0f) { dir_vector = glm::normalize(dir_vector)*cameraSpeed; }
+	if (glm::length(dir_vector_look_at) > 0.0f) { dir_vector_look_at = glm::normalize(dir_vector_look_at)*cameraSpeed; }
+
+	cameraPosOffset += dir_vector;
+	cameraCenterOffset += dir_vector;
 	return dir_vector;
 }
 

@@ -6,7 +6,7 @@ inline constexpr uint32_t HEIGHT = 600;
 inline constexpr const char* MODEL_PATH = R"(C:\dev\vulkan-doc-tutorial\models\Cube.gltf)";
 inline constexpr const char* TEXTURE_PATH = "C:\\dev\\vulkan-doc-tutorial\\textures\\cube.ktx2";
 // Objects to render
-inline constexpr int MAX_OBJECTS = 3;
+inline constexpr int MAX_OBJECTS = 4;
 
 
 
