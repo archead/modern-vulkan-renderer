@@ -71,8 +71,19 @@ struct VertexHasher {
     }
 };
 
-struct UniformBufferObject {
+struct TransformUBO {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
+    glm::mat4 normalMatrix;
+};
+
+struct Light {
+    glm::vec4 pos_intensity; // using vec4 to align the data xyz = pos, w = intensity
+    glm::vec4 color_attenK;
+};
+
+struct LightUBO {
+    Light     light;
+    glm::vec4 cameraPos;
 };

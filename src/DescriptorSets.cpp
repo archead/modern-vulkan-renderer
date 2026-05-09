@@ -13,7 +13,7 @@ void Renderer::createGameObjectDescriptorSets() {
 		gameObject.descriptorSets = descriptorSetAllocator->Allocate(layouts);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vk::DescriptorBufferInfo bufferInfo(gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(UniformBufferObject));
+			vk::DescriptorBufferInfo bufferInfo(gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(TransformUBO));
 			vk::DescriptorImageInfo imageInfo(textureSampler, textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 			std::array descriptorWrites{
@@ -31,7 +31,7 @@ void Renderer::createGameObjectUniformBuffers() {
 		gameObject.uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+			vk::DeviceSize bufferSize = sizeof(TransformUBO);
 			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, gameObject.uniformBuffers[i].buffer, true);
 			gameObject.uniformBuffers[i].mapped = gameObject.uniformBuffers[i].buffer.allocInfo.pMappedData;
 		}
@@ -60,7 +60,10 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 		glm::mat4 initialRotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 		glm::mat4 model = gameObject.getModelMatrix() * initialRotation;
 
-		UniformBufferObject ubo{ model, view, proj };
+		TransformUBO ubo{ model, view, proj };
+
+		// create normal matrix from the model matrix
+		ubo.normalMatrix = glm::transpose(glm::inverse(ubo.model));
 
 		memcpy(gameObject.uniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
 	}
@@ -93,7 +96,7 @@ void Renderer::createDescriptorSets() {
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 
-		vk::DescriptorBufferInfo bufferInfo(matrixAndSamplerUniformBuffers[i].buffer.buffer, 0, sizeof(UniformBufferObject));
+		vk::DescriptorBufferInfo bufferInfo(matrixAndSamplerUniformBuffers[i].buffer.buffer, 0, sizeof(TransformUBO));
 		vk::DescriptorImageInfo imageInfo(textureSampler, textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 		std::array descriptorWrites0{
@@ -103,7 +106,7 @@ void Renderer::createDescriptorSets() {
 		device.updateDescriptorSets(descriptorWrites0, {});
 
 		// do the same for the lighting uniform / descriptor set
-		bufferInfo = vk::DescriptorBufferInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightUbo));
+		bufferInfo = vk::DescriptorBufferInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightUBO));
 		std::array descriptorWrites1 = {vk::WriteDescriptorSet(descriptorSets1[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr ,&bufferInfo)};
 		device.updateDescriptorSets(descriptorWrites1, {});
 	}
@@ -115,7 +118,7 @@ void Renderer::createUniformBuffers() {
 	matrixAndSamplerUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+		vk::DeviceSize bufferSize = sizeof(TransformUBO);
 		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, matrixAndSamplerUniformBuffers[i].buffer, true);
 		matrixAndSamplerUniformBuffers[i].mapped = matrixAndSamplerUniformBuffers[i].buffer.allocInfo.pMappedData;
 	}
@@ -125,7 +128,7 @@ void Renderer::createUniformBuffers() {
 	lightingUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vk::DeviceSize bufferSize = sizeof(LightUbo);
+		vk::DeviceSize bufferSize = sizeof(LightUBO);
 		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, lightingUniformBuffers[i].buffer, true);
 		lightingUniformBuffers[i].mapped = lightingUniformBuffers[i].buffer.allocInfo.pMappedData;
 	}
@@ -136,7 +139,7 @@ void Renderer::updateUniformBuffer(uint32_t imageIndex) {
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-	UniformBufferObject ubo = {};
+	TransformUBO ubo = {};
 	ubo.model = glm::rotate(glm::mat4(1.0f), sin(time * glm::radians(90.0f) * 0.5f) * 0.8f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.view = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.proj = glm::perspective(
@@ -144,10 +147,11 @@ void Renderer::updateUniformBuffer(uint32_t imageIndex) {
 		static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),
 		0.1f, 50.0f);
 	ubo.proj[1][1] *= -1;
+	ubo.normalMatrix = glm::transpose(glm::inverse(ubo.model));
 
 	memcpy(matrixAndSamplerUniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
 
-	LightUbo light_ubo            = {};
+	LightUBO light_ubo            = {};
 	light_ubo.light.color_attenK  = glm::vec4(lightColor, lightAttenK);
 	light_ubo.cameraPos           = glm::vec4(cameraPos, 0.0f);
 	light_ubo.light.pos_intensity = glm::vec4(lightPos, lightIntesity);

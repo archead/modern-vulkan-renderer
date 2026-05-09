@@ -5,12 +5,13 @@ struct VSInput {
     float3 inNormal;
 };
 
-struct UniformBuffer{
+struct TransformUBO{
     float4x4 model;
     float4x4 view;
     float4x4 proj;
+    float4x4 normalMatrix; // inverse transpose of the model matrix casted down to 3x3
 };
-ConstantBuffer<UniformBuffer> ubo : register(b0, space0);
+ConstantBuffer<TransformUBO> ubo : register(b0, space0);
 
 struct Light {
   float3 pos;
@@ -44,7 +45,8 @@ VSOutput vertMain(VSInput input) {
 
     output.fragTexCoord = input.inTexCoord;
     output.color = input.inColor;
-    output.normal = normalize(mul((float3x3)ubo.model, input.inNormal));
+
+    output.normal = normalize(mul((float3x3)ubo.normalMatrix, input.inNormal));
 
     return output;
 }

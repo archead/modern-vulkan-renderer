@@ -101,15 +101,7 @@ private:
 
 	std::array<GameObject, MAX_OBJECTS> gameObjects;
 
-	struct Light {
-		glm::vec4 pos_intensity; // using vec4 to align the data xyz = pos, w = intensity
-		glm::vec4 color_attenK;
-	};
 
-	struct LightUbo {
-		Light     light;
-		glm::vec4 cameraPos;
-	};
 
 	glm::vec3 cameraPos          = {0.0f, 2.0f, 2.0f};
 	glm::vec3 cameraCenter       = {0.0f, 0.0f, 0.0f};
