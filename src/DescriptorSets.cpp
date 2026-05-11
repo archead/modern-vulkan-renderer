@@ -39,11 +39,6 @@ void Renderer::createGameObjectUniformBuffers() {
 }
 
 void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
-	// Probably not needed
-	static auto startTime = std::chrono::high_resolution_clock::now();
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
 	// Camera and proj matrices that are shared among all objects
 	glm::mat4 view = glm::lookAt(cameraPos + cameraPosOffset, cameraCenter + cameraCenterOffset, glm::vec3(0.0f, 0.0f, 1.0f));
 	glm::mat4 proj = glm::perspective(
@@ -51,12 +46,10 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 		static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),
 		0.1f, 50.0f
 	);
-
 	proj[1][1] *= -1;
 
 	for (auto& gameObject : gameObjects) {
 		// add some rotation to each object
-		gameObject.rotation.y = time;
 		glm::mat4 initialRotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 		glm::mat4 model = gameObject.getModelMatrix() * initialRotation;
 

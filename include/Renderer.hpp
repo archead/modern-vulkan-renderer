@@ -101,8 +101,6 @@ private:
 
 	std::array<GameObject, MAX_OBJECTS> gameObjects;
 
-
-
 	glm::vec3 cameraPos          = {0.0f, 2.0f, 2.0f};
 	glm::vec3 cameraCenter       = {0.0f, 0.0f, 0.0f};
 	glm::vec3 cameraPosOffset    = {0.0f, 0.0f, 0.0f};

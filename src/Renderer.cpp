@@ -1051,13 +1051,7 @@ void Renderer::drawDebugMenu() {
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
 	ImGui::Begin("Debug Manu");
-	for (int i = 0; i < gameObjects.size(); i++) {
-		ImGui::PushID(i);
-		ImGui::DragFloat3("Object Position", glm::value_ptr(gameObjects[i].position),0.025f);
-		ImGui::DragFloat3("Object Rotation", glm::value_ptr(gameObjects[i].rotation), 0.025f);
-		ImGui::DragFloat3("Object Scale", glm::value_ptr(gameObjects[i].scale), 0.025f);
-		ImGui::PopID();
-	}
+
 	ImGui::ColorEdit3("Light Color", glm::value_ptr(lightColor));
 	ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.025f);
 	ImGui::DragFloat("Light Intensity", &lightIntesity, 0.025f);

@@ -21,7 +21,7 @@ void Renderer::createCommandBuffers() {
 	commandBuffers = vk::raii::CommandBuffers(device, allocInfo);
 }
 
-vk::raii::CommandBuffer Renderer::Renderer::beginSingleTimeCommands() {
+vk::raii::CommandBuffer Renderer::beginSingleTimeCommands() {
 	vk::CommandBufferAllocateInfo allocInfo = {};
 	allocInfo.commandPool = commandPool;
 	allocInfo.level = vk::CommandBufferLevel::ePrimary;
