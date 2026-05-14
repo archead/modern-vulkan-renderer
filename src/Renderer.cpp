@@ -288,7 +288,7 @@ void Renderer::createGraphicsPipeline() {
 
 	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
 	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-	                                      vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+										  vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
 	colorBlendAttachment.blendEnable         = vk::False; // disabling color blending for now.
 	colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
 	colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
@@ -303,7 +303,7 @@ void Renderer::createGraphicsPipeline() {
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments    = &colorBlendAttachment;
 
-	std::array<vk::DescriptorSetLayout, 2> setLayouts = {*globalSetLayout, *objectSetLayout};
+	std::array<vk::DescriptorSetLayout, 2> setLayouts = { *globalSetLayout, *objectSetLayout};
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
@@ -1024,11 +1024,11 @@ void Renderer::cleanup() {
 		}
 	}
 
-	for (auto& buffer : lightingUniformBuffers) {
+	for (auto& buffer : globalUniformBuffers) {
 		destroyBuffer(allocator, buffer.buffer);
 	}
 
-	for (auto& buffer : matrixAndSamplerUniformBuffers) {
+	for (auto& buffer : lightingUniformBuffers) {
 		destroyBuffer(allocator, buffer.buffer);
 	}
 

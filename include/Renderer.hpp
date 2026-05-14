@@ -62,14 +62,12 @@ private:
 
 	// set 0 (global)
 	std::vector<AllocatedUniformBuffer>		globalUniformBuffers;
+	std::vector<AllocatedUniformBuffer>		lightingUniformBuffers;
 	vk::raii::DescriptorSetLayout           globalSetLayout = nullptr;
 	std::vector<vk::raii::DescriptorSet>    globalDescriptorSets;
-	// set 1 (object)
+	// set 1 (object) NOTE: the sets and buffers are declared per gameObject
 	vk::raii::DescriptorSetLayout			objectSetLayout = nullptr;
 
-	std::vector<vk::raii::DescriptorSet>    descriptorSets1;
-	std::vector<AllocatedUniformBuffer>     matrixAndSamplerUniformBuffers = {};
-	std::vector<AllocatedUniformBuffer>		lightingUniformBuffers = {};
 	PoolSizes                               poolSize{};
 	DescriptorSetLayoutBuilder              layoutBuilder{};
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;

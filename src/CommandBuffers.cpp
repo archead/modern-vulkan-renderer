@@ -117,8 +117,8 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 
 	for (const auto& gameObject : gameObjects) {
 		std::array<vk::DescriptorSet, 2> descriptorSets = {
-			*gameObject.descriptorSets[currentFrame],
-			*globalDescriptorSets[currentFrame]
+			*globalDescriptorSets[currentFrame],
+			*gameObject.descriptorSets[currentFrame]
 		};
 		commandBuffers[currentFrame].bindDescriptorSets(
 			vk::PipelineBindPoint::eGraphics,
