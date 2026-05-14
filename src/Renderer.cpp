@@ -303,7 +303,7 @@ void Renderer::createGraphicsPipeline() {
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments    = &colorBlendAttachment;
 
-	std::array<vk::DescriptorSetLayout, 2> setLayouts = {*descriptorSetLayout0, *descriptorSetLayout1};
+	std::array<vk::DescriptorSetLayout, 2> setLayouts = {*globalSetLayout, *objectSetLayout};
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());

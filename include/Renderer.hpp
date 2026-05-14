@@ -60,15 +60,19 @@ private:
 	AllocatedBuffer vertexBuffer = {};
 	AllocatedBuffer indexBuffer  = {};
 
+	// set 0 (global)
+	std::vector<AllocatedUniformBuffer>		globalUniformBuffers;
+	vk::raii::DescriptorSetLayout           globalSetLayout = nullptr;
+	std::vector<vk::raii::DescriptorSet>    globalDescriptorSets;
+	// set 1 (object)
+	vk::raii::DescriptorSetLayout			objectSetLayout = nullptr;
+
+	std::vector<vk::raii::DescriptorSet>    descriptorSets1;
 	std::vector<AllocatedUniformBuffer>     matrixAndSamplerUniformBuffers = {};
 	std::vector<AllocatedUniformBuffer>		lightingUniformBuffers = {};
 	PoolSizes                               poolSize{};
-	vk::raii::DescriptorSetLayout           descriptorSetLayout0 = nullptr; // used for matrices and the textureSampler
-	vk::raii::DescriptorSetLayout			descriptorSetLayout1 = nullptr; // used for Light properties
 	DescriptorSetLayoutBuilder              layoutBuilder{};
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
-	std::vector<vk::raii::DescriptorSet>    descriptorSets0;
-	std::vector<vk::raii::DescriptorSet>    descriptorSets1;
 	vk::raii::DescriptorPool                imGuiDescriptorPool = nullptr;
 
 	uint32_t            mipLevels        = 1;

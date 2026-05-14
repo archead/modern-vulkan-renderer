@@ -5,14 +5,15 @@ struct VSInput {
     float3 inNormal;
 };
 
-struct TransformUBO{
-    float4x4 model;
+struct GlobalUBO{
     float4x4 view;
     float4x4 proj;
-    float4x4 normalMatrix; // inverse transpose of the model matrix casted down to 3x3
 };
-ConstantBuffer<TransformUBO> ubo : register(b0, space0);
 
+struct ObjectUBO{
+      float4x4 model;
+      float4x4 normalMatrix; // inverse transpose of the model matrix casted down to 3x3
+  };
 struct Light {
   float3 pos;
   float intensity;
@@ -25,7 +26,6 @@ struct LightBuffer {
     float3 cameraPos;
     float _pad0; // data padding (everything needs to be aligned to sets of 16 bytes (float3 + float = 16 bytes)
 };
-ConstantBuffer<LightBuffer> lightUbo : register(b0, space1);
 
 struct VSOutput {
     float4 pos : SV_Position;
@@ -35,18 +35,25 @@ struct VSOutput {
     float3 normal;
 };
 
+[[vk::binding(1, 0)]]
+ConstantBuffer<LightBuffer> lightUbo;
+[[vk::binding(0, 1)]]
+ConstantBuffer<ObjectUBO> objectUbo;
+[[vk::binding(0, 0)]]
+ConstantBuffer<GlobalUBO> globalUbo;
+
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
     VSOutput output;
-    output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPosition, 1.0))));
+    output.pos = mul(globalUbo.proj, mul(globalUbo.view, mul(objectUbo.model, float4(input.inPosition, 1.0))));
 
-    float4 worldPos = mul(ubo.model, float4(input.inPosition, 1.0));
+    float4 worldPos = mul(objectUbo.model, float4(input.inPosition, 1.0));
     output.fragPos = worldPos.xyz;
 
     output.fragTexCoord = input.inTexCoord;
     output.color = input.inColor;
 
-    output.normal = normalize(mul((float3x3)ubo.normalMatrix, input.inNormal));
+    output.normal = normalize(mul((float3x3)objectUbo.normalMatrix, input.inNormal));
 
     return output;
 }
