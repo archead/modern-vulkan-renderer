@@ -38,7 +38,6 @@ void Renderer::createGameObjectUniformBuffers() {
 void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 
 	for (auto& gameObject : gameObjects) {
-		// add some rotation to each object
 		glm::mat4 model = gameObject.getModelMatrix();
 		// apply transformations to the model matrix here (rotate, scale, etc.)
 
@@ -100,22 +99,22 @@ void Renderer::createUniformBuffers() {
 }
 
 void Renderer::updateUniformBuffer(uint32_t imageIndex) {
-	GlobalUBO ubo = {};
-	ubo.view = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(
+	GlobalUBO globalUbo = {};
+	globalUbo.view = glm::lookAt(cameraPos + cameraPosOffset, cameraCenter + cameraCenterOffset, glm::vec3(0.0f, 0.0f, 1.0f));
+	globalUbo.proj = glm::perspective(
 		glm::radians(45.0f),
 		static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),
 		0.1f, 50.0f);
-	ubo.proj[1][1] *= -1;
+	globalUbo.proj[1][1] *= -1;
 
-	memcpy(globalUniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
+	memcpy(globalUniformBuffers[imageIndex].mapped, &globalUbo, sizeof(globalUbo));
 
-	LightingUBO light_ubo            = {};
-	light_ubo.light.color_attenK  = glm::vec4(lightColor, lightAttenK);
-	light_ubo.cameraPos           = glm::vec4(cameraPos, 0.0f);
-	light_ubo.light.pos_intensity = glm::vec4(lightPos, lightIntesity);
+	LightingUBO lightingUbo         = {};
+	lightingUbo.light.color_attenK  = glm::vec4(lightColor, lightAttenK);
+	lightingUbo.cameraPos           = glm::vec4(cameraPos, 0.0f);
+	lightingUbo.light.pos_intensity = glm::vec4(lightPos, lightIntesity);
 
-	memcpy(lightingUniformBuffers[imageIndex].mapped, &light_ubo, sizeof(light_ubo));
+	memcpy(lightingUniformBuffers[imageIndex].mapped, &lightingUbo, sizeof(lightingUbo));
 }
 
 
@@ -149,17 +148,17 @@ void DescriptorSetAllocator::CreatePool() {
 	vk::DescriptorPoolCreateInfo poolInfo(m_flags, m_poolSizes.maxSets, m_poolSizes.sizes.size(), m_poolSizes.sizes.data(), nullptr);
 	vk::raii::DescriptorPool descriptorPool(m_device, poolInfo);
 	descriptorPools.emplace_back(std::move(descriptorPool));
-	currentPool = &descriptorPools.back();
+	currentPoolIndex = descriptorPools.size() - 1;
 }
 
 vk::DescriptorPool DescriptorSetAllocator::getCurrentPool() const {
-	return **currentPool;
+	return *descriptorPools[currentPoolIndex];
 }
 
 std::vector<vk::raii::DescriptorSet> DescriptorSetAllocator::Allocate(std::vector<vk::DescriptorSetLayout> layouts) {
-	if (!currentPool) { CreatePool(); }
+	if (descriptorPools.empty()) { CreatePool(); }
 
-	vk::DescriptorSetAllocateInfo allocInfo(**currentPool, layouts.size(), layouts.data(), nullptr);
+	vk::DescriptorSetAllocateInfo allocInfo(*descriptorPools[currentPoolIndex], layouts.size(), layouts.data(), nullptr);
 	std::vector<vk::raii::DescriptorSet> sets = {};
 	try {
 		sets = m_device.allocateDescriptorSets(allocInfo);
@@ -168,7 +167,7 @@ std::vector<vk::raii::DescriptorSet> DescriptorSetAllocator::Allocate(std::vecto
 		// can throw VK_ERROR_OUT_OF_POOL_MEMORY OR VK_ERROR_FRAGMENTED_POOL
 		// retry the allocation one more time after creating a new pool
 		CreatePool();
-		allocInfo.descriptorPool = **currentPool;
+		allocInfo.descriptorPool = *descriptorPools[currentPoolIndex];
 		sets = m_device.allocateDescriptorSets(allocInfo);
 
 	}

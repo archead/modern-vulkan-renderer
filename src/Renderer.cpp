@@ -1015,6 +1015,17 @@ void Renderer::dumpAllocationStats() {
 
 void Renderer::cleanup() {
 
+	device.waitIdle();
+
+	// 1) Destroy descriptor sets first
+	for (auto& obj : gameObjects) {
+		obj.descriptorSets.clear();
+	}
+	globalDescriptorSets.clear();
+
+	// 2) Then destroy pools/allocator
+	descriptorSetAllocator.reset();
+
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 

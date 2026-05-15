@@ -33,5 +33,5 @@ private:
     PoolSizes m_poolSizes;
     vk::DescriptorPoolCreateFlags m_flags;
     std::vector<vk::raii::DescriptorPool> descriptorPools;
-    vk::raii::DescriptorPool* currentPool = nullptr;
+    size_t currentPoolIndex = 0;
 };

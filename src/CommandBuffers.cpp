@@ -115,17 +115,20 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 
 	commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
 
+	commandBuffers[currentFrame].bindDescriptorSets(
+		vk::PipelineBindPoint::eGraphics,
+		*pipelineLayout,
+		0,
+		*globalDescriptorSets[currentFrame],
+		{});
+
 	for (const auto& gameObject : gameObjects) {
-		std::array<vk::DescriptorSet, 2> descriptorSets = {
-			*globalDescriptorSets[currentFrame],
-			*gameObject.descriptorSets[currentFrame]
-		};
 		commandBuffers[currentFrame].bindDescriptorSets(
 			vk::PipelineBindPoint::eGraphics,
-			pipelineLayout,
-			0,
-			descriptorSets,
-			nullptr
+			*pipelineLayout,
+			1,
+			*gameObject.descriptorSets[currentFrame],
+			{}
 		);
 		commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
 	}
