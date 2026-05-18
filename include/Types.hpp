@@ -15,6 +15,7 @@ struct AllocatedBuffer {
 
 struct AllocatedImage {
     VkImage image = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE; // mainly used with KTX2 due to UploadEX()
     VmaAllocation allocation = VK_NULL_HANDLE;
     VmaAllocationInfo allocInfo{}; // optional
 };

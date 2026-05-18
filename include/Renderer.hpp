@@ -6,7 +6,7 @@
 #include "Types.hpp"
 #include "DescriptorSets.hpp"
 #include "Config.hpp"
-
+#include "ktxvulkan.h"
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_sdl3.h>
 
@@ -73,8 +73,10 @@ private:
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
 	vk::raii::DescriptorPool                imGuiDescriptorPool = nullptr;
 
+	ktxVulkanTexture    ktxVkTexture{};
 	uint32_t            mipLevels        = 1;
 	AllocatedImage      textureImage     = {};
+	vk::Format          textureFormat    = vk::Format::eUndefined;
 	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler   textureSampler   = nullptr;
 

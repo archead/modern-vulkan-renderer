@@ -4,6 +4,21 @@
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 
+// set layout config
+void Renderer::createDescriptorSetLayouts() {
+	// per frame ubos
+	DescriptorSetLayoutBuilder builder0;
+	builder0.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex); // view and proj matrices
+	builder0.addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment); // light ubo
+	globalSetLayout = builder0.build(device);
+
+	// per object ubo + texture sampler
+	DescriptorSetLayoutBuilder builder1;
+	builder1.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex); // model and normal matrices
+	//	builder1.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment); // texture sampler
+	objectSetLayout = builder1.build(device);
+}
+
 // per-game object descriptors
 void Renderer::createGameObjectDescriptorSets() {
 	for (auto& gameObject : gameObjects) {
@@ -50,19 +65,6 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 }
 
 
-void Renderer::createDescriptorSetLayouts() {
-	// per frame ubos
-	DescriptorSetLayoutBuilder builder0;
-	builder0.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex); // view and proj matrices
-	builder0.addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment); // light ubo
-	globalSetLayout = builder0.build(device);
-
-	// per object ubo + texture sampler
-	DescriptorSetLayoutBuilder builder1;
-	builder1.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex); // model and normal matrices
-//	builder1.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment); // texture sampler
-	objectSetLayout = builder1.build(device);
-}
 
 // per-frame descriptors
 void Renderer::createDescriptorSets() {

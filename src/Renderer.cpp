@@ -19,11 +19,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-// #define STB_IMAGE_IMPLEMENTATION
-// #include <stb_image.h>
-
 #include <ktx.h>
-
+#include "ktxvulkan.h"
 // #define TINYGLTF_IMPLEMENTATION
 // #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
@@ -36,6 +33,7 @@
 #define VMA_IMPLEMENTATION
 #include "Renderer.hpp"
 #include <vk_mem_alloc.h>
+
 #include "Types.hpp"
 #include "glm/gtc/type_ptr.inl"
 
@@ -435,10 +433,34 @@ void Renderer::cleanupSwapchain() {
 
 void Renderer::createTextureImage() {
 	// Load KTX texture instead of using std_image
-	ktxTexture* kTexture;
-	KTX_error_code result = ktxTexture_CreateFromNamedFile(TEXTURE_PATH, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &kTexture);
-	if (result != KTX_SUCCESS) { throw std::runtime_error("failed to load ktx texture image!"); }
+	ktxTexture2* kTexture;
+	KTX_error_code result = ktxTexture2_CreateFromNamedFile(TEXTURE_PATH, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &kTexture);
 
+	if (result != KTX_SUCCESS) { throw std::runtime_error("failed to load ktx texture image!"); }
+	if (kTexture->vkFormat == VK_FORMAT_UNDEFINED) { ktxTexture2_Destroy(kTexture); throw std::runtime_error("KTX2 has VK_FORMAT UNDEFINED (needs transcoding)"); }
+
+	mipLevels = kTexture->numLevels;
+	textureFormat =	static_cast<vk::Format>(kTexture->vkFormat);
+
+	ktxVulkanDeviceInfo deviceInfo{};
+	result = ktxVulkanDeviceInfo_Construct(&deviceInfo, *physicalDevice, *device, *graphicsQueue, *commandPool, nullptr);
+
+	if (result != KTX_SUCCESS) { throw std::runtime_error("ktxVulkanDeviceInfo_Construct() failed!"); }
+
+	// does all the hard work, creates staging buffer, a VkImage buffer, does all the transitions, all is left is to use the created ktxVulkanTexture object
+	ktxVulkanTexture m_ktxVkTexture{};
+	result = ktxTexture2_VkUploadEx(kTexture, &deviceInfo, &m_ktxVkTexture, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	ktxVkTexture = m_ktxVkTexture;
+
+	if (result != KTX_SUCCESS) { ktxVulkanDeviceInfo_Destruct(&deviceInfo); ktxTexture2_Destroy(kTexture); throw std::runtime_error("ktxTexture_VkUploadEx() failed!"); }
+
+	textureImage.image = m_ktxVkTexture.image;
+	textureImage.memory = m_ktxVkTexture.deviceMemory;
+
+	ktxVulkanDeviceInfo_Destruct(&deviceInfo);
+	ktxTexture2_Destroy(kTexture);
+
+	/*
 	uint32_t texWidth = kTexture->baseWidth;
 	uint32_t texHeight = kTexture->baseHeight;
 	ktx_size_t imageSize = ktxTexture_GetImageSize(kTexture, 0);
@@ -463,6 +485,7 @@ void Renderer::createTextureImage() {
 		);
 
 	transitionImageLayout(vk::Image(textureImage.image), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
+
 	std::vector<vk::BufferImageCopy> regions;
 	regions.reserve(mipLevels);
 
@@ -471,17 +494,19 @@ void Renderer::createTextureImage() {
 		ktxTexture_GetImageOffset(kTexture, i, 0, 0, &offset);
 
 		vk::BufferImageCopy r{};
-		r.bufferOffset = offset;
+		r.bufferOffset     = offset;
 		r.imageSubresource = {vk::ImageAspectFlagBits::eColor, i, 0, 1};
-		r.imageOffset = vk::Offset3D{0, 0, 0};
-		r.imageExtent = vk::Extent3D{ std::max(1u, texWidth >> i), std::max(1u, texHeight >> i), 1 };
+		r.imageOffset      = vk::Offset3D{0, 0, 0};
+		r.imageExtent      = vk::Extent3D{std::max(1u, texWidth >> i), std::max(1u, texHeight >> i), 1};
 
 		regions.push_back(r);
 	}
+
 	copyBufferToImage(vk::Buffer(stagingBuffer.buffer), vk::Image(textureImage.image), vk::ImageLayout::eTransferDstOptimal, regions);
 	transitionImageLayout(textureImage.image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mipLevels);
 	destroyBuffer(allocator, stagingBuffer);
 	ktxTexture_Destroy(kTexture);
+*/
 }
 
 void Renderer::transitionImageLayout(const vk::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) {
@@ -545,7 +570,7 @@ vk::raii::ImageView Renderer::createImageView(vk::Image image, vk::Format format
 }
 
 void Renderer::createTextureImageView() {
-	textureImageView = createImageView(vk::Image(textureImage.image), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, mipLevels);
+	textureImageView = createImageView(vk::Image(textureImage.image), textureFormat, vk::ImageAspectFlagBits::eColor, mipLevels);
 }
 
 void Renderer::createTextureSampler() {
@@ -878,7 +903,7 @@ void Renderer::setupGameObjects() {
 	gameObjects[1].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[1].scale    = {0.5f, 0.5f, 0.5f};
 
-	gameObjects[2].position = {-2.0f, 0.0f, -2.0f};
+	gameObjects[2].position = {-1.0f, 0.0f, -2.0f};
 	gameObjects[2].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
 
@@ -1021,6 +1046,7 @@ void Renderer::cleanup() {
 	for (auto& obj : gameObjects) {
 		obj.descriptorSets.clear();
 	}
+
 	globalDescriptorSets.clear();
 
 	// 2) Then destroy pools/allocator
@@ -1046,7 +1072,7 @@ void Renderer::cleanup() {
 	destroyBuffer(allocator, vertexBuffer);
 	destroyBuffer(allocator, indexBuffer);
 
-	destroyImage(allocator, textureImage);
+	ktxVulkanTexture_Destruct(&ktxVkTexture, *device, nullptr);
 	destroyImage(allocator, depthImage);
 	destroyImage(allocator, colorImage);
 	//dumpAllocationStats();
