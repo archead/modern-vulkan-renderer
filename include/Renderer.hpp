@@ -73,7 +73,7 @@ private:
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
 	vk::raii::DescriptorPool                imGuiDescriptorPool = nullptr;
 
-	ktxVulkanTexture    ktxVkTexture{};
+	ktxVulkanTexture    ktxVkTexture     = {};
 	uint32_t            mipLevels        = 1;
 	AllocatedImage      textureImage     = {};
 	vk::Format          textureFormat    = vk::Format::eUndefined;
@@ -87,6 +87,15 @@ private:
 	vk::raii::ImageView     colorImageView = nullptr;
 
 	std::vector<const char *> deviceExtensions = { vk::KHRSwapchainExtensionName };
+
+	struct ModelTexture {
+		vk::raii::Image        colorImage     = nullptr;
+		vk::raii::DeviceMemory memory         = nullptr;
+		vk::raii::ImageView    colorImageView = nullptr;
+		vk::Format             colorFormat    = vk::Format::eUndefined;
+		ktxVulkanTexture       ktxVkTexture   = {};
+		uint32_t               mipLevels      = 1;
+	};
 
 	struct GameObject {
 		glm::vec3 position = {0.0f, 0.0f, 0.0f};
@@ -215,8 +224,6 @@ private:
 	vk::Format findDepthFormat();
 
 	bool hasStencilComponent(vk::Format format);
-
-	void loadModel();
 
 	void loadModelGLTF();
 

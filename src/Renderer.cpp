@@ -459,54 +459,6 @@ void Renderer::createTextureImage() {
 
 	ktxVulkanDeviceInfo_Destruct(&deviceInfo);
 	ktxTexture2_Destroy(kTexture);
-
-	/*
-	uint32_t texWidth = kTexture->baseWidth;
-	uint32_t texHeight = kTexture->baseHeight;
-	ktx_size_t imageSize = ktxTexture_GetImageSize(kTexture, 0);
-	ktx_size_t totalImageSize = ktxTexture_GetDataSize(kTexture);
-	ktx_uint8_t* ktxTextureData = ktxTexture_GetData(kTexture);
-	mipLevels = kTexture->numLevels;
-
-	AllocatedBuffer stagingBuffer = {};
-	createBuffer(totalImageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
-
-	void* data = nullptr;
-	vmaMapMemory(allocator, stagingBuffer.allocation, &data);
-	memcpy(data, ktxTextureData, totalImageSize);
-	vmaUnmapMemory(allocator, stagingBuffer.allocation);
-
-	createImage(texWidth, texHeight, mipLevels,
-		VK_SAMPLE_COUNT_1_BIT,
-		VK_FORMAT_R8G8B8A8_SRGB,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		textureImage
-		);
-
-	transitionImageLayout(vk::Image(textureImage.image), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
-
-	std::vector<vk::BufferImageCopy> regions;
-	regions.reserve(mipLevels);
-
-	for (uint32_t i = 0; i < mipLevels; i++) {
-		ktx_size_t offset;
-		ktxTexture_GetImageOffset(kTexture, i, 0, 0, &offset);
-
-		vk::BufferImageCopy r{};
-		r.bufferOffset     = offset;
-		r.imageSubresource = {vk::ImageAspectFlagBits::eColor, i, 0, 1};
-		r.imageOffset      = vk::Offset3D{0, 0, 0};
-		r.imageExtent      = vk::Extent3D{std::max(1u, texWidth >> i), std::max(1u, texHeight >> i), 1};
-
-		regions.push_back(r);
-	}
-
-	copyBufferToImage(vk::Buffer(stagingBuffer.buffer), vk::Image(textureImage.image), vk::ImageLayout::eTransferDstOptimal, regions);
-	transitionImageLayout(textureImage.image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mipLevels);
-	destroyBuffer(allocator, stagingBuffer);
-	ktxTexture_Destroy(kTexture);
-*/
 }
 
 void Renderer::transitionImageLayout(const vk::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) {
@@ -576,27 +528,21 @@ void Renderer::createTextureImageView() {
 void Renderer::createTextureSampler() {
 	vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
 
-	vk::SamplerCreateInfo samplerInfo = {};
-	samplerInfo.magFilter = vk::Filter::eLinear;
-	samplerInfo.minFilter = vk::Filter::eLinear;
-
-	samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = vk::LodClampNone;
-
-	samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
-	samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
-	samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
-
-	samplerInfo.anisotropyEnable = vk::True;
-	samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-
-	samplerInfo.compareEnable = vk::False;
-	samplerInfo.compareOp = vk::CompareOp::eAlways;
-
-	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
-
+	vk::SamplerCreateInfo samplerInfo   = {};
+	samplerInfo.magFilter               = vk::Filter::eLinear;
+	samplerInfo.minFilter               = vk::Filter::eLinear;
+	samplerInfo.mipmapMode              = vk::SamplerMipmapMode::eLinear;
+	samplerInfo.mipLodBias              = 0.0f;
+	samplerInfo.minLod                  = 0.0f;
+	samplerInfo.maxLod                  = vk::LodClampNone;
+	samplerInfo.addressModeU            = vk::SamplerAddressMode::eRepeat;
+	samplerInfo.addressModeV            = vk::SamplerAddressMode::eRepeat;
+	samplerInfo.addressModeW            = vk::SamplerAddressMode::eRepeat;
+	samplerInfo.anisotropyEnable        = vk::True;
+	samplerInfo.maxAnisotropy           = properties.limits.maxSamplerAnisotropy;
+	samplerInfo.compareEnable           = vk::False;
+	samplerInfo.compareOp               = vk::CompareOp::eAlways;
+	samplerInfo.borderColor             = vk::BorderColor::eIntOpaqueBlack;
 	samplerInfo.unnormalizedCoordinates = vk::False;
 
 	textureSampler = vk::raii::Sampler(device, samplerInfo);
@@ -642,45 +588,6 @@ vk::Format Renderer::findDepthFormat() {
 
 bool Renderer::hasStencilComponent(vk::Format format) {
 	return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
-}
-
-void Renderer::loadModel() {
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-	std::string warn, err;
-
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH)) {
-		throw std::runtime_error(warn + err);
-	}
-
-	std::unordered_map<Vertex, uint32_t, VertexHasher> uniqueVertices{};
-
-	for (const auto& shape : shapes) {
-		for (const auto& index : shape.mesh.indices) {
-			Vertex vertex{};
-
-			vertex.pos = {
-				attrib.vertices[3 * index.vertex_index + 0],
-				attrib.vertices[3 * index.vertex_index + 1],
-				attrib.vertices[3 * index.vertex_index + 2],
-			};
-
-			vertex.texCoord = {
-				attrib.texcoords[2 * index.texcoord_index + 0],
-				1.0f - attrib.texcoords[2 * index.texcoord_index + 1],
-			};
-
-			vertex.color = {1.0f, 1.0f, 1.0f};
-
-			if (uniqueVertices.count(vertex) == 0) {
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-				vertices.push_back(vertex);
-			}
-
-			indices.push_back(uniqueVertices[vertex]);
-		}
-	}
 }
 
 void Renderer::loadModelGLTF() {

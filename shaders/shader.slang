@@ -1,7 +1,7 @@
 struct VSInput {
     float3 inPosition : POSITION;
     float3 inColor : COLOR0;
-    float2 inTexCoord;
+    float2 inTexCoord : TEXCOORD0;
     float3 inNormal : NORMAL;
 };
 
@@ -35,6 +35,8 @@ struct VSOutput {
     float3 normal;
 };
 
+
+
 [[vk::binding(0, 0)]]
 ConstantBuffer<GlobalUBO> globalUbo;
 [[vk::binding(1, 0)]]
@@ -57,7 +59,7 @@ VSOutput vertMain(VSInput input) {
 
     return output;
 }
-
+[[vk::binding(1, 1)]]
 Sampler2D texture;
 
 [shader("fragment")]
@@ -97,6 +99,8 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     float3 diffuse = angleOfCoincidence * diffuseColor * attenIntensity;
     float3 specular = specColor * blinnTerm * attenIntensity;
 
-    //return texture.Sample(vertIn.fragTexCoord);
-    return float4(ambient + diffuse + specular, 1.0);
+    float4 albedo = texture.Sample(vertIn.fragTexCoord);
+
+    float3 color = albedo.rgb * (ambient + diffuse) + specular;
+    return float4(color, albedo.a);
 }

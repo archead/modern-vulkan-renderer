@@ -15,7 +15,7 @@ void Renderer::createDescriptorSetLayouts() {
 	// per object ubo + texture sampler
 	DescriptorSetLayoutBuilder builder1;
 	builder1.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex); // model and normal matrices
-	//	builder1.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment); // texture sampler
+	builder1.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment); // texture sampler
 	objectSetLayout = builder1.build(device);
 }
 
@@ -28,11 +28,11 @@ void Renderer::createGameObjectDescriptorSets() {
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vk::DescriptorBufferInfo bufferInfo(gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(ObjectUBO));
-			//vk::DescriptorImageInfo imageInfo(textureSampler, textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+			vk::DescriptorImageInfo imageInfo(*textureSampler, *textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-			std::array<vk::WriteDescriptorSet, 1> descriptorWrites {
+			std::array<vk::WriteDescriptorSet, 2> descriptorWrites {
 				vk::WriteDescriptorSet(gameObject.descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo),
-			//	vk::WriteDescriptorSet(gameObject.descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr)
+				vk::WriteDescriptorSet(gameObject.descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr)
 			};
 			device.updateDescriptorSets(descriptorWrites, {});
 		}
@@ -113,7 +113,7 @@ void Renderer::updateUniformBuffer(uint32_t imageIndex) {
 
 	LightingUBO lightingUbo         = {};
 	lightingUbo.light.color_attenK  = glm::vec4(lightColor, lightAttenK);
-	lightingUbo.cameraPos           = glm::vec4(cameraPos, 0.0f);
+	lightingUbo.cameraPos           = glm::vec4(cameraPosOffset, 0.0f);
 	lightingUbo.light.pos_intensity = glm::vec4(lightPos, lightIntesity);
 
 	memcpy(lightingUniformBuffers[imageIndex].mapped, &lightingUbo, sizeof(lightingUbo));
