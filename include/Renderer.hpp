@@ -89,18 +89,31 @@ private:
 	std::vector<const char *> deviceExtensions = { vk::KHRSwapchainExtensionName };
 
 	struct ModelTexture {
-		vk::raii::Image        colorImage     = nullptr;
-		vk::raii::DeviceMemory memory         = nullptr;
-		vk::raii::ImageView    colorImageView = nullptr;
-		vk::Format             colorFormat    = vk::Format::eUndefined;
-		ktxVulkanTexture       ktxVkTexture   = {};
-		uint32_t               mipLevels      = 1;
+		ktxVulkanTexture             ktxVkTexture = {};
+		const VkAllocationCallbacks *allocator    = nullptr;
+		VkDevice                     device       = VK_NULL_HANDLE;
+		vk::Format                   colorFormat  = vk::Format::eUndefined;
+		uint32_t                     mipLevels    = 1;
+		vk::raii::Sampler            sampler      = nullptr;
+
+		~ModelTexture() {
+			if (device && ktxVkTexture.image != VK_NULL_HANDLE) {
+				ktxVulkanTexture_Destruct(&ktxVkTexture, device, allocator);
+				ktxVkTexture = {};
+			}
+		}
+
+		// remove copy and assign operators / constructors
+		ModelTexture(const ModelTexture&) = delete;
+		ModelTexture& operator=(const ModelTexture&) = delete;
 	};
 
 	struct GameObject {
 		glm::vec3 position = {0.0f, 0.0f, 0.0f};
 		glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
 		glm::vec3 scale    = {1.0f, 1.0f, 1.0f};
+
+		std::shared_ptr<ModelTexture> texture;
 
 		// Uniform buffer for this object (one per frame in flight)
 		std::vector<AllocatedUniformBuffer> uniformBuffers;
