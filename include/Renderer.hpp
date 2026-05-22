@@ -122,9 +122,7 @@ private:
 		[[nodiscard]] glm::mat4 getModelMatrix() const;
 	};
 
-
-	std::unique_ptr<ModelTexture> modelTexture0;
-	std::unique_ptr<ModelTexture> modelTexture1;
+	std::vector<std::unique_ptr<ModelTexture>> modelTextures;
 
 	std::array<GameObject, MAX_OBJECTS> gameObjects;
 
@@ -253,7 +251,7 @@ private:
 
 	void destroyAllocator();
 
-	void setupGameObjects();
+	void createGameObjects();
 
 	void createImGuiInstance();
 

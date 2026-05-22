@@ -456,10 +456,11 @@ std::unique_ptr<Renderer::ModelTexture> Renderer::loadTextureKTX(const char* tex
 
 	if (result != KTX_SUCCESS) { ktxVulkanDeviceInfo_Destruct(&deviceInfo); ktxTexture2_Destroy(kTexture); throw std::runtime_error("ktxTexture_VkUploadEx() failed!"); }
 
+	mTex->imageView = createImageView(mTex->ktxVkTexture.image, static_cast<vk::Format>(kTexture->vkFormat), vk::ImageAspectFlagBits::eColor, mTex->ktxVkTexture.levelCount);
+
 	ktxVulkanDeviceInfo_Destruct(&deviceInfo);
 	ktxTexture2_Destroy(kTexture);
 
-	mTex->imageView = createImageView(mTex->ktxVkTexture.image, static_cast<vk::Format>(mTex->ktxVkTexture.imageFormat), vk::ImageAspectFlagBits::eColor, mTex->ktxVkTexture.levelCount);
 
 	return mTex;
 }
@@ -833,30 +834,26 @@ void Renderer::createColorResources() {
 	colorImageView = createImageView(vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
-void Renderer::setupGameObjects() {
+void Renderer::createGameObjects() {
 
-	modelTexture0 = loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\cube.ktx2");
-	modelTexture1 = loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\2d_rgb8.ktx2");
+	modelTextures.emplace_back(loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\cube.ktx2"));
+	modelTextures.emplace_back(loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\2d_rgba8.ktx2"));
 
 	gameObjects[0].position = {2.0f, 0.0f, 0.0f};
-	gameObjects[0].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[0].scale    = {0.5f, 0.5f, 0.5f};
-	gameObjects[0].texture = modelTexture0.get();
+	gameObjects[0].texture = modelTextures[0].get();
 
 	gameObjects[1].position = {1.0f, 0.0f, -1.0f};
-	gameObjects[1].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[1].scale    = {0.5f, 0.5f, 0.5f};
-	gameObjects[1].texture = modelTexture1.get();
+	gameObjects[1].texture = modelTextures[0].get();
 
 	gameObjects[2].position = {-1.0f, 0.0f, -2.0f};
-	gameObjects[2].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
-	gameObjects[2].texture = modelTexture1.get();
+	gameObjects[2].texture = modelTextures[1].get();
 
 	gameObjects[3].position = {0.0f, -1.0f, -1.0f};
-	gameObjects[3].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[3].scale    = {0.15f, 0.15f, 0.15f};
-	gameObjects[3].texture = modelTexture0.get();
+	gameObjects[3].texture = modelTextures[1].get();
 }
 
 void Renderer::createImGuiInstance() {
@@ -902,12 +899,12 @@ void Renderer::initVulkan() {
 	createImGuiInstance();
 	createColorResources();
 	createDepthResources();
-	createTextureImage();
-	createTextureImageView();
+	// createTextureImage();
+	// createTextureImageView();
 	createTextureSampler();
 	loadModelGLTF();
 
-	setupGameObjects();
+	createGameObjects();
 
 	createVertexBuffer();
 	createIndexBuffer();
