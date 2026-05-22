@@ -28,7 +28,7 @@ void Renderer::createGameObjectDescriptorSets() {
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vk::DescriptorBufferInfo bufferInfo(gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(ObjectUBO));
-			vk::DescriptorImageInfo imageInfo(*textureSampler, *textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+			vk::DescriptorImageInfo imageInfo(*textureSampler, gameObject.texture->imageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 			std::array<vk::WriteDescriptorSet, 2> descriptorWrites {
 				vk::WriteDescriptorSet(gameObject.descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo),

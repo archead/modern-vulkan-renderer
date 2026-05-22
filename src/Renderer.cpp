@@ -10,6 +10,7 @@
 #include <chrono>
 #include <unordered_map> // Using for deduplicating OBJ vertices
 #include <fstream>
+#include <memory>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -431,6 +432,37 @@ void Renderer::cleanupSwapchain() {
 	swapChain = nullptr;
 }
 
+std::unique_ptr<Renderer::ModelTexture> Renderer::loadTextureKTX(const char* texturePath) {
+
+	auto mTex = std::make_unique<ModelTexture>();
+	mTex->device = *device;
+	mTex->sampler = *textureSampler;
+
+	// Load KTX texture instead of using std_image
+	ktxTexture2* kTexture;
+	KTX_error_code result = ktxTexture2_CreateFromNamedFile(texturePath, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &kTexture);
+
+	if (result != KTX_SUCCESS) { throw std::runtime_error("failed to load ktx texture image!"); } if (kTexture->vkFormat == VK_FORMAT_UNDEFINED) { ktxTexture2_Destroy(kTexture); throw std::runtime_error("KTX2 has VK_FORMAT UNDEFINED (needs transcoding)"); }
+	mipLevels = kTexture->numLevels;
+	textureFormat =	static_cast<vk::Format>(kTexture->vkFormat);
+
+	ktxVulkanDeviceInfo deviceInfo{};
+	result = ktxVulkanDeviceInfo_Construct(&deviceInfo, *physicalDevice, *device, *graphicsQueue, *commandPool, nullptr);
+
+	if (result != KTX_SUCCESS) { throw std::runtime_error("ktxVulkanDeviceInfo_Construct() failed!"); }
+
+	// does all the hard work, creates staging buffer, a VkImage buffer, does all the transitions, all is left is to use the created ktxVulkanTexture object
+	result = ktxTexture2_VkUploadEx(kTexture, &deviceInfo, &mTex->ktxVkTexture, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	if (result != KTX_SUCCESS) { ktxVulkanDeviceInfo_Destruct(&deviceInfo); ktxTexture2_Destroy(kTexture); throw std::runtime_error("ktxTexture_VkUploadEx() failed!"); }
+
+	ktxVulkanDeviceInfo_Destruct(&deviceInfo);
+	ktxTexture2_Destroy(kTexture);
+
+	mTex->imageView = createImageView(mTex->ktxVkTexture.image, static_cast<vk::Format>(mTex->ktxVkTexture.imageFormat), vk::ImageAspectFlagBits::eColor, mTex->ktxVkTexture.levelCount);
+
+	return mTex;
+}
 void Renderer::createTextureImage() {
 	// Load KTX texture instead of using std_image
 	ktxTexture2* kTexture;
@@ -802,21 +834,29 @@ void Renderer::createColorResources() {
 }
 
 void Renderer::setupGameObjects() {
+
+	modelTexture0 = loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\cube.ktx2");
+	modelTexture1 = loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\2d_rgb8.ktx2");
+
 	gameObjects[0].position = {2.0f, 0.0f, 0.0f};
 	gameObjects[0].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[0].scale    = {0.5f, 0.5f, 0.5f};
+	gameObjects[0].texture = modelTexture0.get();
 
 	gameObjects[1].position = {1.0f, 0.0f, -1.0f};
 	gameObjects[1].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[1].scale    = {0.5f, 0.5f, 0.5f};
+	gameObjects[1].texture = modelTexture1.get();
 
 	gameObjects[2].position = {-1.0f, 0.0f, -2.0f};
 	gameObjects[2].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
+	gameObjects[2].texture = modelTexture1.get();
 
 	gameObjects[3].position = {0.0f, -1.0f, -1.0f};
 	gameObjects[3].rotation = {glm::radians(40.0f), glm::radians(-10.0f), 0.0f};
 	gameObjects[3].scale    = {0.15f, 0.15f, 0.15f};
+	gameObjects[3].texture = modelTexture0.get();
 }
 
 void Renderer::createImGuiInstance() {

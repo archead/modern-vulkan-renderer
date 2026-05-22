@@ -2,6 +2,7 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <SDL3/SDL.h>
 #include <VkBootstrap.h>
+#include <memory>
 
 #include "Types.hpp"
 #include "DescriptorSets.hpp"
@@ -92,9 +93,8 @@ private:
 		ktxVulkanTexture             ktxVkTexture = {};
 		const VkAllocationCallbacks *allocator    = nullptr;
 		VkDevice                     device       = VK_NULL_HANDLE;
-		vk::Format                   colorFormat  = vk::Format::eUndefined;
-		uint32_t                     mipLevels    = 1;
-		vk::raii::Sampler            sampler      = nullptr;
+		vk::Sampler                  sampler      = nullptr; // this is a reference to global sampler
+		vk::raii::ImageView          imageView    = nullptr;
 
 		~ModelTexture() {
 			if (device && ktxVkTexture.image != VK_NULL_HANDLE) {
@@ -104,6 +104,7 @@ private:
 		}
 
 		// remove copy and assign operators / constructors
+		ModelTexture() = default;
 		ModelTexture(const ModelTexture&) = delete;
 		ModelTexture& operator=(const ModelTexture&) = delete;
 	};
@@ -113,17 +114,17 @@ private:
 		glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
 		glm::vec3 scale    = {1.0f, 1.0f, 1.0f};
 
-		std::shared_ptr<ModelTexture> texture;
-
-		// Uniform buffer for this object (one per frame in flight)
-		std::vector<AllocatedUniformBuffer> uniformBuffers;
-
-		// Descriptor sets for this object (one per frame in flight)
+		ModelTexture *                       texture = nullptr;
+		std::vector<AllocatedUniformBuffer>  uniformBuffers;
 		std::vector<vk::raii::DescriptorSet> descriptorSets;
 
 		// Calculate model matrix based on position, rotation and scale
 		[[nodiscard]] glm::mat4 getModelMatrix() const;
 	};
+
+
+	std::unique_ptr<ModelTexture> modelTexture0;
+	std::unique_ptr<ModelTexture> modelTexture1;
 
 	std::array<GameObject, MAX_OBJECTS> gameObjects;
 
@@ -172,6 +173,8 @@ private:
 	void recreateSwapChain();
 
 	void cleanupSwapchain();
+
+	std::unique_ptr<Renderer::ModelTexture> loadTextureKTX(const char *texturePath);
 
 	void createVertexBuffer();
 
