@@ -21,7 +21,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <ktx.h>
-#include "ktxvulkan.h"
+#include <ktxvulkan.h>
 // #define TINYGLTF_IMPLEMENTATION
 // #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
