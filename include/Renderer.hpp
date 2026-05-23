@@ -255,6 +255,8 @@ private:
 
 	void createImGuiInstance();
 
+	double time_seconds();
+
 	void initVulkan();
 
 	void mainLoop();

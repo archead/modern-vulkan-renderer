@@ -839,7 +839,7 @@ void Renderer::createGameObjects() {
 	modelTextures.emplace_back(loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\cube.ktx2"));
 	modelTextures.emplace_back(loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\2d_rgba8.ktx2"));
 
-	gameObjects[0].position = {2.0f, 0.0f, 0.0f};
+	gameObjects[0].position = {1.0f, -0.5f, -0.2f};
 	gameObjects[0].scale    = {0.5f, 0.5f, 0.5f};
 	gameObjects[0].texture = modelTextures[0].get();
 
@@ -847,9 +847,9 @@ void Renderer::createGameObjects() {
 	gameObjects[1].scale    = {0.5f, 0.5f, 0.5f};
 	gameObjects[1].texture = modelTextures[0].get();
 
-	gameObjects[2].position = {-1.0f, 0.0f, -2.0f};
+	gameObjects[2].position = {-0.20f, 0.0f, -2.0f};
 	gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
-	gameObjects[2].texture = modelTextures[1].get();
+	gameObjects[2].texture = modelTextures[0].get();
 
 	gameObjects[3].position = {0.0f, -1.0f, -1.0f};
 	gameObjects[3].scale    = {0.15f, 0.15f, 0.15f};
@@ -887,6 +887,12 @@ void Renderer::createImGuiInstance() {
 	init_info.CheckVkResultFn              = check_vk_result;
 
 	ImGui_ImplVulkan_Init(&init_info);
+}
+
+double Renderer::time_seconds() {
+	using clock = std::chrono::steady_clock;
+	static auto start = clock::now();
+	return std::chrono::duration<double>(clock::now() - start).count();
 }
 
 void Renderer::initVulkan() {
@@ -1034,10 +1040,10 @@ void Renderer::drawDebugMenu() {
 	ImGui::Begin("Debug Manu");
 
 	ImGui::ColorEdit3("Light Color", glm::value_ptr(lightColor));
-	ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.025f);
-	ImGui::DragFloat("Light Intensity", &lightIntesity, 0.025f);
-	ImGui::DragFloat("Attenuation K", &lightAttenK, 0.025f);
-	ImGui::DragFloat3("Camera Position", glm::value_ptr(cameraPosOffset), 0.025f);
+	ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.0025f);
+	ImGui::DragFloat("Light Intensity", &lightIntesity, 0.0025f);
+	ImGui::DragFloat("Attenuation K", &lightAttenK, 0.0025f);
+	ImGui::DragFloat3("Camera Position", glm::value_ptr(cameraPosOffset), 0.0025f);
 
 	ImGui::End();
 	ImGui::Render();
