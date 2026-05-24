@@ -1,6 +1,6 @@
-#pragma once
 #include "Renderer.hpp"
 #include "Config.hpp"
+#include <imgui_impl_vulkan.h>
 
 void Renderer::createCommandPool() {
 	vk::CommandPoolCreateInfo poolInfo;

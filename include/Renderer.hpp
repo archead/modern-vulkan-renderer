@@ -7,9 +7,7 @@
 #include "Types.hpp"
 #include "DescriptorSets.hpp"
 #include "Config.hpp"
-#include "ktxvulkan.h"
-#include <imgui_impl_vulkan.h>
-#include <imgui_impl_sdl3.h>
+#include <ktxvulkan.h>
 
 class Renderer {
 public:

@@ -1,4 +1,3 @@
-#pragma once
 #include "Renderer.hpp"
 
 void Renderer::createAllocator() {
