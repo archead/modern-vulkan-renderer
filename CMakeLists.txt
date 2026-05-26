@@ -65,6 +65,14 @@ target_include_directories(stb
         thirdparty/stb
 )
 
+add_library(mikktspace STATIC
+    thirdparty/MikkTSpace/mikktspace.c
+)
+target_include_directories(mikktspace
+    PUBLIC
+        thirdparty/MikkTSpace
+)
+
 add_executable(vulkan_doc_tutorial
     main.cpp
     src/Renderer.cpp
@@ -97,4 +105,5 @@ target_link_libraries(vulkan_doc_tutorial
         tinygltf
         ktx
         imgui
+        mikktspace
 )
