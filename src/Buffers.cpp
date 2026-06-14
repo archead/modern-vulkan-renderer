@@ -1,7 +1,7 @@
 #include "Renderer.hpp"
 
 void Renderer::createVertexBuffer() {
-		vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+		vk::DeviceSize bufferSize = sizeof(Vertex) * vertices.size();
 
 		AllocatedBuffer stagingBuffer = {};
 		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);

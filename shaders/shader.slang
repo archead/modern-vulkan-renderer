@@ -3,6 +3,7 @@ struct VSInput {
     float3 inColor : COLOR0;
     float2 inTexCoord : TEXCOORD0;
     float3 inNormal : NORMAL;
+    float4 inTangent;
 };
 
 struct GlobalUBO{
@@ -33,6 +34,7 @@ struct VSOutput {
     float3 color;
     float2 fragTexCoord;
     float3 normal;
+    float4 tangent;
 };
 
 
@@ -56,6 +58,8 @@ VSOutput vertMain(VSInput input) {
     output.color = input.inColor;
 
     output.normal = normalize(mul((float3x3)objectUbo.normalMatrix, input.inNormal));
+
+    output.tangent = input.inTangent;
 
     return output;
 }
@@ -102,5 +106,6 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     float4 albedo = texture.Sample(vertIn.fragTexCoord);
 
     float3 color = albedo.rgb * (ambient + diffuse) + specular;
-    return float4(color, albedo.a);
+   // return float4(color, albedo.a);
+   return float4(vertIn.tangent.xyz * 0.5 + 0.5, 1.0);
 }

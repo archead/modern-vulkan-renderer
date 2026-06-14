@@ -8,6 +8,7 @@
 #include "DescriptorSets.hpp"
 #include "Config.hpp"
 #include <ktxvulkan.h>
+#include <mikktspace.h>
 
 class Renderer {
 public:
@@ -134,6 +135,11 @@ private:
 	glm::vec3 lightPos      = {0.5, 0.2, 0.4};
 	float     lightIntesity = 0.75;
 
+	struct MikkTSpaceUserData {
+		std::vector<Vertex>* vertices;
+		std::vector<uint32_t>* indices;
+	};
+
 	//endregion
 
 	void handleBootstrapErrors(auto obj_ret);
@@ -239,7 +245,26 @@ private:
 
 	void loadModelGLTF();
 
+	static void unweldVertices(std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
+
+	// used for MikkTSpace
+	static int getNumFaces(const SMikkTSpaceContext *ctx);
+
+	static int getNumVerticesOfFace(const SMikkTSpaceContext *ctx, int iFace);
+
+	static void getPosition(const SMikkTSpaceContext* ctx, float out[3], int face, int vert);
+
+	static void getNormal(const SMikkTSpaceContext* ctx, float out[3], int face, int vert);
+
+	static void getTexCoord(const SMikkTSpaceContext* ctx, float out[3], int face, int vert);
+
+	static void setTSpaceBasic(const SMikkTSpaceContext* ctx, const float tangent[3], float sign, int face, int vert);
+
+	static void generateTangents(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices);
+	// -------
+
 	void generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+
 
 	vk::SampleCountFlagBits getMaxUsableSampleCount();
 
