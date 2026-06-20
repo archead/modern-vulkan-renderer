@@ -710,24 +710,30 @@ void Renderer::createColorResources() {
 
 void Renderer::createGameObjects() {
 
-	modelTextures.emplace_back(loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\cube.ktx2"));
-	modelTextures.emplace_back(loadTextureKTX("C:\\dev\\vulkan-doc-tutorial\\textures\\2d_rgba8.ktx2"));
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\cube.ktx2)"));
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\\dev\\vulkan-doc-tutorial\\textures\\2d_rgba8.ktx2)"));
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\\dev\\vulkan-doc-tutorial\\textures\\brickwall.ktx2)"));
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\\dev\\vulkan-doc-tutorial\\textures\\brickwall_normal.ktx2)"));
 
 	gameObjects[0].position = {1.0f, -0.5f, -0.2f};
 	gameObjects[0].scale    = {0.5f, 0.5f, 0.5f};
-	gameObjects[0].texture = modelTextures[0].get();
+	gameObjects[0].texture = modelTextures[2].get();
+	gameObjects[0].normalMap = modelTextures[3].get();
 
 	gameObjects[1].position = {1.0f, 0.0f, -1.0f};
 	gameObjects[1].scale    = {0.5f, 0.5f, 0.5f};
-	gameObjects[1].texture = modelTextures[0].get();
+	gameObjects[1].texture = modelTextures[3].get();
+	gameObjects[1].normalMap = modelTextures[3].get();
 
 	gameObjects[2].position = {-0.20f, 0.0f, -2.0f};
 	gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
 	gameObjects[2].texture = modelTextures[0].get();
+	gameObjects[2].normalMap = modelTextures[3].get();
 
 	gameObjects[3].position = {0.0f, -1.0f, -1.0f};
 	gameObjects[3].scale    = {0.15f, 0.15f, 0.15f};
 	gameObjects[3].texture = modelTextures[1].get();
+	gameObjects[3].normalMap = modelTextures[3].get();
 }
 
 void Renderer::createImGuiInstance() {

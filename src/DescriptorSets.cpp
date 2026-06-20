@@ -8,17 +8,20 @@
 void Renderer::createDescriptorSetLayouts() {
     // per frame ubos
     DescriptorSetLayoutBuilder builder0;
-    builder0.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
     // view and proj matrices
-    builder0.addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment); // light ubo
+    builder0.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
+    // light ubo
+    builder0.addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment);
     globalSetLayout = builder0.build(device);
 
     // per object ubo + texture sampler
     DescriptorSetLayoutBuilder builder1;
-    builder1.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
     // model and normal matrices
-    builder1.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
+    builder1.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
     // texture sampler
+    builder1.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
+    // normal map sampler
+    builder1.addBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
     objectSetLayout = builder1.build(device);
 }
 
@@ -31,14 +34,13 @@ void Renderer::createGameObjectDescriptorSets() {
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vk::DescriptorBufferInfo bufferInfo(gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(ObjectUBO));
-            vk::DescriptorImageInfo  imageInfo(*textureSampler, gameObject.texture->imageView,
-                                               vk::ImageLayout::eShaderReadOnlyOptimal);
+            vk::DescriptorImageInfo  imageInfo(*textureSampler, gameObject.texture->imageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+            vk::DescriptorImageInfo  normalMapInfo(*textureSampler, gameObject.normalMap->imageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-            std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
-                vk::WriteDescriptorSet(gameObject.descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer,
-                                       nullptr, &bufferInfo),
-                vk::WriteDescriptorSet(gameObject.descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler,
-                                       &imageInfo, nullptr)
+            std::array<vk::WriteDescriptorSet, 3> descriptorWrites{
+                vk::WriteDescriptorSet(gameObject.descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo),
+                vk::WriteDescriptorSet(gameObject.descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr),
+                vk::WriteDescriptorSet(gameObject.descriptorSets[i], 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &normalMapInfo, nullptr)
             };
             device.updateDescriptorSets(descriptorWrites, {});
         }
@@ -84,10 +86,8 @@ void Renderer::createDescriptorSets() {
         vk::DescriptorBufferInfo lightingBufferInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO));
 
         std::array<vk::WriteDescriptorSet, 2> writes{
-            vk::WriteDescriptorSet(globalDescriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr,
-                                   &globalBufferInfo),
-            vk::WriteDescriptorSet(globalDescriptorSets[i], 1, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr,
-                                   &lightingBufferInfo)
+            vk::WriteDescriptorSet(globalDescriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &globalBufferInfo),
+            vk::WriteDescriptorSet(globalDescriptorSets[i], 1, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &lightingBufferInfo)
         };
         device.updateDescriptorSets(writes, {});
     }

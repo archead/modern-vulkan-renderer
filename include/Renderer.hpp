@@ -113,7 +113,8 @@ private:
 		glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
 		glm::vec3 scale    = {1.0f, 1.0f, 1.0f};
 
-		ModelTexture *                       texture = nullptr;
+		ModelTexture *                       texture   = nullptr;
+		ModelTexture *                       normalMap = nullptr;
 		std::vector<AllocatedUniformBuffer>  uniformBuffers;
 		std::vector<vk::raii::DescriptorSet> descriptorSets;
 
