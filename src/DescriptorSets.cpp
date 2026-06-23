@@ -35,7 +35,9 @@ void Renderer::createGameObjectDescriptorSets() {
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vk::DescriptorBufferInfo bufferInfo(gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(ObjectUBO));
             vk::DescriptorImageInfo  imageInfo(*textureSampler, gameObject.texture->imageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-            vk::DescriptorImageInfo  normalMapInfo(*textureSampler, gameObject.normalMap->imageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+            vk::ImageView normalImageView = gameObject.normalMap ? gameObject.normalMap->imageView : gameObject.texture->imageView;
+            vk::DescriptorImageInfo  normalMapInfo(*textureSampler, normalImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
             std::array<vk::WriteDescriptorSet, 3> descriptorWrites{
                 vk::WriteDescriptorSet(gameObject.descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo),
@@ -61,19 +63,18 @@ void Renderer::createGameObjectUniformBuffers() {
 
 void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
     for (auto &gameObject: gameObjects) {
-        glm::mat4 model = gameObject.getModelMatrix();
-        // apply transformations to the model matrix here (rotate, scale, etc.)
 
+        // apply transformations to the model matrix here (rotate, scale, etc.)
         ObjectUBO ubo    = {};
-        ubo.model        = model;
+        ubo.model        = gameObject.getModelMatrix();
         ubo.normalMatrix = glm::transpose(glm::inverse(ubo.model));
+        ubo.flags = gameObject.flags;
 
         memcpy(gameObject.uniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
     }
 
     // very janky way of using one of the object to visually represent where the light currently is
     gameObjects[3].position = glm::vec3(lightPos.x + 0.5f, lightPos.y + 0.5f, lightPos.z);
-
 }
 
 // per-frame descriptors

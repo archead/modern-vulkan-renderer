@@ -89,6 +89,7 @@ struct GlobalUBO {
 struct ObjectUBO {
     glm::mat4 model;
     glm::mat4 normalMatrix;
+    glm::uvec4 flags = {0, 0, 0, 0}; // x = use normal map
 };
 
 struct Light {

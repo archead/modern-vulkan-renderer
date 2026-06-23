@@ -14,6 +14,7 @@ struct GlobalUBO{
 struct ObjectUBO{
       float4x4 model;
       float4x4 normalMatrix; // inverse transpose of the model matrix casted down to 3x3
+      uint4 flags; // x = useNormalMap
   };
 struct Light {
   float3 pos;
@@ -34,18 +35,22 @@ struct VSOutput {
     float3 color;
     float2 fragTexCoord;
     float3 normal;
-    float4 tangent;
     float3x3 TBN;
+    bool useNormal;
 };
-
-
-
+//set 1
 [[vk::binding(0, 0)]]
 ConstantBuffer<GlobalUBO> globalUbo;
 [[vk::binding(1, 0)]]
 ConstantBuffer<LightBuffer> lightUbo;
+
+//set 2
 [[vk::binding(0, 1)]]
 ConstantBuffer<ObjectUBO> objectUbo;
+[[vk::binding(1, 1)]]
+Sampler2D texture;
+[[vk::binding(2, 1)]]
+Sampler2D normalMap;
 
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
@@ -60,22 +65,19 @@ VSOutput vertMain(VSInput input) {
 
     output.normal = normalize(mul((float3x3)objectUbo.normalMatrix, input.inNormal));
 
-    output.tangent = input.inTangent;
-
     float3 N = output.normal;
     float3 T = normalize(mul((float3x3)objectUbo.normalMatrix, input.inTangent.xyz));
     T = normalize(T - N * dot(N, T));
-    float3 B = normalize(cross(N, T) * input.inTangent.w);
-    float3x3 TBN = float3x3(T, B, N);
+    float3 B = normalize(input.inTangent.w * cross(N, T));
+    float3x3 TBN = float3x3(float3(T.x, B.x, N.x),
+                            float3(T.y, B.y, N.y),
+                            float3(T.z, B.z, N.z));
     output.TBN = TBN;
+
+    output.useNormal = (bool)objectUbo.flags.x;
 
     return output;
 }
-[[vk::binding(1, 1)]]
-Sampler2D texture;
-
-[[vk::binding(2, 1)]]
-Sampler2D normalMap;
 
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
@@ -89,9 +91,14 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
 
     // angle of coincidence
     float3 L = normalize(pointLightCoord - fragmentCoord);
-    //float3 normal = normalize(vertIn.normal);
-    float3 normal = normalMap.Sample(vertIn.fragTexCoord).xyz;
-    normal = mul(vertIn.TBN, normal);
+
+    float3 normal;
+
+    if (vertIn.useNormal){
+        normal = normalize(normalMap.Sample(vertIn.fragTexCoord).xyz * 2.0 - 1.0);
+        normal = normalize(mul(vertIn.TBN, normal));
+    } else { normal = normalize(vertIn.normal); }
+
     float angleOfCoincidence = saturate(dot(normal, L));
 
     // attenuation
@@ -112,7 +119,7 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     blinnTerm = pow(blinnTerm, shineFactor);
 
     // ambient + diffuse Blinn-phong config
-    float3 ambient = 0.02 * diffuseColor;
+    float3 ambient = 0.04 * diffuseColor;
     float3 diffuse = angleOfCoincidence * diffuseColor * attenIntensity;
     float3 specular = specColor * blinnTerm * attenIntensity;
 
@@ -120,8 +127,5 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
 
     float3 color = albedo.rgb * (ambient + diffuse) + specular;
 
-
-
    return float4(color, albedo.a);
-  // return float4(vertIn.tangent.xyz * 0.5 + 0.5, 1.0);
 }

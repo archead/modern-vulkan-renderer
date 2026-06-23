@@ -115,6 +115,7 @@ private:
 
 		ModelTexture *                       texture   = nullptr;
 		ModelTexture *                       normalMap = nullptr;
+		glm::uvec4                           flags     = {0, 0, 0, 0};
 		std::vector<AllocatedUniformBuffer>  uniformBuffers;
 		std::vector<vk::raii::DescriptorSet> descriptorSets;
 
@@ -124,7 +125,7 @@ private:
 
 	std::vector<std::unique_ptr<ModelTexture>> modelTextures;
 
-	std::array<GameObject, MAX_OBJECTS> gameObjects;
+	std::vector<GameObject> gameObjects;
 
 	glm::vec3 cameraPos          = {0.0f, 2.0f, 2.0f};
 	glm::vec3 cameraCenter       = {0.0f, 0.0f, 0.0f};
