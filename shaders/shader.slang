@@ -119,7 +119,7 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     blinnTerm = pow(blinnTerm, shineFactor);
 
     // ambient + diffuse Blinn-phong config
-    float3 ambient = 0.04 * diffuseColor;
+    float3 ambient = 0.005 * diffuseColor;
     float3 diffuse = angleOfCoincidence * diffuseColor * attenIntensity;
     float3 specular = specColor * blinnTerm * attenIntensity;
 
@@ -127,5 +127,7 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
 
     float3 color = albedo.rgb * (ambient + diffuse) + specular;
 
+    float gamma = 2.2;
+    color = pow(color.rgb, float3(1.0/gamma));
    return float4(color, albedo.a);
 }

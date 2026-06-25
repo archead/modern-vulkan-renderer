@@ -78,7 +78,7 @@ std::unique_ptr<Renderer::ModelTexture> Renderer::loadTextureKTX(const char* tex
     result = ktxTexture2_VkUploadEx(kTexture, &deviceInfo, &mTex->ktxVkTexture, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     if (result != KTX_SUCCESS) { ktxVulkanDeviceInfo_Destruct(&deviceInfo); ktxTexture2_Destroy(kTexture); throw std::runtime_error("ktxTexture_VkUploadEx() failed!"); }
-
+	//TODO ensure that normals are loaded as VK_FORMAT_R8G8B8A8_UNORM instead of SRGB to prevent unnecessary gamma correction
     mTex->imageView = createImageView(mTex->ktxVkTexture.image, static_cast<vk::Format>(kTexture->vkFormat), vk::ImageAspectFlagBits::eColor, mTex->ktxVkTexture.levelCount);
 
     ktxVulkanDeviceInfo_Destruct(&deviceInfo);
