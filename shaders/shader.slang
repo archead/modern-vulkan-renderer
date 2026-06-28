@@ -29,6 +29,12 @@ struct LightBuffer {
     float _pad0; // data padding (everything needs to be aligned to sets of 16 bytes (float3 + float = 16 bytes)
 };
 
+struct PointLightOutput {
+    float3 ambient;
+    float3 diffuse;
+    float3 specular;
+};
+
 struct VSOutput {
     float4 pos : SV_Position;
     float3 fragPos;
@@ -79,36 +85,27 @@ VSOutput vertMain(VSInput input) {
     return output;
 }
 
-[shader("fragment")]
-float4 fragMain(VSOutput vertIn) : SV_TARGET {
+PointLightOutput CalcPointLight(LightBuffer pointLight, float3 normal, VSOutput vertIn) {
     // point light properties
-    float3 diffuseColor = float3(lightUbo.light.color);
-    float3 pointLightCoord = float3(lightUbo.light.pos);
-    float pointLightIntensity = lightUbo.light.intensity;
+    float3 diffuseColor = float3(pointLight.light.color);
+    float3 pointLightCoord = float3(pointLight.light.pos);
+    float pointLightIntensity = pointLight.light.intensity;
+    float K = pointLight.light.attenK;
 
     // fragment position
     float3 fragmentCoord = float3(vertIn.fragPos);
 
-    // angle of coincidence
-    float3 L = normalize(pointLightCoord - fragmentCoord);
-
-    float3 normal;
-
-    if (vertIn.useNormal){
-        normal = normalize(normalMap.Sample(vertIn.fragTexCoord).xyz * 2.0 - 1.0);
-        normal = normalize(mul(vertIn.TBN, normal));
-    } else { normal = normalize(vertIn.normal); }
-
-    float angleOfCoincidence = saturate(dot(normal, L));
-
     // attenuation
-    float K = lightUbo.light.attenK;
     float3 lightDistance = (pointLightCoord - fragmentCoord);
     float RSq = dot(lightDistance, lightDistance);
     float attenIntensity = pointLightIntensity/(1.0 + K * RSq);
 
+    // angle of coincidence
+    float3 L = normalize(pointLightCoord - fragmentCoord);
+    float angleOfCoincidence = saturate(dot(normal, L));
+
     // Blinn-Phong
-    float3 cameraPos = float3(lightUbo.cameraPos);
+    float3 cameraPos = float3(pointLight.cameraPos);
     float shineFactor = 128;
     float3 specColor = float3(1.0, 1.0, 1.0);
 
@@ -123,11 +120,23 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     float3 diffuse = angleOfCoincidence * diffuseColor * attenIntensity;
     float3 specular = specColor * blinnTerm * attenIntensity;
 
+    return PointLightOutput(ambient, diffuse, specular);
+}
+
+[shader("fragment")]
+float4 fragMain(VSOutput vertIn) : SV_TARGET {
+
+    // set the normal vector, if object has a normalMap, use that, if not, use vertex normal
+    float3 normal;
+    if (vertIn.useNormal){
+        normal = normalize(normalMap.Sample(vertIn.fragTexCoord).xyz * 2.0 - 1.0);
+        normal = normalize(mul(vertIn.TBN, normal));
+    } else { normal = normalize(vertIn.normal); }
+
     float4 albedo = texture.Sample(vertIn.fragTexCoord);
 
-    float3 color = albedo.rgb * (ambient + diffuse) + specular;
+    PointLightOutput pointLightOut = CalcPointLight(lightUbo, normal, vertIn);
+    float3 color = albedo.rgb * (pointLightOut.ambient + pointLightOut.diffuse) + pointLightOut.specular;
 
-    float gamma = 2.2;
-    color = pow(color.rgb, float3(1.0/gamma));
-   return float4(color, albedo.a);
+    return float4(color, albedo.a);
 }
