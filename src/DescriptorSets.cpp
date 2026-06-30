@@ -72,9 +72,6 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 
         memcpy(gameObject.uniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
     }
-
-    // very janky way of using one of the object to visually represent where the light currently is
-    gameObjects[3].position = glm::vec3(lightPos.x + 0.5f, lightPos.y + 0.5f, lightPos.z);
 }
 
 // per-frame descriptors
@@ -119,32 +116,20 @@ void Renderer::updateUniformBuffer(uint32_t imageIndex) {
         0.1f, 50.0f);
     globalUbo.proj[1][1] *= -1;
 
+    // map the global UBO
     memcpy(globalUniformBuffers[imageIndex].mapped, &globalUbo, sizeof(globalUbo));
-
-    double time = time_seconds();
-
-    lightPos.x = sin(time * 0.5f) * 2.0f;
-    lightPos.y = -cos(time * 0.5f) * 2.0f;
-
-    LightingUBO lightingUbo         = {};
-    lightingUbo.light.color_attenK  = glm::vec4(lightColor, lightAttenK);
-    lightingUbo.cameraPos           = glm::vec4(cameraPosOffset, 0.0f);
-    lightingUbo.light.pos_intensity = glm::vec4(lightPos, lightIntesity);
-
-    memcpy(lightingUniformBuffers[imageIndex].mapped, &lightingUbo, sizeof(lightingUbo));
+    // map lighting UBO
+    memcpy(lightingUniformBuffers[imageIndex].mapped, &pointLights, sizeof(pointLights));
 }
-
 
 // init helpers
 void Renderer::createDescriptorPool() {
-    descriptorSetAllocator = std::make_unique<DescriptorSetAllocator>(device, poolSize,
-                                                                      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
+    descriptorSetAllocator = std::make_unique<DescriptorSetAllocator>(device, poolSize, vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
     descriptorSetAllocator->CreatePool();
 }
 
 // Descriptor Set Layout Builder
-void DescriptorSetLayoutBuilder::addBinding(uint32_t                binding, vk::DescriptorType type, uint32_t count,
-                                            vk::ShaderStageFlagBits shaderStage) {
+void DescriptorSetLayoutBuilder::addBinding(uint32_t binding, vk::DescriptorType type, uint32_t count, vk::ShaderStageFlagBits shaderStage) {
     bindings.emplace_back(binding, type, count, shaderStage, nullptr);
 }
 
@@ -158,10 +143,8 @@ vk::raii::DescriptorSetLayout DescriptorSetLayoutBuilder::build(vk::raii::Device
 }
 
 // Descriptor Set Allocator
-DescriptorSetAllocator::DescriptorSetAllocator(vk::raii::Device const &      device, PoolSizes poolSize,
-                                               vk::DescriptorPoolCreateFlags flags) : m_device(device),
-    m_poolSizes(std::move(poolSize)),
-    m_flags(flags) {
+DescriptorSetAllocator::DescriptorSetAllocator(vk::raii::Device const &device, PoolSizes poolSize, vk::DescriptorPoolCreateFlags flags) :
+m_device(device), m_poolSizes(std::move(poolSize)), m_flags(flags) {
 }
 
 void DescriptorSetAllocator::CreatePool() {

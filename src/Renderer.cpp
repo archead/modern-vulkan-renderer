@@ -715,7 +715,7 @@ void Renderer::createGameObjects() {
 	modelTextures.emplace_back(loadTextureKTX(R"(C:\\dev\\vulkan-doc-tutorial\\textures\\brickwall.ktx2)"));
 	modelTextures.emplace_back(loadTextureKTX(R"(C:\\dev\\vulkan-doc-tutorial\\textures\\brickwall_normal.ktx2)"));
 
-	gameObjects.resize(4);
+	gameObjects.resize(3);
 
 	gameObjects[0].position = {1.0f, -0.5f, -0.2f};
 	gameObjects[0].scale    = {0.5f, 0.5f, 0.5f};
@@ -730,10 +730,14 @@ void Renderer::createGameObjects() {
 	gameObjects[2].position = {-0.20f, 0.0f, -2.0f};
 	gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
 	gameObjects[2].texture = modelTextures[0].get();
+}
 
-	gameObjects[3].position = {0.0f, -1.0f, -1.0f};
-	gameObjects[3].scale    = {0.15f, 0.15f, 0.15f};
-	gameObjects[3].texture = modelTextures[1].get();
+void Renderer::createPointLights() {
+
+	pointLights.cameraPos_lightCount = glm::vec4(cameraPosOffset, MAX_POINT_LIGHTS);
+
+	pointLights.light[1].pos_intensity = glm::vec4(-0.2, 0.2, 0.0, defaultLightIntensity);
+	pointLights.light[1].color_attenK = glm::vec4(0.0, 0.0, 1.0, defaultLightAttenK);
 }
 
 void Renderer::createImGuiInstance() {
@@ -791,6 +795,7 @@ void Renderer::initVulkan() {
 	loadModelGLTF();
 
 	createGameObjects();
+	createPointLights();
 
 	createVertexBuffer();
 	createIndexBuffer();
@@ -917,12 +922,17 @@ void Renderer::drawDebugMenu() {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
-	ImGui::Begin("Debug Manu");
+	ImGui::Begin("Debug Menu");
 
-	ImGui::ColorEdit3("Light Color", glm::value_ptr(lightColor));
-	ImGui::DragFloat3("Light Position", glm::value_ptr(lightPos), 0.0025f);
-	ImGui::DragFloat("Light Intensity", &lightIntesity, 0.0025f);
-	ImGui::DragFloat("Attenuation K", &lightAttenK, 0.0025f);
+	ImGui::ColorEdit3("Light 1 Color", glm::value_ptr(pointLights.light[0].color_attenK));
+	ImGui::ColorEdit3("Light 2 Color", glm::value_ptr(pointLights.light[1].color_attenK));
+
+	ImGui::DragFloat3("Light 1 Position", glm::value_ptr(pointLights.light[0].pos_intensity), 0.0025f);
+	ImGui::DragFloat3("Light 2 Position", glm::value_ptr(pointLights.light[1].pos_intensity), 0.0025f);
+
+	ImGui::DragFloat("Light 1 Intensity", &pointLights.light[0].pos_intensity[3], 0.0025f);
+	ImGui::DragFloat("Light 2 Intensity", &pointLights.light[1].pos_intensity[3], 0.0025f);
+
 	ImGui::DragFloat3("Camera Position", glm::value_ptr(cameraPosOffset), 0.0025f);
 
 	ImGui::End();

@@ -4,7 +4,7 @@
 #endif
 
 #include <glm/glm.hpp>
-
+#include "Config.hpp"
 #include <vk_mem_alloc.h>
 
 struct AllocatedBuffer {
@@ -90,14 +90,4 @@ struct ObjectUBO {
     glm::mat4 model;
     glm::mat4 normalMatrix;
     glm::uvec4 flags = {0, 0, 0, 0}; // x = use normal map
-};
-
-struct Light {
-    glm::vec4 pos_intensity; // using vec4 to align the data xyz = pos, w = intensity
-    glm::vec4 color_attenK;
-};
-
-struct LightingUBO {
-    Light     light;
-    glm::vec4 cameraPos;
 };

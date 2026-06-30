@@ -24,9 +24,8 @@ struct Light {
 };
 
 struct LightBuffer {
-    Light light;
-    float3 cameraPos;
-    float _pad0; // data padding (everything needs to be aligned to sets of 16 bytes (float3 + float = 16 bytes)
+    Light light[2]; // max lights is hardcoded right now, should be changed
+    float4 cameraPos; // .w holds the max lights value
 };
 
 struct PointLightOutput {
@@ -85,12 +84,12 @@ VSOutput vertMain(VSInput input) {
     return output;
 }
 
-PointLightOutput CalcPointLight(LightBuffer pointLight, float3 normal, VSOutput vertIn) {
+PointLightOutput CalcPointLight(LightBuffer pointLight, int lightIndex, float3 normal, VSOutput vertIn) {
     // point light properties
-    float3 diffuseColor = float3(pointLight.light.color);
-    float3 pointLightCoord = float3(pointLight.light.pos);
-    float pointLightIntensity = pointLight.light.intensity;
-    float K = pointLight.light.attenK;
+    float3 diffuseColor = float3(pointLight.light[lightIndex].color);
+    float3 pointLightCoord = float3(pointLight.light[lightIndex].pos);
+    float pointLightIntensity = pointLight.light[lightIndex].intensity;
+    float K = pointLight.light[0].attenK;
 
     // fragment position
     float3 fragmentCoord = float3(vertIn.fragPos);
@@ -105,7 +104,7 @@ PointLightOutput CalcPointLight(LightBuffer pointLight, float3 normal, VSOutput 
     float angleOfCoincidence = saturate(dot(normal, L));
 
     // Blinn-Phong
-    float3 cameraPos = float3(pointLight.cameraPos);
+    float3 cameraPos = float3(pointLight.cameraPos.xyz);
     float shineFactor = 128;
     float3 specColor = float3(1.0, 1.0, 1.0);
 
@@ -135,8 +134,12 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
 
     float4 albedo = texture.Sample(vertIn.fragTexCoord);
 
-    PointLightOutput pointLightOut = CalcPointLight(lightUbo, normal, vertIn);
-    float3 color = albedo.rgb * (pointLightOut.ambient + pointLightOut.diffuse) + pointLightOut.specular;
+    float3 color = float3(0);
+
+    for (int i = 0; i < lightUbo.cameraPos.w; i++){ // .w stores the light count, variable needs to be renamed
+        PointLightOutput lightOut = CalcPointLight(lightUbo, i, normal, vertIn);
+        color += albedo.rgb * (lightOut.ambient + lightOut.diffuse) + lightOut.specular;
+    }
 
     return float4(color, albedo.a);
 }

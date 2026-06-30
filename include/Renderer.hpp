@@ -123,19 +123,33 @@ private:
 		[[nodiscard]] glm::mat4 getModelMatrix() const;
 	};
 
+
 	std::vector<std::unique_ptr<ModelTexture>> modelTextures;
 
 	std::vector<GameObject> gameObjects;
+
 
 	glm::vec3 cameraPos          = {0.0f, 2.0f, 2.0f};
 	glm::vec3 cameraCenter       = {0.0f, 0.0f, 0.0f};
 	glm::vec3 cameraPosOffset    = {0.0f, 0.0f, 0.0f};
 	glm::vec3 cameraCenterOffset = {0.0f, 0.0f, 0.0f};
 
-	glm::vec3 lightColor    = {0.96, 0.89, 0.54};
-	float     lightAttenK   = 0.25f;
-	glm::vec3 lightPos      = {0.5, 0.2, 0.4};
-	float     lightIntesity = 0.75;
+	glm::vec3 defaultLightColor    = {0.96, 0.89, 0.54};
+	float     defaultLightAttenK   = 0.25f;
+	glm::vec3 defaultLightPos      = {0.5, 0.2, 0.4};
+	float     defaultLightIntensity = 0.75;
+
+	struct Light {
+		glm::vec4 pos_intensity = {0.5, 0.5, 0.5, 0.75}; // using vec4 to align the data xyz = pos, w = intensity
+		glm::vec4 color_attenK = {1.0, 1.0, 1.0, 0.25};
+	};
+
+	struct LightingUBO {
+		Light     light[MAX_POINT_LIGHTS];
+		glm::vec4 cameraPos_lightCount = {0.0f, 0.0f, 0.0f, MAX_POINT_LIGHTS}; // xyz = cameraPos, w = lightCount
+	};
+
+	LightingUBO pointLights = {};
 
 	struct MikkTSpaceUserData {
 		std::vector<Vertex>* vertices;
@@ -277,6 +291,8 @@ private:
 	void destroyAllocator();
 
 	void createGameObjects();
+
+	void createPointLights();
 
 	void createImGuiInstance();
 
