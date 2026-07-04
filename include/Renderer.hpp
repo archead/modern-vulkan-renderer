@@ -86,6 +86,22 @@ private:
 	AllocatedImage          colorImage     = {};
 	vk::raii::ImageView     colorImageView = nullptr;
 
+	struct GBuffer {
+		vk::Format fragPosFormat = vk::Format::eR16G16B16A16Sfloat;
+		vk::Format albedoColorFormat = vk::Format::eR8G8B8A8Unorm;
+		vk::Format normalVectorFormat = vk::Format::eR16G16B16A16Sfloat;
+
+		AllocatedImage fragPosImage = {};
+		AllocatedImage albedoColorImage = {};
+		AllocatedImage normalVectorImage = {};
+
+		vk::raii::ImageView fragPosImageView = nullptr;
+		vk::raii::ImageView albedoColorImageView = nullptr;
+		vk::raii::ImageView normalVectorImageView = nullptr;
+	};
+
+	GBuffer gBuffer = {};
+
 	std::vector<const char *> deviceExtensions = { vk::KHRSwapchainExtensionName };
 
 	struct ModelTexture {
@@ -167,6 +183,8 @@ private:
 	void createImageViews();
 
 	[[nodiscard]] vk::raii::ShaderModule createShaderModule(const std::vector<char>& code);
+
+	void createGeometryPipeline();
 
 	void createGraphicsPipeline();
 
@@ -285,6 +303,8 @@ private:
 	vk::SampleCountFlagBits getMaxUsableSampleCount();
 
 	void createColorResources();
+
+	void createGBuffer();
 
 	void createAllocator();
 

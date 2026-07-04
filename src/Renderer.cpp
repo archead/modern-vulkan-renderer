@@ -223,6 +223,114 @@ void Renderer::createImageViews() {
 	return shaderModule;
 }
 
+void Renderer::createGeometryPipeline() {
+	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
+	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
+	vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
+
+	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
+	vertShaderStageInfo.stage  = vk::ShaderStageFlagBits::eVertex;
+	vertShaderStageInfo.module = shaderModule;
+	vertShaderStageInfo.pName  = "vertMain";
+
+	vk::PipelineShaderStageCreateInfo fragShaderStageInfo;
+	fragShaderStageInfo.stage  = vk::ShaderStageFlagBits::eFragment;
+	fragShaderStageInfo.module = shaderModule;
+	fragShaderStageInfo.pName  = "fragMain";
+
+	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+	vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+	auto                                   bindingDescription    = Vertex::getBindingDescription();
+	auto                                   attributeDescriptions = Vertex::getAttributeDescriptions();
+	vertexInputInfo.vertexBindingDescriptionCount                = 1;
+	vertexInputInfo.pVertexBindingDescriptions                   = &bindingDescription;
+	vertexInputInfo.vertexAttributeDescriptionCount              = attributeDescriptions.size();
+	vertexInputInfo.pVertexAttributeDescriptions                 = attributeDescriptions.data();
+
+	std::vector dynamicStates = {
+		vk::DynamicState::eViewport,
+		vk::DynamicState::eScissor
+	};
+
+	vk::PipelineDynamicStateCreateInfo dynamicState;
+	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicState.pDynamicStates    = dynamicStates.data();
+
+	vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+	inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
+
+	vk::PipelineViewportStateCreateInfo viewportState({}, 1, {}, 1);
+
+	vk::PipelineDepthStencilStateCreateInfo depthStencil;
+	depthStencil.depthTestEnable       = vk::True;
+	depthStencil.depthWriteEnable      = vk::True;
+	depthStencil.depthCompareOp        = vk::CompareOp::eLess;
+	depthStencil.depthBoundsTestEnable = vk::False;
+	depthStencil.stencilTestEnable     = vk::False;
+
+	vk::PipelineRasterizationStateCreateInfo rasterizer;
+	rasterizer.depthClampEnable        = vk::False;
+	rasterizer.rasterizerDiscardEnable = vk::False;
+	rasterizer.polygonMode             = vk::PolygonMode::eFill;
+	rasterizer.cullMode                = vk::CullModeFlagBits::eBack;
+	rasterizer.frontFace               = vk::FrontFace::eCounterClockwise;
+	// this needs to be counterClockwise since we are using GLM for our uniform buffers which is originally designed for OpenGL where Y-axis is flipped
+	rasterizer.depthBiasEnable      = vk::False;
+	rasterizer.depthBiasSlopeFactor = 1.0f;
+	rasterizer.lineWidth            = 1.0f;
+
+	vk::PipelineMultisampleStateCreateInfo multisample;
+	multisample.rasterizationSamples = vk::SampleCountFlagBits::e1;
+
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+	colorBlendAttachment.blendEnable         = vk::False; // disabled for Deferred rendering
+
+	std::array<vk::PipelineColorBlendAttachmentState, 3> colorBlendAttachments = {};
+	colorBlendAttachments.fill(colorBlendAttachment);
+
+	vk::PipelineColorBlendStateCreateInfo colorBlending;
+	colorBlending.logicOpEnable   = VK_FALSE;
+	colorBlending.logicOp         = vk::LogicOp::eCopy;
+	colorBlending.attachmentCount = 3;
+	colorBlending.pAttachments    = colorBlendAttachments.data();
+
+	std::array<vk::DescriptorSetLayout, 2> setLayouts = { *globalSetLayout, *objectSetLayout};
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
+	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
+	pipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
+
+	vk::Format depthFormat = findDepthFormat();
+
+	std::array<vk::Format, 3> gBufferFormats = {gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat};
+
+	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
+	pipelineRenderingCreateInfo.colorAttachmentCount    = 3;
+	pipelineRenderingCreateInfo.pColorAttachmentFormats = gBufferFormats.data();
+	pipelineRenderingCreateInfo.depthAttachmentFormat   = depthFormat;
+
+	vk::GraphicsPipelineCreateInfo pipelineInfo;
+	pipelineInfo.pNext               = &pipelineRenderingCreateInfo;
+	pipelineInfo.stageCount          = 2;
+	pipelineInfo.pStages             = shaderStages;
+	pipelineInfo.pVertexInputState   = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState      = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pDepthStencilState  = &depthStencil;
+	pipelineInfo.pMultisampleState   = &multisample;
+	pipelineInfo.pColorBlendState    = &colorBlending;
+	pipelineInfo.pDynamicState       = &dynamicState;
+	pipelineInfo.layout              = pipelineLayout;
+	pipelineInfo.renderPass          = nullptr;
+	pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
+	pipelineInfo.basePipelineIndex   = -1;
+
+	graphicsPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
+}
+
 void Renderer::createGraphicsPipeline() {
 	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
@@ -260,9 +368,7 @@ void Renderer::createGraphicsPipeline() {
 	vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
 	inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
 
-	vk::Viewport{
-		0.0f, 0.0, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f
-	};
+	vk::Viewport{ 0.0f, 0.0, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f };
 	vk::PipelineViewportStateCreateInfo viewportState({}, 1, {}, 1);
 
 	vk::PipelineDepthStencilStateCreateInfo depthStencil;
@@ -708,6 +814,16 @@ void Renderer::createColorResources() {
 	colorImageView = createImageView(vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
+void Renderer::createGBuffer() {
+	createImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(gBuffer.fragPosFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, gBuffer.fragPosImage);
+	createImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(gBuffer.normalVectorFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, gBuffer.normalVectorImage);
+	createImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(gBuffer.albedoColorFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, gBuffer.albedoColorImage);
+
+	gBuffer.fragPosImageView = createImageView(gBuffer.fragPosImage.image, gBuffer.fragPosFormat, vk::ImageAspectFlagBits::eColor, 1);
+	gBuffer.normalVectorImageView = createImageView(gBuffer.normalVectorImage.image, gBuffer.normalVectorFormat, vk::ImageAspectFlagBits::eColor, 1);
+	gBuffer.albedoColorImageView = createImageView(gBuffer.albedoColorImage.image, gBuffer.albedoColorFormat, vk::ImageAspectFlagBits::eColor, 1);
+}
+
 void Renderer::createGameObjects() {
 
 	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\cube.ktx2)"));
@@ -784,9 +900,11 @@ void Renderer::initVulkan() {
 	createImageViews();
 	createAllocator();
 	createDescriptorSetLayouts(); // used during pipeline creation, also responsible for game object descriptor set layouts
+	createGeometryPipeline();
 	createGraphicsPipeline();
 	createCommandPool();
 	createImGuiInstance();
+	createGBuffer();
 	createColorResources();
 	createDepthResources();
 	// createTextureImage();
