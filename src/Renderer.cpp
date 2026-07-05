@@ -223,6 +223,115 @@ void Renderer::createImageViews() {
 	return shaderModule;
 }
 
+
+void Renderer::createLightingPipeline() {
+	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
+	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
+	vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
+
+	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
+	vertShaderStageInfo.stage  = vk::ShaderStageFlagBits::eVertex;
+	vertShaderStageInfo.module = shaderModule;
+	vertShaderStageInfo.pName  = "vertMain";
+
+	vk::PipelineShaderStageCreateInfo fragShaderStageInfo;
+	fragShaderStageInfo.stage  = vk::ShaderStageFlagBits::eFragment;
+	fragShaderStageInfo.module = shaderModule;
+	fragShaderStageInfo.pName  = "fragMain";
+
+	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+	vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+	auto                                   bindingDescription    = Vertex::getBindingDescription();
+	auto                                   attributeDescriptions = Vertex::getAttributeDescriptions();
+	vertexInputInfo.vertexBindingDescriptionCount                = 1;
+	vertexInputInfo.pVertexBindingDescriptions                   = &bindingDescription;
+	vertexInputInfo.vertexAttributeDescriptionCount              = attributeDescriptions.size();
+	vertexInputInfo.pVertexAttributeDescriptions                 = attributeDescriptions.data();
+
+	std::vector dynamicStates = {
+		vk::DynamicState::eViewport,
+		vk::DynamicState::eScissor
+	};
+
+	vk::PipelineDynamicStateCreateInfo dynamicState;
+	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicState.pDynamicStates    = dynamicStates.data();
+
+	vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+	inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
+
+	vk::PipelineViewportStateCreateInfo viewportState({}, 1, {}, 1);
+
+	vk::PipelineDepthStencilStateCreateInfo depthStencil;
+	depthStencil.depthTestEnable       = vk::True;
+	depthStencil.depthWriteEnable      = vk::True;
+	depthStencil.depthCompareOp        = vk::CompareOp::eLess;
+	depthStencil.depthBoundsTestEnable = vk::False;
+	depthStencil.stencilTestEnable     = vk::False;
+
+	vk::PipelineRasterizationStateCreateInfo rasterizer;
+	rasterizer.depthClampEnable        = vk::False;
+	rasterizer.rasterizerDiscardEnable = vk::False;
+	rasterizer.polygonMode             = vk::PolygonMode::eFill;
+	rasterizer.cullMode                = vk::CullModeFlagBits::eBack;
+	rasterizer.frontFace               = vk::FrontFace::eCounterClockwise;
+	// this needs to be counterClockwise since we are using GLM for our uniform buffers which is originally designed for OpenGL where Y-axis is flipped
+	rasterizer.depthBiasEnable      = vk::False;
+	rasterizer.depthBiasSlopeFactor = 1.0f;
+	rasterizer.lineWidth            = 1.0f;
+
+	vk::PipelineMultisampleStateCreateInfo multisample;
+	multisample.rasterizationSamples = vk::SampleCountFlagBits::e1;
+
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+	colorBlendAttachment.blendEnable         = vk::False; // disabled for Deferred rendering
+
+	std::array<vk::PipelineColorBlendAttachmentState, 3> colorBlendAttachments = {};
+	colorBlendAttachments.fill(colorBlendAttachment);
+
+	vk::PipelineColorBlendStateCreateInfo colorBlending;
+	colorBlending.logicOpEnable   = VK_FALSE;
+	colorBlending.logicOp         = vk::LogicOp::eCopy;
+	colorBlending.attachmentCount = 3;
+	colorBlending.pAttachments    = colorBlendAttachments.data();
+
+	std::array<vk::DescriptorSetLayout, 2> setLayouts = { *globalSetLayout, *objectSetLayout};
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
+	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
+	pipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
+
+	vk::Format depthFormat = findDepthFormat();
+
+	std::array<vk::Format, 3> gBufferFormats = {gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat};
+
+	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
+	pipelineRenderingCreateInfo.colorAttachmentCount    = 3;
+	pipelineRenderingCreateInfo.pColorAttachmentFormats = gBufferFormats.data();
+	pipelineRenderingCreateInfo.depthAttachmentFormat   = depthFormat;
+
+	vk::GraphicsPipelineCreateInfo pipelineInfo;
+	pipelineInfo.pNext               = &pipelineRenderingCreateInfo;
+	pipelineInfo.stageCount          = 2;
+	pipelineInfo.pStages             = shaderStages;
+	pipelineInfo.pVertexInputState   = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState      = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pDepthStencilState  = &depthStencil;
+	pipelineInfo.pMultisampleState   = &multisample;
+	pipelineInfo.pColorBlendState    = &colorBlending;
+	pipelineInfo.pDynamicState       = &dynamicState;
+	pipelineInfo.layout              = pipelineLayout;
+	pipelineInfo.renderPass          = nullptr;
+	pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
+	pipelineInfo.basePipelineIndex   = -1;
+
+	graphicsPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
+}
+
 void Renderer::createGeometryPipeline() {
 	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
@@ -824,6 +933,27 @@ void Renderer::createGBuffer() {
 	gBuffer.albedoColorImageView = createImageView(gBuffer.albedoColorImage.image, gBuffer.albedoColorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
+void Renderer::createGBufferSampler() {
+	vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
+	vk::SamplerCreateInfo samplerInfo   = {};
+	samplerInfo.magFilter               = vk::Filter::eNearest;
+	samplerInfo.minFilter               = vk::Filter::eNearest;
+	samplerInfo.mipmapMode              = vk::SamplerMipmapMode::eNearest;
+	samplerInfo.mipLodBias              = 0.0f;
+	samplerInfo.minLod                  = 0.0f;
+	samplerInfo.maxLod                  = vk::LodClampNone;
+	samplerInfo.addressModeU            = vk::SamplerAddressMode::eClampToEdge;
+	samplerInfo.addressModeV            = vk::SamplerAddressMode::eClampToEdge;
+	samplerInfo.addressModeW            = vk::SamplerAddressMode::eClampToEdge;
+	samplerInfo.anisotropyEnable        = vk::False;
+	samplerInfo.compareEnable           = vk::False;
+	samplerInfo.compareOp               = vk::CompareOp::eAlways;
+	samplerInfo.borderColor             = vk::BorderColor::eIntOpaqueBlack;
+	samplerInfo.unnormalizedCoordinates = vk::False;
+
+	gBufferSampler = vk::raii::Sampler(device, samplerInfo);
+}
+
 void Renderer::createGameObjects() {
 
 	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\cube.ktx2)"));
@@ -905,6 +1035,7 @@ void Renderer::initVulkan() {
 	createCommandPool();
 	createImGuiInstance();
 	createGBuffer();
+	createGBufferSampler();
 	createColorResources();
 	createDepthResources();
 	// createTextureImage();

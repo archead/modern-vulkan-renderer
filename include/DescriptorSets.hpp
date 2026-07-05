@@ -26,6 +26,7 @@ public:
     DescriptorSetAllocator(vk::raii::Device const& device, PoolSizes poolSize, vk::DescriptorPoolCreateFlags flags);
     void CreatePool();
     [[nodiscard]] std::vector<vk::raii::DescriptorSet> Allocate(std::vector<vk::DescriptorSetLayout> layouts);
+    [[nodiscard]] std::vector<vk::raii::DescriptorSet> Allocate(vk::DescriptorSetLayout layout);
     vk::DescriptorPool getCurrentPool() const;
 
 private:

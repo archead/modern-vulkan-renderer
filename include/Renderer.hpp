@@ -67,6 +67,10 @@ private:
 	std::vector<vk::raii::DescriptorSet>    globalDescriptorSets;
 	// set 1 (object) NOTE: the sets and buffers are declared per gameObject
 	vk::raii::DescriptorSetLayout			objectSetLayout = nullptr;
+	// set 2 (deferred lighting), non-FIF
+	vk::raii::DescriptorSetLayout gBufferSetLayout = nullptr;
+	vk::raii::DescriptorSet gBufferDescriptorSet = nullptr;
+
 
 	PoolSizes                               poolSize{};
 	DescriptorSetLayoutBuilder              layoutBuilder{};
@@ -101,6 +105,7 @@ private:
 	};
 
 	GBuffer gBuffer = {};
+	vk::raii::Sampler gBufferSampler = nullptr;
 
 	std::vector<const char *> deviceExtensions = { vk::KHRSwapchainExtensionName };
 
@@ -183,6 +188,8 @@ private:
 	void createImageViews();
 
 	[[nodiscard]] vk::raii::ShaderModule createShaderModule(const std::vector<char>& code);
+
+	void createLightingPipeline();
 
 	void createGeometryPipeline();
 
@@ -305,6 +312,8 @@ private:
 	void createColorResources();
 
 	void createGBuffer();
+
+	void createGBufferSampler();
 
 	void createAllocator();
 
