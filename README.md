@@ -4,6 +4,11 @@ A real-time 3D renderer built from scratch in modern **C++20** on the **Vulkan 1
 
 > A graphics-programming passion project. The focus is on understanding the API end to end — explicit synchronization, memory management, descriptor layouts, and the shading math — rather than leaning on an engine.
 
+## Screenshot
+
+![Screenshot](docs/img.png)
+
+
 ## Features
 
 **Rendering & lighting**
