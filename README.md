@@ -61,8 +61,8 @@ A real-time 3D renderer built from scratch in modern **C++20** on the **Vulkan 1
 **Clone with submodules** — all third-party dependencies are pulled in as git submodules:
 
 ```bash
-git clone --recurse-submodules <repo-url>
-cd vulkan-doc-tutorial
+git clone --recurse-submodules https://github.com/archead/modern-vulkan-renderer 
+cd modern-vulkan-renderer
 ```
 
 If you already cloned without `--recurse-submodules`:
