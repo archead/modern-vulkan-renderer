@@ -1,8 +1,8 @@
 # Vulkan Renderer
 
-A real-time 3D renderer built from scratch in modern **C++20** on the **Vulkan 1.4** API. A small forward renderer with physically-motivated lighting, normal mapping, compressed textures, and a live debug UI — currently being extended toward a deferred (G-buffer) pipeline.
+A real-time 3D renderer built from scratch in modern **C++20** on the **Vulkan 1.4** API. A small forward renderer with physically-motivated lighting, normal mapping, compressed textures, and a live debug UI currently being extended toward a deferred (G-buffer) pipeline.
 
-> A graphics-programming passion project. The focus is on understanding the API end to end — explicit synchronization, memory management, descriptor layouts, and the shading math — rather than leaning on an engine.
+> A graphics-programming passion project. The focus is on understanding the API end to end explicit synchronization, memory management, descriptor layouts, and the shading math rather than leaning on an engine.
 
 ## Screenshot
 
@@ -14,7 +14,7 @@ A real-time 3D renderer built from scratch in modern **C++20** on the **Vulkan 1
 **Rendering & lighting**
 - Blinn-Phong shading with point lights, distance attenuation, and configurable intensity/colour
 - Multi-light support
-- Tangent-space **normal mapping** — optional per object, with a fallback to interpolated vertex normals
+- Tangent-space **normal mapping** optional per object, with a fallback to interpolated vertex normals
 - Gamma-correct output (linear lighting → sRGB)
 - MSAA and depth buffering
 
@@ -27,7 +27,7 @@ A real-time 3D renderer built from scratch in modern **C++20** on the **Vulkan 1
 - Written against the **Vulkan-Hpp RAII** bindings for exception-safe, leak-resistant resource handling
 - **vk-bootstrap** for instance/device/swapchain setup
 - **Vulkan Memory Allocator (VMA)** for all buffer and image allocations
-- Two-tier descriptor model — a per-frame *global* set (camera + lighting) and a per-object set (transforms + material textures)
+- Two-tier descriptor model a per-frame *global* set (camera + lighting) and a per-object set (transforms + material textures)
 - A reusable descriptor-set allocator that grows its pool on demand, plus a small layout-builder helper
 - Frames-in-flight double buffering with explicit semaphore/fence synchronization
 - **SDL3** windowing and keyboard camera controls
@@ -58,7 +58,7 @@ A real-time 3D renderer built from scratch in modern **C++20** on the **Vulkan 1
 - CMake ≥ 4.0
 - The [Vulkan SDK](https://vulkan.lunarg.com/) (includes the `slangc` shader compiler)
 
-**Clone with submodules** — all third-party dependencies are pulled in as git submodules:
+**Clone with submodules** all third-party dependencies are pulled in as git submodules:
 
 ```bash
 git clone --recurse-submodules https://github.com/archead/modern-vulkan-renderer 
@@ -80,7 +80,7 @@ cmake --build build
 
 Slang shaders are compiled to SPIR-V automatically as a build step.
 
-> **Note:** This is an active learning project, so a few paths are currently hardcoded to the author's environment — the Vulkan SDK / `slangc` path in `CMakeLists.txt` and the model/texture paths in `include/Config.hpp` and `Renderer::createGameObjects`. Adjust these to your local setup before building.
+> **Note:** This is an active learning project, so a few paths are currently hardcoded to the author's environment the Vulkan SDK / `slangc` path in `CMakeLists.txt` and the model/texture paths in `include/Config.hpp` and `Renderer::createGameObjects`. Adjust these to your local setup before building.
 
 ## Controls
 
@@ -115,7 +115,7 @@ thirdparty/           Dependencies (git submodules)
 - [x] Textured, lit meshes with normal mapping
 - [x] Multi-light Blinn-Phong shading
 - [x] Gamma correction
-- [ ] **Deferred rendering** — a G-buffer and geometry pipeline are in progress
+- [ ] **Deferred rendering** a G-buffer and geometry pipeline are in progress
 - [ ] Screen-space effects (SSAO, SSR)
 - [ ] Shadow mapping
 
