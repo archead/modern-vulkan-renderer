@@ -69,7 +69,7 @@ private:
 	vk::raii::DescriptorSetLayout			objectSetLayout = nullptr;
 	// set 2 (deferred lighting), non-FIF
 	vk::raii::DescriptorSetLayout gBufferSetLayout = nullptr;
-	vk::raii::DescriptorSet gBufferDescriptorSet = nullptr;
+	std::vector<vk::raii::DescriptorSet> gBufferDescriptorSet;
 
 
 	PoolSizes                               poolSize{};

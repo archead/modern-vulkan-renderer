@@ -91,6 +91,9 @@ void Renderer::createDescriptorSets() {
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *globalSetLayout);
     globalDescriptorSets = descriptorSetAllocator->Allocate(layouts);
 
+    std::vector<vk::DescriptorSetLayout> layouts2(MAX_FRAMES_IN_FLIGHT, *gBufferSetLayout);
+    gBufferDescriptorSet = descriptorSetAllocator->Allocate(layouts2);
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vk::DescriptorBufferInfo globalBufferInfo(globalUniformBuffers[i].buffer.buffer, 0, sizeof(GlobalUBO));
         vk::DescriptorBufferInfo lightingBufferInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO));
@@ -100,23 +103,21 @@ void Renderer::createDescriptorSets() {
             vk::WriteDescriptorSet(globalDescriptorSets[i], 1, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &lightingBufferInfo)
         };
         device.updateDescriptorSets(writes, {});
+
+        // configure GBuffer info and writes
+        vk::DescriptorImageInfo gBufferFragPosInfo(*gBufferSampler, gBuffer.fragPosImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+        vk::DescriptorImageInfo gBufferNormalInfo(*gBufferSampler, gBuffer.normalVectorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+        vk::DescriptorImageInfo gBufferAlbedoInfo(*gBufferSampler, gBuffer.albedoColorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+        vk::DescriptorBufferInfo lightingUBOInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO));
+
+        std::array<vk::WriteDescriptorSet, 4> writes2 {
+            vk::WriteDescriptorSet(gBufferDescriptorSet[i], 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferFragPosInfo, nullptr),
+            vk::WriteDescriptorSet(gBufferDescriptorSet[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferNormalInfo, nullptr),
+            vk::WriteDescriptorSet(gBufferDescriptorSet[i], 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferAlbedoInfo, nullptr),
+            vk::WriteDescriptorSet(gBufferDescriptorSet[i], 3, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &lightingUBOInfo)
+            };
+        device.updateDescriptorSets(writes2, {});
     }
-
-    std::vector<vk::DescriptorSetLayout> layouts2(1, *gBufferSetLayout);
-    gBufferDescriptorSet = std::move(descriptorSetAllocator->Allocate(layouts2).back());
-
-    vk::DescriptorImageInfo gBufferFragPosInfo(*gBufferSampler, gBuffer.fragPosImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-    vk::DescriptorImageInfo gBufferNormalInfo(*gBufferSampler, gBuffer.normalVectorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-    vk::DescriptorImageInfo gBufferAlbedoInfo(*gBufferSampler, gBuffer.albedoColorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-    vk::DescriptorBufferInfo lightingUBOInfo(lightingUniformBuffers[0].buffer.buffer, 0, sizeof(LightingUBO));
-
-    std::array<vk::WriteDescriptorSet, 4> writes2 {
-        vk::WriteDescriptorSet(gBufferDescriptorSet, 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferFragPosInfo, nullptr),
-        vk::WriteDescriptorSet(gBufferDescriptorSet, 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferNormalInfo, nullptr),
-        vk::WriteDescriptorSet(gBufferDescriptorSet, 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferAlbedoInfo, nullptr),
-        vk::WriteDescriptorSet(gBufferDescriptorSet, 3, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &lightingUBOInfo)
-        };
-    device.updateDescriptorSets(writes2, {});
 }
 
 void Renderer::createUniformBuffers() {
