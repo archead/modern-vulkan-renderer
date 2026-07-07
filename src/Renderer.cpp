@@ -232,27 +232,22 @@ void Renderer::createLightingPipeline() {
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
 	vertShaderStageInfo.stage  = vk::ShaderStageFlagBits::eVertex;
 	vertShaderStageInfo.module = shaderModule;
-	vertShaderStageInfo.pName  = "vertMain";
+	vertShaderStageInfo.pName  = "lightingVertMain";
 
 	vk::PipelineShaderStageCreateInfo fragShaderStageInfo;
 	fragShaderStageInfo.stage  = vk::ShaderStageFlagBits::eFragment;
 	fragShaderStageInfo.module = shaderModule;
-	fragShaderStageInfo.pName  = "fragMain";
+	fragShaderStageInfo.pName  = "lightingFragMain";
 
 	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
 	vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
-	auto                                   bindingDescription    = Vertex::getBindingDescription();
-	auto                                   attributeDescriptions = Vertex::getAttributeDescriptions();
-	vertexInputInfo.vertexBindingDescriptionCount                = 1;
-	vertexInputInfo.pVertexBindingDescriptions                   = &bindingDescription;
-	vertexInputInfo.vertexAttributeDescriptionCount              = attributeDescriptions.size();
-	vertexInputInfo.pVertexAttributeDescriptions                 = attributeDescriptions.data();
+	vertexInputInfo.vertexBindingDescriptionCount                = 0;
+	vertexInputInfo.pVertexBindingDescriptions                   = nullptr;
+	vertexInputInfo.vertexAttributeDescriptionCount              = 0;
+	vertexInputInfo.pVertexAttributeDescriptions                 = nullptr;
 
-	std::vector dynamicStates = {
-		vk::DynamicState::eViewport,
-		vk::DynamicState::eScissor
-	};
+	std::vector dynamicStates = { vk::DynamicState::eViewport, vk::DynamicState::eScissor };
 
 	vk::PipelineDynamicStateCreateInfo dynamicState;
 	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
@@ -264,11 +259,8 @@ void Renderer::createLightingPipeline() {
 	vk::PipelineViewportStateCreateInfo viewportState({}, 1, {}, 1);
 
 	vk::PipelineDepthStencilStateCreateInfo depthStencil;
-	depthStencil.depthTestEnable       = vk::True;
-	depthStencil.depthWriteEnable      = vk::True;
-	depthStencil.depthCompareOp        = vk::CompareOp::eLess;
-	depthStencil.depthBoundsTestEnable = vk::False;
-	depthStencil.stencilTestEnable     = vk::False;
+	depthStencil.depthTestEnable       = vk::False;
+	depthStencil.depthWriteEnable      = vk::False;
 
 	vk::PipelineRasterizationStateCreateInfo rasterizer;
 	rasterizer.depthClampEnable        = vk::False;
@@ -297,20 +289,18 @@ void Renderer::createLightingPipeline() {
 	colorBlending.attachmentCount = 3;
 	colorBlending.pAttachments    = colorBlendAttachments.data();
 
+	// TODO: configure descriptors
 	std::array<vk::DescriptorSetLayout, 2> setLayouts = { *globalSetLayout, *objectSetLayout};
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
 	pipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
-	vk::Format depthFormat = findDepthFormat();
-
 	std::array<vk::Format, 3> gBufferFormats = {gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat};
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
-	pipelineRenderingCreateInfo.colorAttachmentCount    = 3;
+	pipelineRenderingCreateInfo.colorAttachmentCount    = 1;
 	pipelineRenderingCreateInfo.pColorAttachmentFormats = gBufferFormats.data();
-	pipelineRenderingCreateInfo.depthAttachmentFormat   = depthFormat;
 
 	vk::GraphicsPipelineCreateInfo pipelineInfo;
 	pipelineInfo.pNext               = &pipelineRenderingCreateInfo;

@@ -122,6 +122,10 @@ PointLightOutput CalcPointLight(LightBuffer pointLight, int lightIndex, float3 n
     return PointLightOutput(ambient, diffuse, specular);
 }
 
+float4 lightingVertMain(){
+    return float4(0);
+}
+
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
 
@@ -142,4 +146,8 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     }
 
     return float4(color, albedo.a);
+}
+
+float4 lightingFragMain(VSOutput lightingVertIn) : SV_TARGET {
+    return float4(0);
 }

@@ -85,8 +85,6 @@ void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
 }
 
 // per-frame descriptors
-
-
 void Renderer::createDescriptorSets() {
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *globalSetLayout);
     globalDescriptorSets = descriptorSetAllocator->Allocate(layouts);
