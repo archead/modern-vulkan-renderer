@@ -40,8 +40,14 @@ private:
 	vk::Format                       swapChainImageFormat = vk::Format::eUndefined;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
 
-	vk::raii::PipelineLayout pipelineLayout   = nullptr;
-	vk::raii::Pipeline       graphicsPipeline = nullptr;
+	vk::raii::PipelineLayout pipelineLayout         = nullptr;
+	vk::raii::Pipeline       graphicsPipeline       = nullptr;
+
+	vk::raii::Pipeline       geometryPipeline       = nullptr;
+	vk::raii::PipelineLayout geometryPipelineLayout = nullptr;
+
+	vk::raii::Pipeline       lightingPipeline       = nullptr;
+	vk::raii::PipelineLayout lightingPipelineLayout = nullptr;
 
 	vk::raii::CommandPool                commandPool = nullptr;
 	std::vector<vk::raii::CommandBuffer> commandBuffers;

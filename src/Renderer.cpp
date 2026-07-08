@@ -223,7 +223,6 @@ void Renderer::createImageViews() {
 	return shaderModule;
 }
 
-
 void Renderer::createLightingPipeline() {
 	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
@@ -280,27 +279,24 @@ void Renderer::createLightingPipeline() {
 	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
 	colorBlendAttachment.blendEnable         = vk::False; // disabled for Deferred rendering
 
-	std::array<vk::PipelineColorBlendAttachmentState, 3> colorBlendAttachments = {};
+	std::array<vk::PipelineColorBlendAttachmentState, 1> colorBlendAttachments = {};
 	colorBlendAttachments.fill(colorBlendAttachment);
 
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
 	colorBlending.logicOpEnable   = VK_FALSE;
 	colorBlending.logicOp         = vk::LogicOp::eCopy;
-	colorBlending.attachmentCount = 3;
+	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments    = colorBlendAttachments.data();
 
-	// TODO: configure descriptors
-	std::array<vk::DescriptorSetLayout, 2> setLayouts = { *globalSetLayout, *objectSetLayout};
+	std::array<vk::DescriptorSetLayout, 1> setLayouts = {*gBufferSetLayout};
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
-	pipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
-
-	std::array<vk::Format, 3> gBufferFormats = {gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat};
+	lightingPipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
 	pipelineRenderingCreateInfo.colorAttachmentCount    = 1;
-	pipelineRenderingCreateInfo.pColorAttachmentFormats = gBufferFormats.data();
+	pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
 
 	vk::GraphicsPipelineCreateInfo pipelineInfo;
 	pipelineInfo.pNext               = &pipelineRenderingCreateInfo;
@@ -314,12 +310,12 @@ void Renderer::createLightingPipeline() {
 	pipelineInfo.pMultisampleState   = &multisample;
 	pipelineInfo.pColorBlendState    = &colorBlending;
 	pipelineInfo.pDynamicState       = &dynamicState;
-	pipelineInfo.layout              = pipelineLayout;
+	pipelineInfo.layout              = lightingPipelineLayout;
 	pipelineInfo.renderPass          = nullptr;
 	pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex   = -1;
 
-	graphicsPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
+	lightingPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
 }
 
 void Renderer::createGeometryPipeline() {
@@ -395,14 +391,13 @@ void Renderer::createGeometryPipeline() {
 	colorBlending.attachmentCount = 3;
 	colorBlending.pAttachments    = colorBlendAttachments.data();
 
-	std::array<vk::DescriptorSetLayout, 2> setLayouts = { *globalSetLayout, *objectSetLayout};
-	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
+	std::array<vk::DescriptorSetLayout, 2> setLayouts = {*globalSetLayout, *objectSetLayout};
+	vk::PipelineLayoutCreateInfo           pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
-	pipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
+	geometryPipelineLayout            = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
 	vk::Format depthFormat = findDepthFormat();
-
 	std::array<vk::Format, 3> gBufferFormats = {gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat};
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
@@ -422,12 +417,12 @@ void Renderer::createGeometryPipeline() {
 	pipelineInfo.pMultisampleState   = &multisample;
 	pipelineInfo.pColorBlendState    = &colorBlending;
 	pipelineInfo.pDynamicState       = &dynamicState;
-	pipelineInfo.layout              = pipelineLayout;
+	pipelineInfo.layout              = geometryPipelineLayout;
 	pipelineInfo.renderPass          = nullptr;
 	pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex   = -1;
 
-	graphicsPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
+	geometryPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
 }
 
 void Renderer::createGraphicsPipeline() {
@@ -1021,6 +1016,7 @@ void Renderer::initVulkan() {
 	createAllocator();
 	createDescriptorSetLayouts(); // used during pipeline creation, also responsible for game object descriptor set layouts
 	createGeometryPipeline();
+	createLightingPipeline();
 	createGraphicsPipeline();
 	createCommandPool();
 	createImGuiInstance();
