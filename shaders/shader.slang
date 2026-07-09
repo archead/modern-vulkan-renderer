@@ -43,6 +43,12 @@ struct VSOutput {
     float3x3 TBN;
     bool useNormal;
 };
+
+struct GBufferOutput {
+    float4 fragPos : SV_Target0;
+    float4 normal : SV_Target1;
+    float4 albedo : SV_Target2;
+}
 //set 1
 [[vk::binding(0, 0)]]
 ConstantBuffer<GlobalUBO> globalUbo;
@@ -56,6 +62,14 @@ ConstantBuffer<ObjectUBO> objectUbo;
 Sampler2D texture;
 [[vk::binding(2, 1)]]
 Sampler2D normalMap;
+
+
+[[vk::binding(0, 2)]]
+Sampler2D gBufferFragPos;
+[[vk::binding(1, 2)]]
+Sampler2D gBufferNormal;
+[[vk::binding(2, 2)]]
+Sampler2D gBufferAlbedo;
 
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
@@ -80,6 +94,39 @@ VSOutput vertMain(VSInput input) {
     output.TBN = TBN;
 
     output.useNormal = (bool)objectUbo.flags.x;
+
+    return output;
+}
+
+struct LightingVSOutput {
+    float4 pos : SV_Position;
+    float2 uv;
+}
+
+[shader("vertex")]
+LightingVSOutput lightingVertMain(uint vertexID : SV_VertexID) {
+    LightingVSOutput output;
+    output.uv = float2((vertexID << 1) & 2, vertexID & 2);
+    output.pos = (output.uv * 2.0 - 1.0, 0.0, 1.0);
+    return output;
+
+}
+
+[shader("fragment")]
+GBufferOutput geometryFragMain(VSOutput vertIn) {
+    GBufferOutput output = {};
+
+    output.fragPos = float4(vertIn.fragPos, 1.0);
+
+    // set the normal vector, if object has a normalMap, use that, if not, use vertex normal
+    float3 normal;
+    if (vertIn.useNormal){
+        normal = normalize(normalMap.Sample(vertIn.fragTexCoord).xyz * 2.0 - 1.0);
+        normal = normalize(mul(vertIn.TBN, normal));
+    } else { normal = normalize(vertIn.normal); }
+
+    output.normal = float4(normal, 0.0);
+    output.albedo = texture.Sample(vertIn.fragTexCoord);
 
     return output;
 }
@@ -120,11 +167,6 @@ PointLightOutput CalcPointLight(LightBuffer pointLight, int lightIndex, float3 n
     float3 specular = specColor * blinnTerm * attenIntensity;
 
     return PointLightOutput(ambient, diffuse, specular);
-}
-
-[shader("vertex")]
-float4 lightingVertMain() : SV_Position{
-    return float4(0, 0, 0, 1);
 }
 
 [shader("fragment")]

@@ -9,7 +9,7 @@ set(IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui)
 function (add_slang_shader_target TARGET)
     cmake_parse_arguments ("SHADER" "" "" "SOURCES" ${ARGN})
     set (SHADERS_DIR ${CMAKE_CURRENT_LIST_DIR}/shaders)
-    set (ENTRY_POINTS -entry vertMain -entry fragMain -entry lightingVertMain -entry lightingFragMain)
+    set (ENTRY_POINTS -entry vertMain -entry fragMain -entry lightingVertMain -entry lightingFragMain -entry geometryFragMain)
     set (SLANGC_EXECUTABLE "C:/VulkanSDK/1.4.321.1/bin/slangc.exe")
     add_custom_command (
             OUTPUT ${SHADERS_DIR}

@@ -331,7 +331,7 @@ void Renderer::createGeometryPipeline() {
 	vk::PipelineShaderStageCreateInfo fragShaderStageInfo;
 	fragShaderStageInfo.stage  = vk::ShaderStageFlagBits::eFragment;
 	fragShaderStageInfo.module = shaderModule;
-	fragShaderStageInfo.pName  = "fragMain";
+	fragShaderStageInfo.pName  = "geometryFragMain";
 
 	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
