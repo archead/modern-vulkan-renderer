@@ -48,7 +48,8 @@ struct GBufferOutput {
     float4 fragPos : SV_Target0;
     float4 normal : SV_Target1;
     float4 albedo : SV_Target2;
-}
+};
+
 //set 1
 [[vk::binding(0, 0)]]
 ConstantBuffer<GlobalUBO> globalUbo;
@@ -63,13 +64,15 @@ Sampler2D texture;
 [[vk::binding(2, 1)]]
 Sampler2D normalMap;
 
-
-[[vk::binding(0, 2)]]
+// could cause issues with the other pipeline that has bindings in set 0 as well
+[[vk::binding(0, 0)]]
 Sampler2D gBufferFragPos;
-[[vk::binding(1, 2)]]
+[[vk::binding(1, 0)]]
 Sampler2D gBufferNormal;
-[[vk::binding(2, 2)]]
+[[vk::binding(2, 0)]]
 Sampler2D gBufferAlbedo;
+[[vk::binding(3, 0)]]
+ConstantBuffer<LightBuffer> lightingUBO;
 
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
@@ -100,36 +103,8 @@ VSOutput vertMain(VSInput input) {
 
 struct LightingVSOutput {
     float4 pos : SV_Position;
-    float2 uv;
-}
-
-[shader("vertex")]
-LightingVSOutput lightingVertMain(uint vertexID : SV_VertexID) {
-    LightingVSOutput output;
-    output.uv = float2((vertexID << 1) & 2, vertexID & 2);
-    output.pos = (output.uv * 2.0 - 1.0, 0.0, 1.0);
-    return output;
-
-}
-
-[shader("fragment")]
-GBufferOutput geometryFragMain(VSOutput vertIn) {
-    GBufferOutput output = {};
-
-    output.fragPos = float4(vertIn.fragPos, 1.0);
-
-    // set the normal vector, if object has a normalMap, use that, if not, use vertex normal
-    float3 normal;
-    if (vertIn.useNormal){
-        normal = normalize(normalMap.Sample(vertIn.fragTexCoord).xyz * 2.0 - 1.0);
-        normal = normalize(mul(vertIn.TBN, normal));
-    } else { normal = normalize(vertIn.normal); }
-
-    output.normal = float4(normal, 0.0);
-    output.albedo = texture.Sample(vertIn.fragTexCoord);
-
-    return output;
-}
+    float2 uv : TEXCOORD0;
+};
 
 PointLightOutput CalcPointLight(LightBuffer pointLight, int lightIndex, float3 normal, VSOutput vertIn) {
     // point light properties
@@ -169,6 +144,34 @@ PointLightOutput CalcPointLight(LightBuffer pointLight, int lightIndex, float3 n
     return PointLightOutput(ambient, diffuse, specular);
 }
 
+[shader("vertex")]
+LightingVSOutput lightingVertMain(uint vertexID : SV_VertexID) {
+    LightingVSOutput output;
+    output.uv = float2((vertexID << 1) & 2, vertexID & 2);
+    output.pos = float4(output.uv * 2.0 - 1.0, 0.0, 1.0);
+    return output;
+}
+
+[shader("fragment")]
+GBufferOutput geometryFragMain(VSOutput vertIn) {
+    GBufferOutput output = {};
+
+    output.fragPos = float4(vertIn.fragPos, 1.0);
+
+    // set the normal vector, if object has a normalMap, use that, if not, use vertex normal
+    float3 normal;
+    if (vertIn.useNormal){
+        normal = normalize(normalMap.Sample(vertIn.fragTexCoord).xyz * 2.0 - 1.0);
+        normal = normalize(mul(vertIn.TBN, normal));
+    } else { normal = normalize(vertIn.normal); }
+
+    output.normal = float4(normal, 0.0);
+    output.albedo = texture.Sample(vertIn.fragTexCoord);
+
+    return output;
+}
+
+
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
 
@@ -192,6 +195,6 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
 }
 
 [shader("fragment")]
-float4 lightingFragMain(VSOutput lightingVertIn) : SV_TARGET {
-    return float4(0, 0, 0, 1);
+float4 lightingFragMain(LightingVSOutput lightingVertIn) : SV_TARGET {
+    return float4(gBufferAlbedo.Sample(lightingVertIn.uv).xyz, 1.0);
 }
