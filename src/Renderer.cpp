@@ -148,12 +148,16 @@ void Renderer::bootstrapVulkan() {
 	features13.dynamicRendering = VK_TRUE;
 	features13.synchronization2 = VK_TRUE;
 
+	vk::PhysicalDeviceVulkan11Features features11{};
+	features11.shaderDrawParameters = VK_TRUE;
+
 	vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT featuresEXT{};
 	featuresEXT.extendedDynamicState = VK_TRUE;
 
 	vkb::DeviceBuilder device_builder{vkbPhysicalDevice};
 	auto dev_ret = device_builder
 	.add_pNext(&features)
+	.add_pNext(&features11)
 	.add_pNext(&features13)
 	.add_pNext(&featuresEXT)
 	.build();
