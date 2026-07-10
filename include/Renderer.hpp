@@ -205,6 +205,8 @@ private:
 
 	void createCommandBuffers();
 
+	void recordCommandBufferDeferred(uint32_t imageIndex);
+
 	void recordCommandBuffer(uint32_t imageIndex);
 
 	void transition_image_layout(
