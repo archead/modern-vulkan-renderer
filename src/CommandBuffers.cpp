@@ -50,19 +50,12 @@ void Renderer::endSingleTimeCommands(vk::raii::CommandBuffer& commandBuffer) {
 void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	commandBuffers[currentFrame].begin({});
 
+	// transition gBuffers to color attachments
 	transition_image_layout(gBuffer.fragPosImage.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, {}, vk::AccessFlagBits2::eColorAttachmentWrite, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::ImageAspectFlagBits::eColor);
 	transition_image_layout(gBuffer.normalVectorImage.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, {}, vk::AccessFlagBits2::eColorAttachmentWrite, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::ImageAspectFlagBits::eColor);
 	transition_image_layout(gBuffer.albedoColorImage.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, {}, vk::AccessFlagBits2::eColorAttachmentWrite, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::ImageAspectFlagBits::eColor);
-
-	transition_image_layout(
-		vk::Image(depthImage.image),
-		vk::ImageLayout::eUndefined,
-		vk::ImageLayout::eDepthAttachmentOptimal,
-		{},
-		vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
-		vk::PipelineStageFlagBits2::eTopOfPipe,
-		vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
-		vk::ImageAspectFlagBits::eDepth);
+	// transition depthImage to depth attachment
+	transition_image_layout(depthImage.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal,{}, vk::AccessFlagBits2::eDepthStencilAttachmentWrite, vk::PipelineStageFlagBits2::eTopOfPipe, vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests, vk::ImageAspectFlagBits::eDepth);
 
 	vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 	vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
@@ -95,16 +88,18 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	depthAttachmentInfo.storeOp                     = vk::AttachmentStoreOp::eDontCare;
 	depthAttachmentInfo.clearValue                  = clearDepth;
 
-	vk::RenderingInfo renderingInfo    = {};
-	renderingInfo.renderArea.offset    = vk::Offset2D(0, 0);
-	renderingInfo.renderArea.extent    = swapChainExtent;
-	renderingInfo.layerCount           = 1;
-	renderingInfo.colorAttachmentCount = 1;
-	renderingInfo.pColorAttachments    = &attachmentInfo;
-	renderingInfo.pDepthAttachment     = &depthAttachmentInfo;
+	std::vector<vk::RenderingAttachmentInfo> colorAttachments = {fragPosAttachmentInfo, normalVectorAttachmentInfo, albedoAttachmentInfo};
 
-	commandBuffers[currentFrame].beginRendering(renderingInfo);
-	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+	vk::RenderingInfo geometryRenderingInfo    = {};
+	geometryRenderingInfo.renderArea.offset    = vk::Offset2D(0, 0);
+	geometryRenderingInfo.renderArea.extent    = swapChainExtent;
+	geometryRenderingInfo.layerCount           = 1;
+	geometryRenderingInfo.colorAttachmentCount = 3;
+	geometryRenderingInfo.pColorAttachments    = colorAttachments.data();
+	geometryRenderingInfo.pDepthAttachment     = &depthAttachmentInfo;
+
+	commandBuffers[currentFrame].beginRendering(geometryRenderingInfo);
+	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, geometryPipeline);
 	commandBuffers[currentFrame].bindVertexBuffers(0, vk::Buffer(vertexBuffer.buffer), {0});
 	commandBuffers[currentFrame].bindIndexBuffer(vk::Buffer(indexBuffer.buffer), 0, vk::IndexType::eUint32);
 
@@ -113,26 +108,55 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
 
 	// bind descriptors
-	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout,0, *globalDescriptorSets[currentFrame],{});
+	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout,0, *globalDescriptorSets[currentFrame],{});
 
 	for (const auto& gameObject : gameObjects) {
-		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 1, *gameObject.descriptorSets[currentFrame], {});
+		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *gameObject.descriptorSets[currentFrame], {});
 		commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
 	}
 
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]);
+	commandBuffers[currentFrame].endRendering();
+
+	transition_image_layout(gBuffer.fragPosImage.image, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eColorAttachmentWrite, vk::AccessFlagBits2::eShaderRead, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eFragmentShader, vk::ImageAspectFlagBits::eColor);
+	transition_image_layout(gBuffer.normalVectorImage.image, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eColorAttachmentWrite, vk::AccessFlagBits2::eShaderRead, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eFragmentShader, vk::ImageAspectFlagBits::eColor);
+	transition_image_layout(gBuffer.albedoColorImage.image, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eColorAttachmentWrite, vk::AccessFlagBits2::eShaderRead, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eFragmentShader, vk::ImageAspectFlagBits::eColor);
+
+	transition_image_layout(swapChainImages[imageIndex], vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, {}, vk::AccessFlagBits2::eColorAttachmentWrite, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::ImageAspectFlagBits::eColor);
+
+	vk::RenderingAttachmentInfo attachmentInfo;
+	attachmentInfo.imageView = swapChainImageViews[imageIndex];
+	attachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+	attachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
+	attachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
+	attachmentInfo.clearValue = clearColor;
+
+	vk::RenderingInfo lightingRenderingInfo    = {};
+	lightingRenderingInfo.renderArea.offset    = vk::Offset2D(0, 0);
+	lightingRenderingInfo.renderArea.extent    = swapChainExtent;
+	lightingRenderingInfo.layerCount           = 1;
+	lightingRenderingInfo.colorAttachmentCount = 1;
+	lightingRenderingInfo.pColorAttachments    = &attachmentInfo;
+
+
+	commandBuffers[currentFrame].beginRendering(lightingRenderingInfo);
+	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline);
+
+	// Set the dynamic states of Scissor and Viewport
+	commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
+	commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
+
+	// bind descriptors
+	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *lightingPipelineLayout,0, *gBufferDescriptorSets[currentFrame],{});
+
+
+	// big trangle trick
+	commandBuffers[currentFrame].draw(3, 1, 0, 0);
+
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]); // part of lighting pass
 
 	commandBuffers[currentFrame].endRendering();
 
-	transition_image_layout(
-		swapChainImages[imageIndex],
-		vk::ImageLayout::eColorAttachmentOptimal,
-		vk::ImageLayout::ePresentSrcKHR,
-		vk::AccessFlagBits2::eColorAttachmentWrite,
-		{},
-		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-		vk::PipelineStageFlagBits2::eBottomOfPipe,
-		vk::ImageAspectFlagBits::eColor);
+	transition_image_layout(swapChainImages[imageIndex], vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits2::eColorAttachmentWrite, {}, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eBottomOfPipe, vk::ImageAspectFlagBits::eColor);
 
 	commandBuffers[currentFrame].end();
 }
