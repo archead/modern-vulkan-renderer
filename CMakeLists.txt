@@ -6,11 +6,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui)
 
+find_program(SLANGC_EXECUTABLE
+    NAMES slangc
+    HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/bin")
+
+if (NOT SLANGC_EXECUTABLE)
+    message(FATAL_ERROR "slangc not found: is Vulkan SDK installed and VULKAN_SDK set in PATH?")
+endif ()
+
 function (add_slang_shader_target TARGET)
     cmake_parse_arguments ("SHADER" "" "" "SOURCES" ${ARGN})
     set (SHADERS_DIR ${CMAKE_CURRENT_LIST_DIR}/shaders)
     set (ENTRY_POINTS -entry vertMain -entry fragMain -entry lightingVertMain -entry lightingFragMain -entry geometryFragMain)
-    set (SLANGC_EXECUTABLE "C:/VulkanSDK/1.4.321.1/bin/slangc.exe")
     add_custom_command (
             OUTPUT ${SHADERS_DIR}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADERS_DIR}
