@@ -109,7 +109,7 @@ struct LightingVSOutput {
     float2 uv : TEXCOORD0;
 };
 
-PointLightOutput CalcPointLight(LightBuffer pointLight, int lightIndex, float3 normal, VSOutput vertIn) {
+PointLightOutput CalcPointLight(LightBuffer pointLight, int lightIndex, float3 normal, float3 fragPos) {
     // point light properties
     float3 diffuseColor = float3(pointLight.light[lightIndex].color);
     float3 pointLightCoord = float3(pointLight.light[lightIndex].pos);
@@ -117,7 +117,7 @@ PointLightOutput CalcPointLight(LightBuffer pointLight, int lightIndex, float3 n
     float K = pointLight.light[0].attenK;
 
     // fragment position
-    float3 fragmentCoord = float3(vertIn.fragPos);
+    float3 fragmentCoord = fragPos;
 
     // attenuation
     float3 lightDistance = (pointLightCoord - fragmentCoord);
@@ -179,11 +179,10 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     } else { normal = normalize(vertIn.normal); }
 
     float4 albedo = texture.Sample(vertIn.fragTexCoord);
-
     float3 color = float3(0);
 
     for (int i = 0; i < lightUbo.cameraPos.w; i++){ // .w stores the light count, variable needs to be renamed
-        PointLightOutput lightOut = CalcPointLight(lightUbo, i, normal, vertIn);
+        PointLightOutput lightOut = CalcPointLight(lightUbo, i, normal, vertIn.fragPos);
         color += albedo.rgb * (lightOut.ambient + lightOut.diffuse) + lightOut.specular;
     }
 
@@ -200,7 +199,18 @@ LightingVSOutput lightingVertMain(uint vertexID : SV_VertexID) {
 
 [shader("fragment")]
 float4 lightingFragMain(LightingVSOutput lightingVertIn) : SV_TARGET {
-    if (debugState == 0) return float4(1.0, 0.0, 0.0, 1.0);
+
+    if (debugState == 0) {
+        float4 color = 0.0;
+        float4 albedo = float4(gBufferAlbedo.Sample(lightingVertIn.uv).xyz, 1.0);
+
+        for (int i = 0; i < lightingUBO.cameraPos.w; i++){
+            PointLightOutput light = CalcPointLight(lightingUBO, i, gBufferNormal.Sample(lightingVertIn.uv).xyz, gBufferFragPos.Sample(lightingVertIn.uv).xyz);
+            color += float4(albedo.rgb * (light.ambient + light.diffuse) + light.specular, 1.0);
+        }
+        return color;
+    }
+
     if (debugState == 1) return float4(gBufferAlbedo.Sample(lightingVertIn.uv).xyz, 1.0);
     if (debugState == 2) return float4(gBufferNormal.Sample(lightingVertIn.uv).xyz, 1.0);
     if (debugState == 3) return float4(gBufferFragPos.Sample(lightingVertIn.uv).xyz, 1.0);
