@@ -928,6 +928,28 @@ void Renderer::createGBuffer() {
 	gBuffer.albedoColorImageView = createImageView(gBuffer.albedoColorImage.image, gBuffer.albedoColorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
+void Renderer::recreateGBuffer() {
+	destroyImage(allocator, gBuffer.albedoColorImage);
+	destroyImage(allocator, gBuffer.normalVectorImage);
+	destroyImage(allocator, gBuffer.fragPosImage);
+
+	createGBuffer();
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+	    // configure GBuffer info and writes
+    	vk::DescriptorImageInfo gBufferFragPosInfo(*gBufferSampler, gBuffer.fragPosImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+    	vk::DescriptorImageInfo gBufferNormalInfo(*gBufferSampler, gBuffer.normalVectorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+    	vk::DescriptorImageInfo gBufferAlbedoInfo(*gBufferSampler, gBuffer.albedoColorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+    	std::array<vk::WriteDescriptorSet, 3> writes2 {
+    		vk::WriteDescriptorSet(gBufferDescriptorSets[i], 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferFragPosInfo, nullptr),
+			vk::WriteDescriptorSet(gBufferDescriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferNormalInfo, nullptr),
+			vk::WriteDescriptorSet(gBufferDescriptorSets[i], 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferAlbedoInfo, nullptr),
+			};
+    	device.updateDescriptorSets(writes2, {});
+    }
+}
+
 void Renderer::createGBufferSampler() {
 	vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
 	vk::SamplerCreateInfo samplerInfo   = {};
@@ -1129,6 +1151,8 @@ void Renderer::cleanup() {
 
 	globalDescriptorSets.clear();
 
+	gBufferDescriptorSets.clear();
+
 	// 2) Then destroy pools/allocator
 	descriptorSetAllocator.reset();
 
@@ -1155,6 +1179,10 @@ void Renderer::cleanup() {
 	ktxVulkanTexture_Destruct(&ktxVkTexture, *device, nullptr);
 	destroyImage(allocator, depthImage);
 	destroyImage(allocator, colorImage);
+	destroyImage(allocator, gBuffer.albedoColorImage);
+	destroyImage(allocator, gBuffer.normalVectorImage);
+	destroyImage(allocator, gBuffer.fragPosImage);
+
 	//dumpAllocationStats();
 	destroyAllocator();
 
@@ -1203,6 +1231,7 @@ void Renderer::drawFrame() {
 
 	if (result == vk::Result::eErrorOutOfDateKHR) {
 		recreateSwapChain();
+		recreateGBuffer();
 		return;
 	}
 
@@ -1215,8 +1244,8 @@ void Renderer::drawFrame() {
 	drawDebugMenu();
 
 	commandBuffers[currentFrame].reset();
-	//recordCommandBuffer(imageIndex);
 
+	//recordCommandBuffer(imageIndex); // forward rendering pipeline
 	recordCommandBufferDeferred(imageIndex);
 
 	vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
@@ -1241,6 +1270,7 @@ void Renderer::drawFrame() {
 	if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
 		framebufferResized = false;
 		recreateSwapChain();
+		recreateGBuffer();
 	} else if (result != vk::Result::eSuccess) {
 		throw std::runtime_error("failed to present swap chain image");
 	}

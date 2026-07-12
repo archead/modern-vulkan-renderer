@@ -184,7 +184,7 @@ private:
 		std::vector<uint32_t>* indices;
 	};
 
-	DebugState currentDebugState = DebugState::Albedo;
+	DebugState currentDebugState = DebugState::Lit;
 
 	//endregion
 
@@ -323,6 +323,8 @@ private:
 	void createColorResources();
 
 	void createGBuffer();
+
+	void recreateGBuffer();
 
 	void createGBufferSampler();
 
