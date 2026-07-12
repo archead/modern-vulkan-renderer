@@ -212,7 +212,7 @@ float4 lightingFragMain(LightingVSOutput lightingVertIn) : SV_TARGET {
     }
 
     if (debugState == 1) return float4(gBufferAlbedo.Sample(lightingVertIn.uv).xyz, 1.0);
-    if (debugState == 2) return float4(gBufferNormal.Sample(lightingVertIn.uv).xyz, 1.0);
+    if (debugState == 2) return float4(gBufferNormal.Sample(lightingVertIn.uv).xyz, 1.0) * 0.5 + 0.5; // remap [-1, 1] to [0, 1]
     if (debugState == 3) return float4(gBufferFragPos.Sample(lightingVertIn.uv).xyz, 1.0);
 
     return float4(1.0, 0.0, 0.0, 1.0);
