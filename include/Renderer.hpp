@@ -174,6 +174,7 @@ private:
 	struct LightingUBO {
 		Light     light[MAX_POINT_LIGHTS];
 		glm::vec4 cameraPos_lightCount = {0.0f, 0.0f, 0.0f, MAX_POINT_LIGHTS}; // xyz = cameraPos, w = lightCount
+
 	};
 
 	LightingUBO pointLights = {};
@@ -182,6 +183,8 @@ private:
 		std::vector<Vertex>* vertices;
 		std::vector<uint32_t>* indices;
 	};
+
+	DebugState currentDebugState = DebugState::Albedo;
 
 	//endregion
 

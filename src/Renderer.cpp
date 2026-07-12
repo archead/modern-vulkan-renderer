@@ -136,7 +136,7 @@ void Renderer::bootstrapVulkan() {
 
 	const vkb::PhysicalDevice vkbPhysicalDevice = phys_ret.value();
 	physicalDevice = vk::raii::PhysicalDevice(instance, vkbPhysicalDevice);
-	msaaSamples = getMaxUsableSampleCount();
+	msaaSamples = vk::SampleCountFlagBits::e1; // hard coded since we are using deferred rendering
 
 	// ---- Create Logical Device
 
@@ -192,7 +192,7 @@ void Renderer::bootstrapVulkan() {
 }
 
 vk::Extent2D Renderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities) {
-	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+	if (capabilities.currentExtent.width != (std::numeric_limits<uint32_t>::max)()) {
 		return capabilities.currentExtent;
 	}
 
@@ -269,9 +269,7 @@ void Renderer::createLightingPipeline() {
 	rasterizer.depthClampEnable        = vk::False;
 	rasterizer.rasterizerDiscardEnable = vk::False;
 	rasterizer.polygonMode             = vk::PolygonMode::eFill;
-	rasterizer.cullMode                = vk::CullModeFlagBits::eBack;
-	rasterizer.frontFace               = vk::FrontFace::eCounterClockwise;
-	// this needs to be counterClockwise since we are using GLM for our uniform buffers which is originally designed for OpenGL where Y-axis is flipped
+	rasterizer.cullMode                = vk::CullModeFlagBits::eNone; // disabled for the big trangle
 	rasterizer.depthBiasEnable      = vk::False;
 	rasterizer.depthBiasSlopeFactor = 1.0f;
 	rasterizer.lineWidth            = 1.0f;
@@ -292,10 +290,18 @@ void Renderer::createLightingPipeline() {
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments    = colorBlendAttachments.data();
 
+	vk::PushConstantRange range = {};
+	range.stageFlags = vk::ShaderStageFlagBits::eFragment;
+	range.offset = 0;
+	range.size = 4;
+
 	std::array<vk::DescriptorSetLayout, 1> setLayouts = {*gBufferSetLayout};
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pPushConstantRanges = &range;
+
 	lightingPipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
@@ -670,7 +676,7 @@ void Renderer::createDepthResources() {
 		swapChainExtent.width,
 		swapChainExtent.height,
 		1,
-		static_cast<VkSampleCountFlagBits>(msaaSamples),
+		VK_SAMPLE_COUNT_1_BIT,
 		static_cast<VkFormat>(depthFormat),
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -1174,6 +1180,13 @@ void Renderer::drawDebugMenu() {
 
 	ImGui::DragFloat3("Camera Position", glm::value_ptr(cameraPosOffset), 0.0025f);
 
+	int current = static_cast<int>(currentDebugState);
+	ImGui::RadioButton("Lit", &current, 0); ImGui::SameLine();
+	ImGui::RadioButton("Albedo", &current, 1); ImGui::SameLine();
+	ImGui::RadioButton("Normal", &current, 2); ImGui::SameLine();
+	ImGui::RadioButton("FragPos", &current, 3);
+	currentDebugState = static_cast<DebugState>(current);
+
 	ImGui::End();
 	ImGui::Render();
 }
@@ -1202,7 +1215,9 @@ void Renderer::drawFrame() {
 	drawDebugMenu();
 
 	commandBuffers[currentFrame].reset();
-	recordCommandBuffer(imageIndex);
+	//recordCommandBuffer(imageIndex);
+
+	recordCommandBufferDeferred(imageIndex);
 
 	vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 

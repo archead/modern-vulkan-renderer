@@ -74,6 +74,9 @@ Sampler2D gBufferAlbedo;
 [[vk::binding(3, 0)]]
 ConstantBuffer<LightBuffer> lightingUBO;
 
+[[vk::push_constant]]
+int debugState;
+
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
     VSOutput output;
@@ -144,13 +147,6 @@ PointLightOutput CalcPointLight(LightBuffer pointLight, int lightIndex, float3 n
     return PointLightOutput(ambient, diffuse, specular);
 }
 
-[shader("vertex")]
-LightingVSOutput lightingVertMain(uint vertexID : SV_VertexID) {
-    LightingVSOutput output;
-    output.uv = float2((vertexID << 1) & 2, vertexID & 2);
-    output.pos = float4(output.uv * 2.0 - 1.0, 0.0, 1.0);
-    return output;
-}
 
 [shader("fragment")]
 GBufferOutput geometryFragMain(VSOutput vertIn) {
@@ -194,7 +190,20 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
     return float4(color, albedo.a);
 }
 
+[shader("vertex")]
+LightingVSOutput lightingVertMain(uint vertexID : SV_VertexID) {
+    LightingVSOutput output;
+    output.uv = float2((vertexID << 1) & 2, vertexID & 2);
+    output.pos = float4(output.uv * 2.0 - 1.0, 0.0, 1.0);
+    return output;
+}
+
 [shader("fragment")]
 float4 lightingFragMain(LightingVSOutput lightingVertIn) : SV_TARGET {
-    return float4(gBufferAlbedo.Sample(lightingVertIn.uv).xyz, 1.0);
+    if (debugState == 0) return float4(1.0, 0.0, 0.0, 1.0);
+    if (debugState == 1) return float4(gBufferAlbedo.Sample(lightingVertIn.uv).xyz, 1.0);
+    if (debugState == 2) return float4(gBufferNormal.Sample(lightingVertIn.uv).xyz, 1.0);
+    if (debugState == 3) return float4(gBufferFragPos.Sample(lightingVertIn.uv).xyz, 1.0);
+
+    return float4(1.0, 0.0, 0.0, 1.0);
 }

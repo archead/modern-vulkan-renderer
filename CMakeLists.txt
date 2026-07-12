@@ -30,6 +30,7 @@ function (add_slang_shader_target TARGET)
                 -emit-spirv-directly
                 -fvk-use-entrypoint-name ${ENTRY_POINTS}
                 -o slang.spv
+
             WORKING_DIRECTORY ${SHADERS_DIR}
             DEPENDS ${SHADERS_DIR} ${SHADER_SOURCES}
             COMMENT "Compiling Slang Shaders"

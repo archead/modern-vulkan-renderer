@@ -91,3 +91,5 @@ struct ObjectUBO {
     glm::mat4 normalMatrix;
     glm::uvec4 flags = {0, 0, 0, 0}; // x = use normal map
 };
+
+enum class DebugState : int32_t {Lit, Albedo, Normal, Position};

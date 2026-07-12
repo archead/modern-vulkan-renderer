@@ -107,6 +107,7 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
 	commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
 
+
 	// bind descriptors
 	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout,0, *globalDescriptorSets[currentFrame],{});
 
@@ -148,6 +149,8 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	// bind descriptors
 	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *lightingPipelineLayout,0, *gBufferDescriptorSets[currentFrame],{});
 
+	// set push constants
+	commandBuffers[currentFrame].pushConstants<int32_t>(*lightingPipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, static_cast<int32_t>(currentDebugState));
 
 	// big trangle trick
 	commandBuffers[currentFrame].draw(3, 1, 0, 0);
