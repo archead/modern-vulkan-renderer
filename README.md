@@ -115,7 +115,8 @@ thirdparty/           Dependencies (git submodules)
 - [x] Textured, lit meshes with normal mapping
 - [x] Multi-light Blinn-Phong shading
 - [x] Gamma correction
-- [ ] **Deferred rendering** a G-buffer and geometry pipeline are in progress
+- [x] Deferred rendering
+- [ ] **Project Structure Refactor**
 - [ ] Screen-space effects (SSAO, SSR)
 - [ ] Shadow mapping
 
