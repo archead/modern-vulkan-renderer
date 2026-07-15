@@ -997,7 +997,7 @@ void Renderer::createGameObjects() {
 
 void Renderer::createPointLights() {
 
-	pointLights.cameraPos_lightCount = glm::vec4(cameraPosOffset, MAX_POINT_LIGHTS);
+	pointLights.cameraPos_lightCount = glm::vec4(camera.getPosition(), MAX_POINT_LIGHTS);
 
 	pointLights.light[1].pos_intensity = glm::vec4(-0.2, 0.2, 0.0, defaultLightIntensity);
 	pointLights.light[1].color_attenK = glm::vec4(0.0, 0.0, 1.0, defaultLightAttenK);
@@ -1112,7 +1112,6 @@ glm::vec3 Renderer::getKeyboardInput() {
 	const bool* key_states = SDL_GetKeyboardState(NULL);
 	auto dir_vector = glm::vec3(0.0f, 0.0f, 0.0f);
 	auto dir_vector_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
-	float cameraSpeed = 0.1f;
 
 	if (key_states[SDL_SCANCODE_W]) { dir_vector -= glm::vec3(0.0f, 1.0f, 0.0f); }
 	if (key_states[SDL_SCANCODE_S]) { dir_vector += glm::vec3(0.0f, 1.0f, 0.0f); }
@@ -1125,11 +1124,10 @@ glm::vec3 Renderer::getKeyboardInput() {
 	if (key_states[SDL_SCANCODE_LEFT]) { dir_vector_look_at += glm::vec3(1.0f, 0.0f, 0.0f); }
 	if (key_states[SDL_SCANCODE_RIGHT]) { dir_vector_look_at -= glm::vec3(1.0f, 0.0f, 0.0f); }
 
-	if (glm::length(dir_vector) > 0.0f) { dir_vector = glm::normalize(dir_vector)*cameraSpeed; }
-	if (glm::length(dir_vector_look_at) > 0.0f) { dir_vector_look_at = glm::normalize(dir_vector_look_at)*cameraSpeed; }
+	if (glm::length(dir_vector) > 0.0f) { dir_vector = glm::normalize(dir_vector)*camera.getSpeed(); }
+	if (glm::length(dir_vector_look_at) > 0.0f) { dir_vector_look_at = glm::normalize(dir_vector_look_at)*camera.getSpeed(); }
 
-	cameraPosOffset += dir_vector;
-	cameraCenterOffset += dir_vector;
+	camera.moveCamera(dir_vector);
 	return dir_vector;
 }
 
@@ -1205,8 +1203,6 @@ void Renderer::drawDebugMenu() {
 
 	ImGui::DragFloat("Light 1 Intensity", &pointLights.light[0].pos_intensity[3], 0.0025f);
 	ImGui::DragFloat("Light 2 Intensity", &pointLights.light[1].pos_intensity[3], 0.0025f);
-
-	ImGui::DragFloat3("Camera Position", glm::value_ptr(cameraPosOffset), 0.0025f);
 
 	int current = static_cast<int>(currentDebugState);
 	ImGui::RadioButton("Lit", &current, 0); ImGui::SameLine();

@@ -90,6 +90,7 @@ add_executable(vulkan_doc_tutorial
     src/CommandBuffers.cpp
     src/Images.cpp
     src/Textures.cpp
+    src/Camera.cpp
 )
 
 target_include_directories(vulkan_doc_tutorial

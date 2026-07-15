@@ -135,13 +135,8 @@ void Renderer::createUniformBuffers() {
 
 void Renderer::updateUniformBuffer(uint32_t imageIndex) {
     GlobalUBO globalUbo = {};
-    globalUbo.view      = glm::lookAt(cameraPos + cameraPosOffset, cameraCenter + cameraCenterOffset,
-                                      glm::vec3(0.0f, 0.0f, 1.0f));
-    globalUbo.proj = glm::perspective(
-        glm::radians(45.0f),
-        static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height),
-        0.1f, 50.0f);
-    globalUbo.proj[1][1] *= -1;
+    globalUbo.view      = camera.getViewMatrix();
+    globalUbo.proj = camera.getProjectionMatrix(static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height));
 
     // map the global UBO
     memcpy(globalUniformBuffers[imageIndex].mapped, &globalUbo, sizeof(globalUbo));

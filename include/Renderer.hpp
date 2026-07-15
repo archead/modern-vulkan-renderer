@@ -10,6 +10,8 @@
 #include <ktxvulkan.h>
 #include <mikktspace.h>
 
+#include "Camera.hpp"
+
 class Renderer {
 public:
 	void run();
@@ -150,16 +152,11 @@ private:
 		[[nodiscard]] glm::mat4 getModelMatrix() const;
 	};
 
-
 	std::vector<std::unique_ptr<ModelTexture>> modelTextures;
 
 	std::vector<GameObject> gameObjects;
 
-
-	glm::vec3 cameraPos          = {0.0f, 2.0f, 2.0f};
-	glm::vec3 cameraCenter       = {0.0f, 0.0f, 0.0f};
-	glm::vec3 cameraPosOffset    = {0.0f, 0.0f, 0.0f};
-	glm::vec3 cameraCenterOffset = {0.0f, 0.0f, 0.0f};
+	Camera camera;
 
 	glm::vec3 defaultLightColor    = {0.96, 0.89, 0.54};
 	float     defaultLightAttenK   = 0.25f;
