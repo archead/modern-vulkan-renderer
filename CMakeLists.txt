@@ -93,6 +93,7 @@ add_executable(vulkan_doc_tutorial
     src/Camera.cpp
     src/VkUtil.cpp
     src/MikkUtil.cpp
+    src/VulkanContext.cpp
 )
 
 target_include_directories(vulkan_doc_tutorial

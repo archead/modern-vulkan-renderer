@@ -102,7 +102,7 @@ void Renderer::bootstrapVulkan() {
 	sdlInstanceExtensions = SDL_Vulkan_GetInstanceExtensions(&sdlExtCount);
 
 	auto instance_ret = instance_builder
-		.set_app_name("Hello Triangle")
+		.set_app_name("Modern Renderer")
 		.set_engine_name("No Engine")
 		.require_api_version(1,4,0)
 		.enable_validation_layers(enableValidationLayers)
@@ -117,7 +117,6 @@ void Renderer::bootstrapVulkan() {
 	debugMessenger = vk::raii::DebugUtilsMessengerEXT(instance,vkbInstance.debug_messenger);
 
 	// ---- Create Surface
-
 	VkSurfaceKHR _surface = VK_NULL_HANDLE;
 	if (!SDL_Vulkan_CreateSurface(window, *instance, nullptr, &_surface)) {
 		throw std::runtime_error(SDL_GetError());
@@ -125,7 +124,6 @@ void Renderer::bootstrapVulkan() {
 	surface = vk::raii::SurfaceKHR(instance, _surface);
 
 	// ---- Select Physical Device
-
 	vkb::PhysicalDeviceSelector selector{vkbInstance};
 	auto phys_ret = selector
 	.set_surface(*surface)
