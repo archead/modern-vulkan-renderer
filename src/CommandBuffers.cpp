@@ -21,32 +21,6 @@ void Renderer::createCommandBuffers() {
 	commandBuffers = vk::raii::CommandBuffers(device, allocInfo);
 }
 
-vk::raii::CommandBuffer Renderer::beginSingleTimeCommands() {
-	vk::CommandBufferAllocateInfo allocInfo = {};
-	allocInfo.commandPool = commandPool;
-	allocInfo.level = vk::CommandBufferLevel::ePrimary;
-	allocInfo.commandBufferCount = 1;
-
-	vk::raii::CommandBuffer commandBuffer = std::move(device.allocateCommandBuffers(allocInfo).front());
-
-	vk::CommandBufferBeginInfo beginInfo = {};
-	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	commandBuffer.begin(beginInfo);
-
-	return commandBuffer;
-}
-
-void Renderer::endSingleTimeCommands(vk::raii::CommandBuffer& commandBuffer) {
-	commandBuffer.end();
-
-	vk::SubmitInfo submitInfo = {};
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &*commandBuffer;
-
-	graphicsQueue.submit(submitInfo);
-	graphicsQueue.waitIdle();
-}
-
 void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	commandBuffers[currentFrame].begin({});
 

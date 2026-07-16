@@ -56,3 +56,69 @@ void vkutil::endSingleTimeCommands(vk::raii::CommandBuffer& commandBuffer, vk::r
     graphicsQueue.submit(submitInfo);
     graphicsQueue.waitIdle();
 }
+
+vk::Format vkutil::findSupportedFormat(vk::raii::PhysicalDevice& physicalDevice, const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+    for (const auto format : candidates) {
+        vk::FormatProperties props = physicalDevice.getFormatProperties(format);
+
+        if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
+            return format;
+        }
+        if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
+            return format;
+        }
+    }
+    throw std::runtime_error("failed to find supported format!");
+}
+
+vk::Format vkutil::findDepthFormat(vk::raii::PhysicalDevice& physicalDevice) {
+    return findSupportedFormat(
+    physicalDevice,
+      {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+      vk::ImageTiling::eOptimal,
+      vk::FormatFeatureFlagBits::eDepthStencilAttachment
+    );
+}
+
+void vkutil::createImage(
+VmaAllocator allocator,
+uint32_t width,
+uint32_t height,
+uint32_t mipLevels,
+VkSampleCountFlagBits numSamples,
+VkFormat format,
+VkImageTiling tiling,
+VkImageUsageFlags usage,
+AllocatedImage& image) {
+
+    VkImageCreateInfo imageInfo = {};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.format = format;
+    imageInfo.extent = VkExtent3D{width, height, 1};
+    imageInfo.mipLevels = mipLevels;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = numSamples;
+    imageInfo.tiling = tiling;
+    imageInfo.usage = usage;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    VkResult  res = vmaCreateImage(allocator, &imageInfo, &allocInfo, &image.image, &image.allocation, nullptr);
+    if (res != VK_SUCCESS) {throw std::runtime_error("vmaCreateImage failed");}
+}
+
+void vkutil::destroyImage(VmaAllocator allocator, AllocatedImage& allocImage) {
+    vmaDestroyImage(allocator, allocImage.image, allocImage.allocation);
+}
+
+vk::raii::ImageView vkutil::createImageView(vk::raii::Device& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels) {
+    vk::ImageViewCreateInfo viewInfo{};
+    viewInfo.image = image;
+    viewInfo.viewType = vk::ImageViewType::e2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange = {aspectFlags, 0, mipLevels, 0, 1};
+
+    return vk::raii::ImageView(device, viewInfo);
+}

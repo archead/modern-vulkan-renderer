@@ -8,7 +8,6 @@
 #include "DescriptorSets.hpp"
 #include "Config.hpp"
 #include <ktxvulkan.h>
-#include <mikktspace.h>
 
 #include "Camera.hpp"
 
@@ -176,11 +175,6 @@ private:
 
 	LightingUBO pointLights = {};
 
-	struct MikkTSpaceUserData {
-		std::vector<Vertex>* vertices;
-		std::vector<uint32_t>* indices;
-	};
-
 	DebugState currentDebugState = DebugState::Lit;
 
 	//endregion
@@ -231,24 +225,6 @@ private:
 
 	void createIndexBuffer();
 
-	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-
-	void createBuffer( VkDeviceSize size, VkBufferUsageFlags usage, AllocatedBuffer &allocBuff, bool hostVisible);
-
-	void destroyBuffer(VmaAllocator allocator, AllocatedBuffer& allocBuff);
-
-	void destroyImage(VmaAllocator allocator, AllocatedImage& allocImage);
-
-	void createImage(
-		uint32_t              width,
-		uint32_t              height,
-		uint32_t              mipLevels,
-		VkSampleCountFlagBits numSamples,
-		VkFormat              format,
-		VkImageTiling         tiling,
-		VkImageUsageFlags     usage,
-		AllocatedImage &      image);
-
 	void createGameObjectDescriptorSets();
 
 	void createDescriptorSetLayouts();
@@ -267,16 +243,8 @@ private:
 
 	void transitionImageLayout(const vk::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels);
 
-	void copyBufferToImage(const vk::Buffer& buffer, vk::Image image, uint32_t width, uint32_t height);
-
 	void copyBufferToImage(const vk::Buffer &buffer, vk::Image image, vk::ImageLayout layout,
 	                       const std::vector<vk::BufferImageCopy> &regions);
-
-	vk::raii::CommandBuffer beginSingleTimeCommands();
-
-	void endSingleTimeCommands(vk::raii::CommandBuffer& commandBuffer);
-
-	vk::raii::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels);
 
 	void createTextureImageView();
 
@@ -284,36 +252,11 @@ private:
 
 	void createDepthResources();
 
-	vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
-
-	vk::Format findDepthFormat();
-
 	bool hasStencilComponent(vk::Format format);
 
 	void loadModelGLTF();
 
-	static void unweldVertices(std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
-
-	// used for MikkTSpace
-	static int getNumFaces(const SMikkTSpaceContext *ctx);
-
-	static int getNumVerticesOfFace(const SMikkTSpaceContext *ctx, int iFace);
-
-	static void getPosition(const SMikkTSpaceContext* ctx, float out[3], int face, int vert);
-
-	static void getNormal(const SMikkTSpaceContext* ctx, float out[3], int face, int vert);
-
-	static void getTexCoord(const SMikkTSpaceContext* ctx, float out[3], int face, int vert);
-
-	static void setTSpaceBasic(const SMikkTSpaceContext* ctx, const float tangent[3], float sign, int face, int vert);
-
-	static void generateTangents(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices);
-	// -------
-
 	void generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
-
-
-	vk::SampleCountFlagBits getMaxUsableSampleCount();
 
 	void createColorResources();
 

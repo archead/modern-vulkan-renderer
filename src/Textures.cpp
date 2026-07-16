@@ -1,6 +1,7 @@
 #include "Renderer.hpp"
 #include <ktx.h>
 #include <ktxvulkan.h>
+#include "VkUtil.hpp"
 
 void Renderer::createTextureImage() {
     // Load KTX texture instead of using std_image
@@ -79,7 +80,7 @@ std::unique_ptr<Renderer::ModelTexture> Renderer::loadTextureKTX(const char* tex
 
     if (result != KTX_SUCCESS) { ktxVulkanDeviceInfo_Destruct(&deviceInfo); ktxTexture2_Destroy(kTexture); throw std::runtime_error("ktxTexture_VkUploadEx() failed!"); }
 	//TODO ensure that normals are loaded as VK_FORMAT_R8G8B8A8_UNORM instead of SRGB to prevent unnecessary gamma correction
-    mTex->imageView = createImageView(mTex->ktxVkTexture.image, static_cast<vk::Format>(kTexture->vkFormat), vk::ImageAspectFlagBits::eColor, mTex->ktxVkTexture.levelCount);
+    mTex->imageView = vkutil::createImageView(device, mTex->ktxVkTexture.image, static_cast<vk::Format>(kTexture->vkFormat), vk::ImageAspectFlagBits::eColor, mTex->ktxVkTexture.levelCount);
 
     ktxVulkanDeviceInfo_Destruct(&deviceInfo);
     ktxTexture2_Destroy(kTexture);
@@ -97,7 +98,7 @@ void Renderer::generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t 
 		throw std::runtime_error("Texture image format does not support linear filtering");
 	}
 
-	vk::raii::CommandBuffer commandBuffer = beginSingleTimeCommands();
+	vk::raii::CommandBuffer commandBuffer = vkutil::beginSingleTimeCommands(device, commandPool);
 
 	vk::ImageMemoryBarrier barrier(
 		vk::AccessFlagBits::eTransferWrite,
@@ -158,5 +159,5 @@ void Renderer::generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t 
 	barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
 	commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, barrier);
-	endSingleTimeCommands(commandBuffer);
+	vkutil::endSingleTimeCommands(commandBuffer, graphicsQueue);
 }

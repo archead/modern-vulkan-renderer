@@ -10,9 +10,7 @@
 #include <unordered_map> // Using for deduplicating OBJ vertices
 #include <fstream>
 #include <memory>
-#include <numeric>
 
-#include <mikktspace.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -40,6 +38,9 @@
 
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_sdl3.h>
+
+#include "VkUtil.hpp"
+#include "MikkUtil.hpp"
 
 static void check_vk_result(VkResult err) {
 	if (err == 0) { return; }
@@ -407,7 +408,7 @@ void Renderer::createGeometryPipeline() {
 	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
 	geometryPipelineLayout            = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
-	vk::Format depthFormat = findDepthFormat();
+	vk::Format depthFormat = vkutil::findDepthFormat(physicalDevice);
 	std::array<vk::Format, 3> gBufferFormats = {gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat};
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
@@ -522,7 +523,7 @@ void Renderer::createGraphicsPipeline() {
 	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
 	pipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
-	vk::Format depthFormat = findDepthFormat();
+	vk::Format depthFormat = vkutil::findDepthFormat(physicalDevice);
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
 	pipelineRenderingCreateInfo.colorAttachmentCount    = 1;
@@ -638,74 +639,31 @@ void Renderer::cleanupSwapchain() {
 	colorImageView = nullptr;
 	depthImageView = nullptr;
 
-	if (colorImage.image != VK_NULL_HANDLE) {destroyImage(allocator, colorImage);}
-	if (depthImage.image != VK_NULL_HANDLE) {destroyImage(allocator, depthImage);}
+	if (colorImage.image != VK_NULL_HANDLE) {vkutil::destroyImage(allocator, colorImage);}
+	if (depthImage.image != VK_NULL_HANDLE) {vkutil::destroyImage(allocator, depthImage);}
 
 	swapChainImageViews.clear();
 	swapChain = nullptr;
 }
 
-void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, uint32_t width, uint32_t height) {
-	vk::BufferImageCopy region = {};
-	region.bufferOffset = 0;
-	region.bufferRowLength = 0;
-	region.bufferImageHeight = 0;
-	region.imageSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
-	region.imageOffset = vk::Offset3D{0, 0, 0};
-	region.imageExtent = vk::Extent3D{width, height, 1};
-
-	auto commandBuffer = beginSingleTimeCommands();
-	commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, {region});
-	endSingleTimeCommands(commandBuffer);
-}
-
 void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, vk::ImageLayout layout, const std::vector<vk::BufferImageCopy>& regions) {
-	auto commandBuffer = beginSingleTimeCommands();
+	auto commandBuffer = vkutil::beginSingleTimeCommands(device, commandPool);
 	commandBuffer.copyBufferToImage(buffer, image, layout, regions);
-	endSingleTimeCommands(commandBuffer);
+	vkutil::endSingleTimeCommands(commandBuffer, graphicsQueue);
 }
 
 void Renderer::createTextureImageView() {
-	textureImageView = createImageView(vk::Image(textureImage.image), textureFormat, vk::ImageAspectFlagBits::eColor, mipLevels);
+	textureImageView = vkutil::createImageView(device, vk::Image(textureImage.image), textureFormat, vk::ImageAspectFlagBits::eColor, mipLevels);
 }
 
 void Renderer::createDepthResources() {
-	vk::Format depthFormat = findDepthFormat();
+	vk::Format depthFormat = vkutil::findDepthFormat(physicalDevice);
 
-	createImage(
-		swapChainExtent.width,
-		swapChainExtent.height,
-		1,
-		VK_SAMPLE_COUNT_1_BIT,
-		static_cast<VkFormat>(depthFormat),
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		depthImage);
+	vkutil::createImage(allocator, swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(depthFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
 
-	depthImageView = createImageView(vk::Image(depthImage.image), depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
+	depthImageView = vkutil::createImageView(device, vk::Image(depthImage.image), depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
 }
 
-vk::Format Renderer::findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
-	for (const auto format : candidates) {
-		vk::FormatProperties props = physicalDevice.getFormatProperties(format);
-
-		if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
-			return format;
-		}
-		if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
-			return format;
-		}
-	}
-	throw std::runtime_error("failed to find supported format!");
-}
-
-vk::Format Renderer::findDepthFormat() {
-	return findSupportedFormat(
-	  {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
-	  vk::ImageTiling::eOptimal,
-	  vk::FormatFeatureFlagBits::eDepthStencilAttachment
-	);
-}
 
 bool Renderer::hasStencilComponent(vk::Format format) {
 	return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
@@ -817,121 +775,32 @@ void Renderer::loadModelGLTF() {
 			}
 		}
 	}
-	unweldVertices(vertices, indices);
-	generateTangents(vertices, indices);
+	mikkutil::unweldVertices(vertices, indices);
+	mikkutil::generateTangents(vertices, indices);
 
-}
-
-// undeduplicates vertices and sets index array to just sequential indices used with MikkTSpace
-void Renderer::unweldVertices(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
-	std::vector<Vertex> newVertices;
-	newVertices.reserve(indices.size());
-	for (auto index : indices) {
-		newVertices.push_back(vertices[index]);
-	}
-	vertices = std::move(newVertices);
-
-	indices.resize(vertices.size());
-	std::iota(indices.begin(), indices.end(), 0);
-}
-
-int Renderer::getNumFaces(const SMikkTSpaceContext* ctx) {
-	auto* data = static_cast<MikkTSpaceUserData*>(ctx->m_pUserData);
-	return data->indices->size() / 3;
-}
-
-int Renderer::getNumVerticesOfFace(const SMikkTSpaceContext* ctx, int iFace) {
-	return 3;
-}
-
-void Renderer::getPosition(const SMikkTSpaceContext* ctx, float out[3], int face, int vert) {
-	auto* data = static_cast<MikkTSpaceUserData*>(ctx->m_pUserData);
-	uint32_t i = (*data->indices)[face * 3 + vert];
-	glm::vec3 p = (*data->vertices)[i].pos;
-	out[0] = p.x; out[1] = p.y; out[2] = p.z;
-}
-
-void Renderer::getNormal(const SMikkTSpaceContext* ctx, float out[3], int face, int vert) {
-	auto* data = static_cast<MikkTSpaceUserData*>(ctx->m_pUserData);
-	uint32_t i = (*data->indices)[face * 3 + vert];
-	glm::vec3 n = (*data->vertices)[i].normal;
-	out[0] = n.x; out[1] = n.y; out[2] = n.z;
-}
-
-void Renderer::getTexCoord(const SMikkTSpaceContext* ctx, float out[2], int face, int vert) {
-	auto* data = static_cast<MikkTSpaceUserData*>(ctx->m_pUserData);
-	uint32_t i = (*data->indices)[face * 3 + vert];
-	glm::vec2 uv = (*data->vertices)[i].texCoord;
-	out[0] = uv.x; out[1] = uv.y;
-}
-
-void Renderer::setTSpaceBasic(const SMikkTSpaceContext* ctx, const float tangent[3], float sign, int face, int vert) {
-	auto* data = static_cast<MikkTSpaceUserData*>(ctx->m_pUserData);
-	uint32_t i = (*data->indices)[face * 3 + vert];
-	(*data->vertices)[i].tangent = glm::vec4(tangent[0], tangent[1], tangent[2], sign);
-}
-
-void Renderer::generateTangents(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices){
-	MikkTSpaceUserData userData{&vertices, &indices};
-	SMikkTSpaceInterface iface{};
-	iface.m_getNumFaces = getNumFaces;
-	iface.m_getNumVerticesOfFace = getNumVerticesOfFace;
-	iface.m_getPosition = getPosition;
-	iface.m_getNormal = getNormal;
-	iface.m_getTexCoord = getTexCoord;
-	iface.m_setTSpaceBasic = setTSpaceBasic;
-
-	SMikkTSpaceContext ctx{};
-	ctx.m_pInterface = &iface;
-	ctx.m_pUserData = &userData;
-
-	genTangSpaceDefault(&ctx);
-}
-
-vk::SampleCountFlagBits Renderer::getMaxUsableSampleCount() {
-	vk::PhysicalDeviceProperties physicalDeviceProperties = physicalDevice.getProperties();
-
-	vk::SampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
-	if (counts & vk::SampleCountFlagBits::e64) {return vk::SampleCountFlagBits::e64;}
-	if (counts & vk::SampleCountFlagBits::e32) {return vk::SampleCountFlagBits::e32;}
-	if (counts & vk::SampleCountFlagBits::e16) {return vk::SampleCountFlagBits::e16;}
-	if (counts & vk::SampleCountFlagBits::e8) {return vk::SampleCountFlagBits::e8;}
-	if (counts & vk::SampleCountFlagBits::e4) {return vk::SampleCountFlagBits::e4;}
-	if (counts & vk::SampleCountFlagBits::e2) {return vk::SampleCountFlagBits::e2;}
-
-	return vk::SampleCountFlagBits::e1;
 }
 
 void Renderer::createColorResources() {
 	vk::Format colorFormat = swapChainImageFormat;
 
-	createImage(
-		swapChainExtent.width,
-		swapChainExtent.height,
-		1,
-		static_cast<VkSampleCountFlagBits>(msaaSamples),
-		static_cast<VkFormat>(colorFormat),
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-		colorImage
-	);
-	colorImageView = createImageView(vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
+	vkutil::createImage(allocator, swapChainExtent.width, swapChainExtent.height, 1, static_cast<VkSampleCountFlagBits>(msaaSamples), static_cast<VkFormat>(colorFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, colorImage);
+	colorImageView = vkutil::createImageView(device, vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
 void Renderer::createGBuffer() {
-	createImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(gBuffer.fragPosFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, gBuffer.fragPosImage);
-	createImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(gBuffer.normalVectorFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, gBuffer.normalVectorImage);
-	createImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(gBuffer.albedoColorFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, gBuffer.albedoColorImage);
+	vkutil::createImage(allocator, swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(gBuffer.fragPosFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, gBuffer.fragPosImage);
+	vkutil::createImage(allocator, swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(gBuffer.normalVectorFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, gBuffer.normalVectorImage);
+	vkutil::createImage(allocator, swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(gBuffer.albedoColorFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, gBuffer.albedoColorImage);
 
-	gBuffer.fragPosImageView = createImageView(gBuffer.fragPosImage.image, gBuffer.fragPosFormat, vk::ImageAspectFlagBits::eColor, 1);
-	gBuffer.normalVectorImageView = createImageView(gBuffer.normalVectorImage.image, gBuffer.normalVectorFormat, vk::ImageAspectFlagBits::eColor, 1);
-	gBuffer.albedoColorImageView = createImageView(gBuffer.albedoColorImage.image, gBuffer.albedoColorFormat, vk::ImageAspectFlagBits::eColor, 1);
+	gBuffer.fragPosImageView = vkutil::createImageView(device, gBuffer.fragPosImage.image, gBuffer.fragPosFormat, vk::ImageAspectFlagBits::eColor, 1);
+	gBuffer.normalVectorImageView = vkutil::createImageView(device, gBuffer.normalVectorImage.image, gBuffer.normalVectorFormat, vk::ImageAspectFlagBits::eColor, 1);
+	gBuffer.albedoColorImageView = vkutil::createImageView(device, gBuffer.albedoColorImage.image, gBuffer.albedoColorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
 void Renderer::recreateGBuffer() {
-	destroyImage(allocator, gBuffer.albedoColorImage);
-	destroyImage(allocator, gBuffer.normalVectorImage);
-	destroyImage(allocator, gBuffer.fragPosImage);
+	vkutil::destroyImage(allocator, gBuffer.albedoColorImage);
+	vkutil::destroyImage(allocator, gBuffer.normalVectorImage);
+	vkutil::destroyImage(allocator, gBuffer.fragPosImage);
 
 	createGBuffer();
 
@@ -1029,7 +898,7 @@ void Renderer::createImGuiInstance() {
 	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
 	VkFormat imguiColorFormat = static_cast<VkFormat>(swapChainImageFormat);
 	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.pColorAttachmentFormats = &imguiColorFormat;
-	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.depthAttachmentFormat = static_cast<VkFormat>(findDepthFormat());
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.depthAttachmentFormat = static_cast<VkFormat>(vkutil::findDepthFormat(physicalDevice));
 
 	init_info.CheckVkResultFn              = check_vk_result;
 
@@ -1159,27 +1028,27 @@ void Renderer::cleanup() {
 
 	for (auto& gameObject : gameObjects) {
 		for (auto& ub : gameObject.uniformBuffers) {
-			destroyBuffer(allocator, ub.buffer);
+			vkutil::destroyBuffer(allocator, ub.buffer);
 		}
 	}
 
 	for (auto& buffer : globalUniformBuffers) {
-		destroyBuffer(allocator, buffer.buffer);
+		vkutil::destroyBuffer(allocator, buffer.buffer);
 	}
 
 	for (auto& buffer : lightingUniformBuffers) {
-		destroyBuffer(allocator, buffer.buffer);
+		vkutil::destroyBuffer(allocator, buffer.buffer);
 	}
 
-	destroyBuffer(allocator, vertexBuffer);
-	destroyBuffer(allocator, indexBuffer);
+	vkutil::destroyBuffer(allocator, vertexBuffer);
+	vkutil::destroyBuffer(allocator, indexBuffer);
 
 	ktxVulkanTexture_Destruct(&ktxVkTexture, *device, nullptr);
-	destroyImage(allocator, depthImage);
-	destroyImage(allocator, colorImage);
-	destroyImage(allocator, gBuffer.albedoColorImage);
-	destroyImage(allocator, gBuffer.normalVectorImage);
-	destroyImage(allocator, gBuffer.fragPosImage);
+	vkutil::destroyImage(allocator, depthImage);
+	vkutil::destroyImage(allocator, colorImage);
+	vkutil::destroyImage(allocator, gBuffer.albedoColorImage);
+	vkutil::destroyImage(allocator, gBuffer.normalVectorImage);
+	vkutil::destroyImage(allocator, gBuffer.fragPosImage);
 
 	//dumpAllocationStats();
 	destroyAllocator();

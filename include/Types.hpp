@@ -93,3 +93,8 @@ struct ObjectUBO {
 };
 
 enum class DebugState : int32_t {Lit, Albedo, Normal, Position};
+
+struct MikkTSpaceUserData {
+    std::vector<Vertex>* vertices;
+    std::vector<uint32_t>* indices;
+};

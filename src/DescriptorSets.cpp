@@ -3,6 +3,7 @@
 #include "Config.hpp"
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+#include "VkUtil.hpp"
 
 // set layout config
 void Renderer::createDescriptorSetLayouts() {
@@ -64,8 +65,7 @@ void Renderer::createGameObjectUniformBuffers() {
         gameObject.uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            createBuffer(sizeof(ObjectUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, gameObject.uniformBuffers[i].buffer,
-                         true);
+            vkutil::createBuffer(allocator, sizeof(ObjectUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, gameObject.uniformBuffers[i].buffer, true);
             gameObject.uniformBuffers[i].mapped = gameObject.uniformBuffers[i].buffer.allocInfo.pMappedData;
         }
     }
@@ -121,14 +121,14 @@ void Renderer::createDescriptorSets() {
 void Renderer::createUniformBuffers() {
     globalUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        createBuffer(sizeof(GlobalUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, globalUniformBuffers[i].buffer, true);
+        vkutil::createBuffer(allocator, sizeof(GlobalUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, globalUniformBuffers[i].buffer, true);
         globalUniformBuffers[i].mapped = globalUniformBuffers[i].buffer.allocInfo.pMappedData;
     }
 
     // config light props ubo
     lightingUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        createBuffer(sizeof(LightingUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, lightingUniformBuffers[i].buffer, true);
+        vkutil::createBuffer(allocator, sizeof(LightingUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, lightingUniformBuffers[i].buffer, true);
         lightingUniformBuffers[i].mapped = lightingUniformBuffers[i].buffer.allocInfo.pMappedData;
     }
 }
