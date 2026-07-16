@@ -91,6 +91,7 @@ add_executable(vulkan_doc_tutorial
     src/Images.cpp
     src/Textures.cpp
     src/Camera.cpp
+        src/VkUtil.cpp
 )
 
 target_include_directories(vulkan_doc_tutorial

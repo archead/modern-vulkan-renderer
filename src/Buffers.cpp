@@ -19,7 +19,7 @@ void Renderer::createVertexBuffer() {
 		destroyBuffer(allocator, stagingBuffer);
 	}
 
-	void Renderer::createIndexBuffer(){
+void Renderer::createIndexBuffer(){
 		vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
 		AllocatedBuffer stagingBuffer = {};
@@ -36,12 +36,6 @@ void Renderer::createVertexBuffer() {
 		copyBuffer(stagingBuffer.buffer, indexBuffer.buffer, bufferSize);
 		destroyBuffer(allocator, stagingBuffer);
 	}
-
-void Renderer::copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) {
-	vk::raii::CommandBuffer cmd = beginSingleTimeCommands();
-	cmd.copyBuffer(srcBuffer, dstBuffer, vk::BufferCopy(0, 0, size));
-	endSingleTimeCommands(cmd);
-}
 
 void Renderer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
 	vk::raii::CommandBuffer cmd = beginSingleTimeCommands();
