@@ -122,3 +122,123 @@ vk::raii::ImageView vkutil::createImageView(vk::raii::Device& device, vk::Image 
 
     return vk::raii::ImageView(device, viewInfo);
 }
+
+
+void vkutil::generateMipmaps(vk::raii::PhysicalDevice& physicalDevice, vk::raii::Device& device, vk::raii::CommandPool& commandPool, vk::raii::Queue& graphicsQueue, vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
+
+	// Check if image format supports linear blit-ing
+	vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(imageFormat);
+
+	if (!(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
+		throw std::runtime_error("Texture image format does not support linear filtering");
+	}
+
+	vk::raii::CommandBuffer commandBuffer = vkutil::beginSingleTimeCommands(device, commandPool);
+
+	vk::ImageMemoryBarrier barrier(
+		vk::AccessFlagBits::eTransferWrite,
+		vk::AccessFlagBits::eTransferRead,
+		vk::ImageLayout::eTransferDstOptimal,
+		vk::ImageLayout::eTransferSrcOptimal,
+		vk::QueueFamilyIgnored,
+		vk::QueueFamilyIgnored,
+		image
+		);
+
+	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.levelCount = 1;
+
+	int32_t mipWidth = texWidth;
+	int32_t mipHeight = texHeight;
+
+	for (uint32_t i = 1; i < mipLevels; i++) {
+		barrier.subresourceRange.baseMipLevel = i - 1;
+		barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+		barrier.newLayout = vk::ImageLayout::eTransferSrcOptimal;
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+
+		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
+
+		vk::ArrayWrapper1D<vk::Offset3D,2> offsets, dstOffsets;
+		offsets[0] = vk::Offset3D(0, 0, 0);
+		offsets[1] = vk::Offset3D(mipWidth, mipHeight, 1);
+		dstOffsets[0] = vk::Offset3D(0, 0, 0);
+		dstOffsets[1] = vk::Offset3D(mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1);
+
+		vk::ImageBlit blit{};
+		blit.srcSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, i-1, 0, 1);
+		blit.srcOffsets = offsets;
+		blit.dstSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, i, 0, 1);
+		blit.dstOffsets = dstOffsets;
+
+		commandBuffer.blitImage(image, vk::ImageLayout::eTransferSrcOptimal, image, vk::ImageLayout::eTransferDstOptimal, {blit}, vk::Filter::eLinear);
+
+		barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+		barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, barrier);
+
+		if (mipWidth > 1) mipWidth /= 2;
+		if (mipHeight > 1) mipHeight /= 2;
+	}
+
+	barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+	barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+	barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+	barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+	commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, barrier);
+	vkutil::endSingleTimeCommands(commandBuffer, graphicsQueue);
+}
+
+void vkutil::transitionImageLayout(vk::raii::Device& device, vk::raii::CommandPool& commandPool, vk::raii::Queue& graphicsQueue, const vk::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) {
+	auto commandBuffer = vkutil::beginSingleTimeCommands(device, commandPool);
+	vk::PipelineStageFlags sourceStage, destinationStage;
+
+	vk::ImageMemoryBarrier barrier = {};
+	barrier.oldLayout = oldLayout;
+	barrier.newLayout = newLayout;
+	barrier.image = image;
+	barrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, mipLevels, 0, 1};
+
+	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+		barrier.srcAccessMask = {};
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eTransfer;
+	} else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+		sourceStage = vk::PipelineStageFlagBits::eTransfer;
+		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+	}   else {
+		throw std::invalid_argument("unsupported layout transition!");
+	}
+
+	commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {}, nullptr, barrier);
+	vkutil::endSingleTimeCommands(commandBuffer, graphicsQueue);
+}
+
+void vkutil::copyBufferToImage(vk::raii::Device& device, vk::raii::CommandPool& commandPool, vk::raii::Queue& graphicsQueue, const vk::Buffer& buffer, vk::Image image, vk::ImageLayout layout, const std::vector<vk::BufferImageCopy>& regions) {
+	auto commandBuffer = vkutil::beginSingleTimeCommands(device, commandPool);
+	commandBuffer.copyBufferToImage(buffer, image, layout, regions);
+	vkutil::endSingleTimeCommands(commandBuffer, graphicsQueue);
+}
+
+
+[[nodiscard]] vk::raii::ShaderModule vkutil::createShaderModule(vk::raii::Device& device, const std::vector<char>& code) {
+	vk::ShaderModuleCreateInfo createInfo;
+	createInfo.codeSize = code.size() * sizeof(char);
+	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+	vk::raii::ShaderModule shaderModule(device, createInfo);
+	return shaderModule;
+}
+

@@ -31,4 +31,12 @@ namespace vkutil {
     void destroyImage(VmaAllocator allocator, AllocatedImage& allocImage);
 
 	vk::raii::ImageView createImageView(vk::raii::Device& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels);
+
+	void generateMipmaps(vk::raii::PhysicalDevice& physicalDevice, vk::raii::Device& device, vk::raii::CommandPool& commandPool, vk::raii::Queue& graphicsQueue, vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+
+	void transitionImageLayout(vk::raii::Device& device, vk::raii::CommandPool& commandPool, vk::raii::Queue& graphicsQueue, const vk::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels);
+
+	void copyBufferToImage(vk::raii::Device& device, vk::raii::CommandPool& commandPool, vk::raii::Queue& graphicsQueue, const vk::Buffer& buffer, vk::Image image, vk::ImageLayout layout, const std::vector<vk::BufferImageCopy>& regions);
+
+	[[nodiscard]] vk::raii::ShaderModule createShaderModule(vk::raii::Device& device, const std::vector<char>& code);
 }

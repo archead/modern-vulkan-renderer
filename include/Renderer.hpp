@@ -78,7 +78,6 @@ private:
 	vk::raii::DescriptorSetLayout gBufferSetLayout = nullptr;
 	std::vector<vk::raii::DescriptorSet> gBufferDescriptorSets;
 
-
 	PoolSizes                               poolSize{};
 	DescriptorSetLayoutBuilder              layoutBuilder{};
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
@@ -187,8 +186,6 @@ private:
 
 	void createImageViews();
 
-	[[nodiscard]] vk::raii::ShaderModule createShaderModule(const std::vector<char>& code);
-
 	void createLightingPipeline();
 
 	void createGeometryPipeline();
@@ -241,11 +238,6 @@ private:
 
 	void createTextureImage();
 
-	void transitionImageLayout(const vk::Image& image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels);
-
-	void copyBufferToImage(const vk::Buffer &buffer, vk::Image image, vk::ImageLayout layout,
-	                       const std::vector<vk::BufferImageCopy> &regions);
-
 	void createTextureImageView();
 
 	void createTextureSampler();
@@ -255,8 +247,6 @@ private:
 	bool hasStencilComponent(vk::Format format);
 
 	void loadModelGLTF();
-
-	void generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 
 	void createColorResources();
 

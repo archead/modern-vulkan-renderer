@@ -220,18 +220,10 @@ void Renderer::createImageViews() {
 	}
 }
 
-[[nodiscard]] vk::raii::ShaderModule Renderer::createShaderModule(const std::vector<char>& code) {
-	vk::ShaderModuleCreateInfo createInfo;
-	createInfo.codeSize = code.size() * sizeof(char);
-	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-	vk::raii::ShaderModule shaderModule(device, createInfo);
-	return shaderModule;
-}
-
 void Renderer::createLightingPipeline() {
 	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
-	vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
+	vk::raii::ShaderModule shaderModule = vkutil::createShaderModule(device, shaderCode);
 
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
 	vertShaderStageInfo.stage  = vk::ShaderStageFlagBits::eVertex;
@@ -332,7 +324,7 @@ void Renderer::createLightingPipeline() {
 void Renderer::createGeometryPipeline() {
 	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
-	vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
+	vk::raii::ShaderModule shaderModule = vkutil::createShaderModule(device, shaderCode);
 
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
 	vertShaderStageInfo.stage  = vk::ShaderStageFlagBits::eVertex;
@@ -439,7 +431,7 @@ void Renderer::createGeometryPipeline() {
 void Renderer::createGraphicsPipeline() {
 	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
-	vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
+	vk::raii::ShaderModule shaderModule = vkutil::createShaderModule(device, shaderCode);
 
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
 	vertShaderStageInfo.stage  = vk::ShaderStageFlagBits::eVertex;
@@ -644,12 +636,6 @@ void Renderer::cleanupSwapchain() {
 
 	swapChainImageViews.clear();
 	swapChain = nullptr;
-}
-
-void Renderer::copyBufferToImage(const vk::Buffer& buffer, vk::Image image, vk::ImageLayout layout, const std::vector<vk::BufferImageCopy>& regions) {
-	auto commandBuffer = vkutil::beginSingleTimeCommands(device, commandPool);
-	commandBuffer.copyBufferToImage(buffer, image, layout, regions);
-	vkutil::endSingleTimeCommands(commandBuffer, graphicsQueue);
 }
 
 void Renderer::createTextureImageView() {
