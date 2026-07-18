@@ -29,6 +29,8 @@ void vkutil::createBuffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsa
 
 void vkutil::destroyBuffer(VmaAllocator allocator, AllocatedBuffer& allocBuff) {
     vmaDestroyBuffer(allocator, allocBuff.buffer, allocBuff.allocation);
+	allocBuff.buffer = nullptr;
+	allocBuff.allocation = nullptr;
 }
 
 vk::raii::CommandBuffer vkutil::beginSingleTimeCommands(vk::raii::Device& device, vk::raii::CommandPool& commandPool) {
