@@ -10,6 +10,7 @@
 #include <ktxvulkan.h>
 
 #include "Camera.hpp"
+#include "Model.hpp"
 
 class Renderer {
 public:
@@ -60,12 +61,15 @@ private:
 
 	uint32_t currentFrame = 0;
 
+
 	std::vector<Vertex>   vertices;
 	std::vector<uint32_t> indices;
 
 	VmaAllocator    allocator    = {};
 	AllocatedBuffer vertexBuffer = {};
 	AllocatedBuffer indexBuffer  = {};
+
+	std::vector<Model> models;
 
 	// set 0 (global)
 	std::vector<AllocatedUniformBuffer>		globalUniformBuffers;
@@ -246,7 +250,7 @@ private:
 
 	bool hasStencilComponent(vk::Format format);
 
-	void loadModelGLTF();
+	void loadModelGLTF(std::string modelPath);
 
 	void createColorResources();
 
@@ -283,4 +287,6 @@ private:
 	void drawFrame();
 
 	void updateUniformBuffer(uint32_t imageIndex);
+
+	void loadModels();
 };

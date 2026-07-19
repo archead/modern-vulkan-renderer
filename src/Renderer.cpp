@@ -64,6 +64,10 @@ static std::vector<char> readFile(const std::string& filename) {
 	return buffer;
 }
 
+void Renderer::loadModels() {
+	models.emplace_back(Model(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\sphere.gltf)"));
+}
+
 glm::mat4 Renderer::GameObject::getModelMatrix() const {
 	auto model = glm::mat4(1.0f);
 	model = glm::translate(model, position);
@@ -653,14 +657,14 @@ bool Renderer::hasStencilComponent(vk::Format format) {
 	return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
 }
 
-void Renderer::loadModelGLTF() {
+void Renderer::loadModelGLTF(std::string modelPath) {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err;
 	std::string warn;
 
-	std::cout << "Loading Model: " << MODEL_PATH << std::endl;
-	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, MODEL_PATH);
+	std::cout << "Loading Model: " << modelPath << std::endl;
+	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, modelPath);
 
 	if (!warn.empty())	{ std::cout << "glTF warning: " << warn << std::endl; }
 	if (!err.empty())	{ std::cout << "glTF error: " << err << std::endl; }
@@ -761,7 +765,6 @@ void Renderer::loadModelGLTF() {
 	}
 	mikkutil::unweldVertices(vertices, indices);
 	mikkutil::generateTangents(vertices, indices);
-
 }
 
 void Renderer::createColorResources() {
@@ -909,16 +912,12 @@ void Renderer::initVulkan() {
 	createGBufferSampler();
 	createColorResources();
 	createDepthResources();
-	// createTextureImage();
-	// createTextureImageView();
 	createTextureSampler();
-	loadModelGLTF();
+
+	loadModels();
 
 	createGameObjects();
 	createPointLights();
-
-	createVertexBuffer();
-	createIndexBuffer();
 
 	createGameObjectUniformBuffers();
 	createUniformBuffers();
