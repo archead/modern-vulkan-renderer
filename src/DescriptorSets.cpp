@@ -137,7 +137,6 @@ void Renderer::updateUniformBuffer(uint32_t imageIndex) {
     GlobalUBO globalUbo = {};
     globalUbo.view      = camera.getViewMatrix();
     globalUbo.proj = camera.getProjectionMatrix(static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height));
-
     // map the global UBO
     memcpy(globalUniformBuffers[imageIndex].mapped, &globalUbo, sizeof(globalUbo));
     // map lighting UBO

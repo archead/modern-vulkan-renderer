@@ -65,7 +65,7 @@ static std::vector<char> readFile(const std::string& filename) {
 }
 
 void Renderer::loadModels() {
-	models.emplace_back(Model(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\sphere.gltf)"));
+
 }
 
 glm::mat4 Renderer::GameObject::getModelMatrix() const {
@@ -73,7 +73,7 @@ glm::mat4 Renderer::GameObject::getModelMatrix() const {
 	model = glm::translate(model, position);
 	model = glm::rotate(model, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
 	model = glm::rotate(model, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-	model = glm::rotate(model, rotation.x, glm::vec3(0.0f, 0.0f, 1.0f));
+	model = glm::rotate(model, rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
 	model = glm::scale(model, scale);
 	return model;
 }
@@ -829,26 +829,38 @@ void Renderer::createGBufferSampler() {
 
 void Renderer::createGameObjects() {
 
-	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\cube.ktx2)"));
-	modelTextures.emplace_back(loadTextureKTX(R"(C:\\dev\\vulkan-doc-tutorial\\textures\\2d_rgba8.ktx2)"));
-	modelTextures.emplace_back(loadTextureKTX(R"(C:\\dev\\vulkan-doc-tutorial\\textures\\brickwall.ktx2)"));
-	modelTextures.emplace_back(loadTextureKTX(R"(C:\\dev\\vulkan-doc-tutorial\\textures\\brickwall_normal.ktx2)"));
+	models.emplace_back(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\helmet\DamagedHelmet.gltf)");
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\helmet\albedo.ktx2)"));
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\helmet\normal.ktx2)"));
 
-	gameObjects.resize(3);
+	models.emplace_back(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\albedo.ktx2)"));
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\normal.ktx2)"));
 
-	gameObjects[0].position = {1.0f, -0.5f, -0.2f};
-	gameObjects[0].scale    = {0.5f, 0.5f, 0.5f};
-	gameObjects[0].texture = modelTextures[2].get();
-	gameObjects[0].normalMap = modelTextures[3].get();
-	gameObjects[0].flags.x = 1;
 
-	gameObjects[1].position = {1.0f, 0.0f, -1.0f};
-	gameObjects[1].scale    = {0.5f, 0.5f, 0.5f};
+	gameObjects.resize(2);
+
+	gameObjects[0].modelIndex = 0;
+	gameObjects[0].position = {0.0f, 0.0f, 0.0f};
+	gameObjects[0].scale    = {1.0f, 1.0f, 1.0f};
+	gameObjects[0].texture = modelTextures[0].get();
+	gameObjects[0].normalMap = modelTextures[1].get();
+	gameObjects[0].flags.x = 1; // disable normal map
+
+	gameObjects[1].modelIndex = 1;
+	gameObjects[1].position = {1.0f, 0.5f, 1.0f};
+	gameObjects[1].scale    = {1.0f, 1.0f, 1.0f};
 	gameObjects[1].texture = modelTextures[2].get();
+	gameObjects[1].normalMap = modelTextures[3].get();
+	gameObjects[1].flags.x = 1; // disable normal map
 
-	gameObjects[2].position = {-0.20f, 0.0f, -2.0f};
-	gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
-	gameObjects[2].texture = modelTextures[0].get();
+	// gameObjects[1].position = {1.0f, 0.0f, -1.0f};
+	// gameObjects[1].scale    = {0.5f, 0.5f, 0.5f};
+	// gameObjects[1].texture = modelTextures[2].get();
+	//
+	// gameObjects[2].position = {-0.20f, 0.0f, -2.0f};
+	// gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
+	// gameObjects[2].texture = modelTextures[0].get();
 }
 
 void Renderer::createPointLights() {
@@ -962,15 +974,21 @@ void Renderer::mainLoop() {
 
 glm::vec3 Renderer::getKeyboardInput() {
 	const bool* key_states = SDL_GetKeyboardState(NULL);
+
+	auto dir_world_up = glm::vec3(0, 1, 0);
+	auto dir_forward = glm::normalize(camera.getTarget() - camera.getPosition());
+	auto dir_right = glm::normalize(glm::cross(dir_forward, dir_world_up));
+
+
 	auto dir_vector = glm::vec3(0.0f, 0.0f, 0.0f);
 	auto dir_vector_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
 
-	if (key_states[SDL_SCANCODE_W]) { dir_vector -= glm::vec3(0.0f, 1.0f, 0.0f); }
-	if (key_states[SDL_SCANCODE_S]) { dir_vector += glm::vec3(0.0f, 1.0f, 0.0f); }
-	if (key_states[SDL_SCANCODE_A]) { dir_vector += glm::vec3(1.0f, 0.0f, 0.0f); }
-	if (key_states[SDL_SCANCODE_D]) { dir_vector -= glm::vec3(1.0f, 0.0f, 0.0f); }
-	if (key_states[SDL_SCANCODE_SPACE]) { dir_vector += glm::vec3(0.0f, 0.0f, 1.0f); }
-	if (key_states[SDL_SCANCODE_LCTRL]) { dir_vector -= glm::vec3(0.0f, 0.0f, 1.0f); }
+	if (key_states[SDL_SCANCODE_W]) { dir_vector += dir_forward; }
+	if (key_states[SDL_SCANCODE_S]) { dir_vector -= dir_forward; }
+	if (key_states[SDL_SCANCODE_A]) { dir_vector -= dir_right; }
+	if (key_states[SDL_SCANCODE_D]) { dir_vector += dir_right; }
+	if (key_states[SDL_SCANCODE_SPACE]) { dir_vector += dir_world_up; }
+	if (key_states[SDL_SCANCODE_LCTRL]) { dir_vector -= dir_world_up; }
 	if (key_states[SDL_SCANCODE_UP]) { dir_vector_look_at -= glm::vec3(0.0f, 1.0f, 0.0f); }
 	if (key_states[SDL_SCANCODE_DOWN]) { dir_vector_look_at += glm::vec3(0.0f, 1.0f, 0.0f); }
 	if (key_states[SDL_SCANCODE_LEFT]) { dir_vector_look_at += glm::vec3(1.0f, 0.0f, 0.0f); }
@@ -1055,6 +1073,14 @@ void Renderer::drawDebugMenu() {
 
 	ImGui::DragFloat("Light 1 Intensity", &pointLights.light[0].pos_intensity[3], 0.0025f);
 	ImGui::DragFloat("Light 2 Intensity", &pointLights.light[1].pos_intensity[3], 0.0025f);
+
+	for (size_t i = 0; i < gameObjects.size(); i++) {
+		if (ImGui::CollapsingHeader(("Object " + std::to_string(i)).c_str())) {
+			ImGui::PushID(i);
+			ImGui::DragFloat3("Rotation", glm::value_ptr(gameObjects[i].rotation), 0.005f);
+			ImGui::PopID();
+		}
+	}
 
 	int current = static_cast<int>(currentDebugState);
 	ImGui::RadioButton("Lit", &current, 0); ImGui::SameLine();

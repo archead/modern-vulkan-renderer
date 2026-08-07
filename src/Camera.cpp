@@ -16,7 +16,7 @@ glm::mat4 Camera::getProjectionMatrix(float aspect) const {
 }
 
 glm::mat4 Camera::getViewMatrix() const {
-    return glm::lookAt(pos, target, glm::vec3(0.0f, 0.0f, 1.0f));
+    return glm::lookAt(pos, target, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void Camera::moveCamera(glm::vec3 dirVector) {

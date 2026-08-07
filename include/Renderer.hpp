@@ -144,6 +144,7 @@ private:
 		glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
 		glm::vec3 scale    = {1.0f, 1.0f, 1.0f};
 
+		size_t							 modelIndex;
 		ModelTexture *                       texture   = nullptr;
 		ModelTexture *                       normalMap = nullptr;
 		glm::uvec4                           flags     = {0, 0, 0, 0};

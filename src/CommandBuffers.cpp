@@ -74,8 +74,6 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 
 	commandBuffers[currentFrame].beginRendering(geometryRenderingInfo);
 	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, geometryPipeline);
-	commandBuffers[currentFrame].bindVertexBuffers(0, models[0].getVertexBuffer(), {0});
-	commandBuffers[currentFrame].bindIndexBuffer(models[0].getIndexBuffer(), 0, vk::IndexType::eUint32);
 
 	// Set the dynamic states of Scissor and Viewport
 	commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
@@ -85,6 +83,8 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout,0, *globalDescriptorSets[currentFrame],{});
 
 	for (const auto& gameObject : gameObjects) {
+		commandBuffers[currentFrame].bindVertexBuffers(0, models[gameObject.modelIndex].getVertexBuffer(), {0});
+		commandBuffers[currentFrame].bindIndexBuffer(models[gameObject.modelIndex].getIndexBuffer(), 0, vk::IndexType::eUint32);
 		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *gameObject.descriptorSets[currentFrame], {});
 		commandBuffers[currentFrame].drawIndexed(models[0].getIndexCount(), 1, 0, 0, 0);
 	}
