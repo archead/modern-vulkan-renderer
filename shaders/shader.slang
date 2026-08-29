@@ -50,6 +50,11 @@ struct GBufferOutput {
     float4 albedo : SV_Target2;
 };
 
+struct BillboardVSOutput {
+    float4 pos : SV_Position;
+    float4 color : COLOR0;
+};
+
 //set 1
 [[vk::binding(0, 0)]]
 ConstantBuffer<GlobalUBO> globalUbo;
@@ -73,6 +78,9 @@ Sampler2D gBufferNormal;
 Sampler2D gBufferAlbedo;
 [[vk::binding(3, 0)]]
 ConstantBuffer<LightBuffer> lightingUBO;
+
+[[vk::binding(0, 3)]]
+ConstantBuffer<LightBuffer> lightingUbo;
 
 [[vk::push_constant]]
 int debugState;
@@ -216,4 +224,33 @@ float4 lightingFragMain(LightingVSOutput lightingVertIn) : SV_TARGET {
     if (debugState == 3) return float4(gBufferFragPos.Sample(lightingVertIn.uv).xyz, 1.0);
 
     return float4(1.0, 0.0, 0.0, 1.0);
+}
+
+[shader("vertex")]
+BillboardVSOutput billboardVertMain(uint vertexID : SV_VertexID) {
+    BillboardVSOutput output;
+
+    const float2 corners[4] = {
+        {-0.5, 0.5},
+        {0.5, 0.5},
+        {-0.5, -0.5},
+        {0.5, -0.5}
+    };
+
+    const uint cornerIndex[6] = {0, 1, 2, 2, 1, 3};
+
+    float3 lightPos = lightUbo.light[0].pos;
+
+    float2 offset = corners[cornerIndex[vertexID]];
+    float3 worldPos = lightPos + float3(offset.x, offset.y, 0.0);
+
+    output.pos = mul(globalUbo.proj, mul(globalUbo.view, float4(worldPos, 1.0)));
+    output.color = float4(1.0, 1.0, 1.0, 1.0); // white
+
+    return output;
+}
+
+[shader("fragment")]
+float4 billboardFragMain(BillboardVSOutput vertIn) : SV_TARGET {
+    return vertIn.color;
 }

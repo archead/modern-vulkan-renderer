@@ -51,6 +51,9 @@ private:
 	vk::raii::Pipeline       lightingPipeline       = nullptr;
 	vk::raii::PipelineLayout lightingPipelineLayout = nullptr;
 
+	vk::raii::Pipeline billboardPipeline = nullptr;
+	vk::raii::PipelineLayout billboardPipelineLayout = nullptr;
+
 	vk::raii::CommandPool                commandPool = nullptr;
 	std::vector<vk::raii::CommandBuffer> commandBuffers;
 	std::vector<vk::raii::Semaphore>     presentCompleteSemaphores;
@@ -71,16 +74,25 @@ private:
 
 	std::vector<Model> models;
 
-	// set 0 (global)
+	// Uniform buffers
 	std::vector<AllocatedUniformBuffer>		globalUniformBuffers;
 	std::vector<AllocatedUniformBuffer>		lightingUniformBuffers;
+	std::vector<AllocatedUniformBuffer>		billboardUniformBuffers;
+
+	// set 0 (global)
 	vk::raii::DescriptorSetLayout           globalSetLayout = nullptr;
 	std::vector<vk::raii::DescriptorSet>    globalDescriptorSets;
+
 	// set 1 (object) NOTE: the sets and buffers are declared per gameObject
 	vk::raii::DescriptorSetLayout			objectSetLayout = nullptr;
+
 	// set 2 (deferred lighting), non-FIF
 	vk::raii::DescriptorSetLayout gBufferSetLayout = nullptr;
 	std::vector<vk::raii::DescriptorSet> gBufferDescriptorSets;
+
+	// set 3 (light gizmo / billboard)
+	vk::raii::DescriptorSetLayout billboardSetLayout = nullptr;
+	std::vector<vk::raii::DescriptorSet> billboardDescriptorSets;
 
 	PoolSizes                               poolSize{};
 	DescriptorSetLayoutBuilder              layoutBuilder{};
@@ -172,7 +184,7 @@ private:
 	};
 
 	struct LightingUBO {
-		Light     light[MAX_POINT_LIGHTS];
+		Light     lights[MAX_POINT_LIGHTS];
 		glm::vec4 cameraPos_lightCount = {0.0f, 0.0f, 0.0f, MAX_POINT_LIGHTS}; // xyz = cameraPos, w = lightCount
 
 	};
@@ -194,6 +206,8 @@ private:
 	void createLightingPipeline();
 
 	void createGeometryPipeline();
+
+	void createBillboardPipeline();
 
 	void createGraphicsPipeline();
 
@@ -240,6 +254,8 @@ private:
 	void createDescriptorPool();
 
 	void createDescriptorSets();
+
+	void createBillboardUniformBuffers();
 
 	void createTextureImage();
 

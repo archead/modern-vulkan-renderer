@@ -17,7 +17,7 @@ endif ()
 function (add_slang_shader_target TARGET)
     cmake_parse_arguments ("SHADER" "" "" "SOURCES" ${ARGN})
     set (SHADERS_DIR ${CMAKE_CURRENT_LIST_DIR}/shaders)
-    set (ENTRY_POINTS -entry vertMain -entry fragMain -entry lightingVertMain -entry lightingFragMain -entry geometryFragMain)
+    set (ENTRY_POINTS -entry vertMain -entry fragMain -entry lightingVertMain -entry lightingFragMain -entry geometryFragMain -entry billboardVertMain -entry billboardFragMain)
     add_custom_command (
             OUTPUT ${SHADERS_DIR}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADERS_DIR}
@@ -85,6 +85,7 @@ add_executable(vulkan_doc_tutorial
     main.cpp
     src/Renderer.cpp
     src/Buffers.cpp
+    src/UniformBuffers.cpp
     src/DescriptorSets.cpp
     src/Allocator.cpp
     src/CommandBuffers.cpp
@@ -93,8 +94,9 @@ add_executable(vulkan_doc_tutorial
     src/Camera.cpp
     src/VkUtil.cpp
     src/MikkUtil.cpp
-        src/Model.cpp
-        #src/VulkanContext.cpp
+    src/Model.cpp
+    src/DescriptorWriter.cpp
+    #src/VulkanContext.cpp
 )
 
 target_include_directories(vulkan_doc_tutorial

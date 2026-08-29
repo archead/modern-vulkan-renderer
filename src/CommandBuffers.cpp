@@ -86,7 +86,7 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 		commandBuffers[currentFrame].bindVertexBuffers(0, models[gameObject.modelIndex].getVertexBuffer(), {0});
 		commandBuffers[currentFrame].bindIndexBuffer(models[gameObject.modelIndex].getIndexBuffer(), 0, vk::IndexType::eUint32);
 		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *gameObject.descriptorSets[currentFrame], {});
-		commandBuffers[currentFrame].drawIndexed(models[0].getIndexCount(), 1, 0, 0, 0);
+		commandBuffers[currentFrame].drawIndexed(models[gameObject.modelIndex].getIndexCount(), 1, 0, 0, 0);
 	}
 
 	commandBuffers[currentFrame].endRendering();
@@ -111,7 +111,6 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	lightingRenderingInfo.colorAttachmentCount = 1;
 	lightingRenderingInfo.pColorAttachments    = &attachmentInfo;
 
-
 	commandBuffers[currentFrame].beginRendering(lightingRenderingInfo);
 	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPipeline);
 
@@ -128,6 +127,12 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	// big trangle trick
 	commandBuffers[currentFrame].draw(3, 1, 0, 0);
 
+	// swap over to billboard pipeline and draw the gizmo
+	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, billboardPipeline);
+	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *billboardPipelineLayout, 0, *billboardDescriptorSets[currentFrame], {});
+	commandBuffers[currentFrame].draw(6, 1, 0, 0);
+
+	// draw debug menu
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]); // part of lighting pass
 
 	commandBuffers[currentFrame].endRendering();
@@ -191,8 +196,6 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 
 	commandBuffers[currentFrame].beginRendering(renderingInfo);
 	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-	commandBuffers[currentFrame].bindVertexBuffers(0, models[0].getVertexBuffer(), {0});
-	commandBuffers[currentFrame].bindIndexBuffer(models[0].getIndexBuffer(), 0, vk::IndexType::eUint32);
 
 	// Set the dynamic states of Scissor and Viewport
 	commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
@@ -202,8 +205,11 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout,0, *globalDescriptorSets[currentFrame],{});
 
 	for (const auto& gameObject : gameObjects) {
+
+		commandBuffers[currentFrame].bindVertexBuffers(0, models[gameObject.modelIndex].getVertexBuffer(), {0});
+		commandBuffers[currentFrame].bindIndexBuffer(models[gameObject.modelIndex].getIndexBuffer(), 0, vk::IndexType::eUint32);
 		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 1, *gameObject.descriptorSets[currentFrame], {});
-		commandBuffers[currentFrame].drawIndexed(models[0].getIndexCount(), 1, 0, 0, 0);
+		commandBuffers[currentFrame].drawIndexed(models[gameObject.modelIndex].getIndexCount(), 1, 0, 0, 0);
 	}
 
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]);

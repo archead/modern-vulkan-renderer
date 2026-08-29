@@ -1,8 +1,6 @@
 #include "DescriptorSets.hpp"
 #include "Renderer.hpp"
 #include "Config.hpp"
-#include "glm/glm.hpp"
-#include <glm/gtc/matrix_transform.hpp>
 #include "VkUtil.hpp"
 
 // set layout config
@@ -34,6 +32,12 @@ void Renderer::createDescriptorSetLayouts() {
     // Lighting UBO
     builder2.addBinding(3, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment);
     gBufferSetLayout = builder2.build(device);
+
+    // Billboard Pipeline
+    DescriptorSetLayoutBuilder builder3;
+    builder3.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
+    builder3.addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
+    billboardSetLayout = builder3.build(device);
 }
 
 // per-game object descriptors
@@ -60,30 +64,6 @@ void Renderer::createGameObjectDescriptorSets() {
     }
 }
 
-void Renderer::createGameObjectUniformBuffers() {
-    for (auto &gameObject: gameObjects) {
-        gameObject.uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkutil::createBuffer(allocator, sizeof(ObjectUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, gameObject.uniformBuffers[i].buffer, true);
-            gameObject.uniformBuffers[i].mapped = gameObject.uniformBuffers[i].buffer.allocInfo.pMappedData;
-        }
-    }
-}
-
-void Renderer::updateGameObjectUniformBuffer(uint32_t imageIndex) {
-    for (auto &gameObject: gameObjects) {
-
-        // apply transformations to the model matrix here (rotate, scale, etc.)
-        ObjectUBO ubo    = {};
-        ubo.model        = gameObject.getModelMatrix();
-        ubo.normalMatrix = glm::transpose(glm::inverse(ubo.model));
-        ubo.flags = gameObject.flags;
-
-        memcpy(gameObject.uniformBuffers[imageIndex].mapped, &ubo, sizeof(ubo));
-    }
-}
-
 // per-frame descriptors
 void Renderer::createDescriptorSets() {
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *globalSetLayout);
@@ -91,6 +71,9 @@ void Renderer::createDescriptorSets() {
 
     std::vector<vk::DescriptorSetLayout> layouts2(MAX_FRAMES_IN_FLIGHT, *gBufferSetLayout);
     gBufferDescriptorSets = descriptorSetAllocator->Allocate(layouts2);
+
+    std::vector<vk::DescriptorSetLayout> layouts3(MAX_FRAMES_IN_FLIGHT, *billboardSetLayout);
+    billboardDescriptorSets = descriptorSetAllocator->Allocate(layouts3);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vk::DescriptorBufferInfo globalBufferInfo(globalUniformBuffers[i].buffer.buffer, 0, sizeof(GlobalUBO));
@@ -115,32 +98,16 @@ void Renderer::createDescriptorSets() {
             vk::WriteDescriptorSet(gBufferDescriptorSets[i], 3, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &lightingUBOInfo)
             };
         device.updateDescriptorSets(writes2, {});
-    }
-}
 
-void Renderer::createUniformBuffers() {
-    globalUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkutil::createBuffer(allocator, sizeof(GlobalUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, globalUniformBuffers[i].buffer, true);
-        globalUniformBuffers[i].mapped = globalUniformBuffers[i].buffer.allocInfo.pMappedData;
-    }
+        vk::DescriptorBufferInfo billboardLightingUBOInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO));
+        vk::DescriptorBufferInfo billboardCameraInfo(globalUniformBuffers[i].buffer.buffer, 0, sizeof(GlobalUBO));
 
-    // config light props ubo
-    lightingUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkutil::createBuffer(allocator, sizeof(LightingUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, lightingUniformBuffers[i].buffer, true);
-        lightingUniformBuffers[i].mapped = lightingUniformBuffers[i].buffer.allocInfo.pMappedData;
+        std::array<vk::WriteDescriptorSet, 2> writes3 {
+            vk::WriteDescriptorSet(billboardDescriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &billboardCameraInfo),
+            vk::WriteDescriptorSet(billboardDescriptorSets[i], 1, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &billboardLightingUBOInfo)
+        };
+        device.updateDescriptorSets(writes3, {});
     }
-}
-
-void Renderer::updateUniformBuffer(uint32_t imageIndex) {
-    GlobalUBO globalUbo = {};
-    globalUbo.view      = camera.getViewMatrix();
-    globalUbo.proj = camera.getProjectionMatrix(static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height));
-    // map the global UBO
-    memcpy(globalUniformBuffers[imageIndex].mapped, &globalUbo, sizeof(globalUbo));
-    // map lighting UBO
-    memcpy(lightingUniformBuffers[imageIndex].mapped, &pointLights, sizeof(pointLights));
 }
 
 // init helpers

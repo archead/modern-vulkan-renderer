@@ -430,6 +430,104 @@ void Renderer::createGeometryPipeline() {
 	geometryPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
 }
 
+void Renderer::createBillboardPipeline() {
+
+	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
+	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
+	vk::raii::ShaderModule shaderModule = vkutil::createShaderModule(device, shaderCode);
+
+	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
+	vertShaderStageInfo.stage  = vk::ShaderStageFlagBits::eVertex;
+	vertShaderStageInfo.module = shaderModule;
+	vertShaderStageInfo.pName  = "billboardVertMain";
+
+	vk::PipelineShaderStageCreateInfo fragShaderStageInfo;
+	fragShaderStageInfo.stage  = vk::ShaderStageFlagBits::eFragment;
+	fragShaderStageInfo.module = shaderModule;
+	fragShaderStageInfo.pName  = "billboardFragMain";
+
+	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+	vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+	vertexInputInfo.vertexBindingDescriptionCount                = 0;
+	vertexInputInfo.pVertexBindingDescriptions                   = nullptr;
+	vertexInputInfo.vertexAttributeDescriptionCount              = 0;
+	vertexInputInfo.pVertexAttributeDescriptions                 = nullptr;
+
+	std::vector dynamicStates = { vk::DynamicState::eViewport, vk::DynamicState::eScissor };
+
+	vk::PipelineDynamicStateCreateInfo dynamicState;
+	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicState.pDynamicStates    = dynamicStates.data();
+
+	vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+	inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
+
+	vk::PipelineViewportStateCreateInfo viewportState({}, 1, {}, 1);
+
+	vk::PipelineDepthStencilStateCreateInfo depthStencil;
+	depthStencil.depthTestEnable       = vk::False;
+	depthStencil.depthWriteEnable      = vk::False;
+
+	vk::PipelineRasterizationStateCreateInfo rasterizer;
+	rasterizer.depthClampEnable        = vk::False;
+	rasterizer.rasterizerDiscardEnable = vk::False;
+	rasterizer.polygonMode             = vk::PolygonMode::eFill;
+	rasterizer.cullMode                = vk::CullModeFlagBits::eNone; // disabled for the big trangle
+	rasterizer.depthBiasEnable      = vk::False;
+	rasterizer.depthBiasSlopeFactor = 1.0f;
+	rasterizer.lineWidth            = 1.0f;
+
+	vk::PipelineMultisampleStateCreateInfo multisample;
+	multisample.rasterizationSamples = vk::SampleCountFlagBits::e1;
+
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+	colorBlendAttachment.blendEnable         = vk::False; // current dont need this as we are outputting a solid color
+
+	std::array<vk::PipelineColorBlendAttachmentState, 1> colorBlendAttachments = {};
+	colorBlendAttachments.fill(colorBlendAttachment);
+
+	vk::PipelineColorBlendStateCreateInfo colorBlending;
+	colorBlending.logicOpEnable   = VK_FALSE;
+	colorBlending.logicOp         = vk::LogicOp::eCopy;
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments    = colorBlendAttachments.data();
+
+	std::array<vk::DescriptorSetLayout, 1> descriptorSetLayouts = {billboardSetLayout};
+
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
+	pipelineLayoutInfo.setLayoutCount         = static_cast<uint32_t>(descriptorSetLayouts.size());
+	pipelineLayoutInfo.pSetLayouts            = descriptorSetLayouts.data();
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges    = nullptr;
+
+	billboardPipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
+
+	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
+	pipelineRenderingCreateInfo.colorAttachmentCount    = 1;
+	pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
+
+	vk::GraphicsPipelineCreateInfo pipelineInfo;
+	pipelineInfo.pNext               = &pipelineRenderingCreateInfo;
+	pipelineInfo.stageCount          = 2;
+	pipelineInfo.pStages             = shaderStages;
+	pipelineInfo.pVertexInputState   = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState      = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pDepthStencilState  = &depthStencil;
+	pipelineInfo.pMultisampleState   = &multisample;
+	pipelineInfo.pColorBlendState    = &colorBlending;
+	pipelineInfo.pDynamicState       = &dynamicState;
+	pipelineInfo.layout              = billboardPipelineLayout;
+	pipelineInfo.renderPass          = nullptr;
+	pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
+	pipelineInfo.basePipelineIndex   = -1;
+
+	billboardPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
+}
+
 void Renderer::createGraphicsPipeline() {
 	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
@@ -849,7 +947,7 @@ void Renderer::createGameObjects() {
 
 	gameObjects[1].modelIndex = 1;
 	gameObjects[1].position = {1.0f, 0.5f, 1.0f};
-	gameObjects[1].scale    = {1.0f, 1.0f, 1.0f};
+	gameObjects[1].scale    = {2.0f, 2.0f, 2.0f};
 	gameObjects[1].texture = modelTextures[2].get();
 	gameObjects[1].normalMap = modelTextures[3].get();
 	gameObjects[1].flags.x = 1; // disable normal map
@@ -867,8 +965,8 @@ void Renderer::createPointLights() {
 
 	pointLights.cameraPos_lightCount = glm::vec4(camera.getPosition(), MAX_POINT_LIGHTS);
 
-	pointLights.light[1].pos_intensity = glm::vec4(-0.2, 0.2, 0.0, defaultLightIntensity);
-	pointLights.light[1].color_attenK = glm::vec4(0.0, 0.0, 1.0, defaultLightAttenK);
+	pointLights.lights[1].pos_intensity = glm::vec4(-0.2, 0.2, 0.0, defaultLightIntensity);
+	pointLights.lights[1].color_attenK = glm::vec4(0.0, 0.0, 1.0, defaultLightAttenK);
 }
 
 void Renderer::createImGuiInstance() {
@@ -915,9 +1013,12 @@ void Renderer::initVulkan() {
 	createImageViews();
 	createAllocator();
 	createDescriptorSetLayouts(); // used during pipeline creation, also responsible for game object descriptor set layouts
+
 	createGeometryPipeline();
 	createLightingPipeline();
-	createGraphicsPipeline();
+	createBillboardPipeline();
+	//createGraphicsPipeline();
+
 	createCommandPool();
 	createImGuiInstance();
 	createGBuffer();
@@ -1065,14 +1166,14 @@ void Renderer::drawDebugMenu() {
 	ImGui::NewFrame();
 	ImGui::Begin("Debug Menu");
 
-	ImGui::ColorEdit3("Light 1 Color", glm::value_ptr(pointLights.light[0].color_attenK));
-	ImGui::ColorEdit3("Light 2 Color", glm::value_ptr(pointLights.light[1].color_attenK));
+	ImGui::ColorEdit3("Light 1 Color", glm::value_ptr(pointLights.lights[0].color_attenK));
+	ImGui::ColorEdit3("Light 2 Color", glm::value_ptr(pointLights.lights[1].color_attenK));
 
-	ImGui::DragFloat3("Light 1 Position", glm::value_ptr(pointLights.light[0].pos_intensity), 0.0025f);
-	ImGui::DragFloat3("Light 2 Position", glm::value_ptr(pointLights.light[1].pos_intensity), 0.0025f);
+	ImGui::DragFloat3("Light 1 Position", glm::value_ptr(pointLights.lights[0].pos_intensity), 0.0025f);
+	ImGui::DragFloat3("Light 2 Position", glm::value_ptr(pointLights.lights[1].pos_intensity), 0.0025f);
 
-	ImGui::DragFloat("Light 1 Intensity", &pointLights.light[0].pos_intensity[3], 0.0025f);
-	ImGui::DragFloat("Light 2 Intensity", &pointLights.light[1].pos_intensity[3], 0.0025f);
+	ImGui::DragFloat("Light 1 Intensity", &pointLights.lights[0].pos_intensity[3], 0.0025f);
+	ImGui::DragFloat("Light 2 Intensity", &pointLights.lights[1].pos_intensity[3], 0.0025f);
 
 	for (size_t i = 0; i < gameObjects.size(); i++) {
 		if (ImGui::CollapsingHeader(("Object " + std::to_string(i)).c_str())) {
