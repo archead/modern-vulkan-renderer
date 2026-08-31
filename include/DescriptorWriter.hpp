@@ -1,10 +1,11 @@
 #include <vector>
+#include <deque>
 #include <vulkan/vulkan_raii.hpp>
 
 class DescriptorWriter {
 private:
-    std::vector<vk::DescriptorBufferInfo> bufferInfos;
-    std::vector<vk::DescriptorImageInfo> imageInfos;
+    std::deque<vk::DescriptorBufferInfo> bufferInfos;
+    std::deque<vk::DescriptorImageInfo> imageInfos;
     std::vector<vk::WriteDescriptorSet> descriptorWrites;
 
 public:

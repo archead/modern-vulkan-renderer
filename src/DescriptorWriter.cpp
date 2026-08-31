@@ -15,6 +15,9 @@ DescriptorWriter& DescriptorWriter::writeImage(uint32_t binding, vk::Sampler sam
 void DescriptorWriter::updateSet(vk::Device device, vk::DescriptorSet descriptorSet) {
     for (auto &write : descriptorWrites) {
         write.dstSet = descriptorSet;
+        if (write.dstSet == VK_NULL_HANDLE) {
+            throw std::runtime_error("Can't update descriptor set");
+        }
     }
     device.updateDescriptorSets(descriptorWrites, {});
 }

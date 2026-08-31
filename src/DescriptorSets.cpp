@@ -1,4 +1,5 @@
 #include "DescriptorSets.hpp"
+#include "DescriptorWriter.hpp"
 #include "Renderer.hpp"
 #include "Config.hpp"
 #include "VkUtil.hpp"
@@ -76,37 +77,23 @@ void Renderer::createDescriptorSets() {
     billboardDescriptorSets = descriptorSetAllocator->Allocate(layouts3);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vk::DescriptorBufferInfo globalBufferInfo(globalUniformBuffers[i].buffer.buffer, 0, sizeof(GlobalUBO));
-        vk::DescriptorBufferInfo lightingBufferInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO));
-
-        std::array<vk::WriteDescriptorSet, 2> writes{
-            vk::WriteDescriptorSet(globalDescriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &globalBufferInfo),
-            vk::WriteDescriptorSet(globalDescriptorSets[i], 1, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &lightingBufferInfo)
-        };
-        device.updateDescriptorSets(writes, {});
+        DescriptorWriter{}
+        .writeBuffer(0, globalUniformBuffers[i].buffer.buffer, 0, sizeof(GlobalUBO), vk::DescriptorType::eUniformBuffer)
+        .writeBuffer(1, lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO), vk::DescriptorType::eUniformBuffer)
+        .updateSet(device, globalDescriptorSets[i]);
 
         // configure GBuffer info and writes
-        vk::DescriptorImageInfo gBufferFragPosInfo(*gBufferSampler, gBuffer.fragPosImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-        vk::DescriptorImageInfo gBufferNormalInfo(*gBufferSampler, gBuffer.normalVectorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-        vk::DescriptorImageInfo gBufferAlbedoInfo(*gBufferSampler, gBuffer.albedoColorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-        vk::DescriptorBufferInfo lightingUBOInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO));
+        DescriptorWriter{}
+        .writeImage(0, *gBufferSampler, gBuffer.fragPosImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+        .writeImage(1, *gBufferSampler, gBuffer.normalVectorImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+        .writeImage(2, *gBufferSampler, gBuffer.albedoColorImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+        .writeBuffer(3, lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO), vk::DescriptorType::eUniformBuffer)
+        .updateSet(device, gBufferDescriptorSets[i]);
 
-        std::array<vk::WriteDescriptorSet, 4> writes2 {
-            vk::WriteDescriptorSet(gBufferDescriptorSets[i], 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferFragPosInfo, nullptr),
-            vk::WriteDescriptorSet(gBufferDescriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferNormalInfo, nullptr),
-            vk::WriteDescriptorSet(gBufferDescriptorSets[i], 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferAlbedoInfo, nullptr),
-            vk::WriteDescriptorSet(gBufferDescriptorSets[i], 3, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &lightingUBOInfo)
-            };
-        device.updateDescriptorSets(writes2, {});
-
-        vk::DescriptorBufferInfo billboardLightingUBOInfo(lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO));
-        vk::DescriptorBufferInfo billboardCameraInfo(globalUniformBuffers[i].buffer.buffer, 0, sizeof(GlobalUBO));
-
-        std::array<vk::WriteDescriptorSet, 2> writes3 {
-            vk::WriteDescriptorSet(billboardDescriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &billboardCameraInfo),
-            vk::WriteDescriptorSet(billboardDescriptorSets[i], 1, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &billboardLightingUBOInfo)
-        };
-        device.updateDescriptorSets(writes3, {});
+        DescriptorWriter{}
+        .writeBuffer(0, globalUniformBuffers[i].buffer.buffer, 0, sizeof(GlobalUBO), vk::DescriptorType::eUniformBuffer)
+        .writeBuffer(1, lightingUniformBuffers[i].buffer.buffer, 0, sizeof(LightingUBO), vk::DescriptorType::eUniformBuffer)
+        .updateSet(device, billboardDescriptorSets[i]);
     }
 }
 
