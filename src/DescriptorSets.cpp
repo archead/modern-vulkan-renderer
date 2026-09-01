@@ -6,39 +6,29 @@
 
 // set layout config
 void Renderer::createDescriptorSetLayouts() {
-    // per frame ubos
-    DescriptorSetLayoutBuilder builder0;
-    // view and proj matrices
-    builder0.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
-    // light ubo
-    builder0.addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment);
-    globalSetLayout = builder0.build(device);
 
-    // per object ubo + texture sampler
-    DescriptorSetLayoutBuilder builder1;
-    // model and normal matrices
-    builder1.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
-    // texture sampler
-    builder1.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
-    // normal map sampler
-    builder1.addBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
-    objectSetLayout = builder1.build(device);
+    DescriptorSetLayoutBuilder{}// per frame ubos
+    .addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex)// view and proj matrices
+    .addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment)// light ubo
+    .build(device, globalSetLayout );
 
-    // Lighting Pipeline
-    DescriptorSetLayoutBuilder builder2;
-    // G-buffer
-    builder2.addBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
-    builder2.addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
-    builder2.addBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment);
-    // Lighting UBO
-    builder2.addBinding(3, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment);
-    gBufferSetLayout = builder2.build(device);
+    DescriptorSetLayoutBuilder{}// per object ubo + texture sampler
+    .addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex)
+    .addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// texture sampler
+    .addBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// normal map sampler
+    .build(device, objectSetLayout);
 
-    // Billboard Pipeline
-    DescriptorSetLayoutBuilder builder3;
-    builder3.addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
-    builder3.addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
-    billboardSetLayout = builder3.build(device);
+    DescriptorSetLayoutBuilder{}// Lighting Pipeline
+    .addBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// G-buffer
+    .addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)
+    .addBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)
+    .addBinding(3, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment)// Lighting UBO
+    .build(device, gBufferSetLayout );
+
+    DescriptorSetLayoutBuilder{}// Billboard Pipeline
+    .addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex)
+    .addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex)
+    .build(device, billboardSetLayout );
 }
 
 // per-game object descriptors
@@ -49,18 +39,13 @@ void Renderer::createGameObjectDescriptorSets() {
         gameObject.descriptorSets = descriptorSetAllocator->Allocate(layouts);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vk::DescriptorBufferInfo bufferInfo(gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(ObjectUBO));
-            vk::DescriptorImageInfo  imageInfo(*textureSampler, gameObject.texture->imageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-
             vk::ImageView normalImageView = gameObject.normalMap ? gameObject.normalMap->imageView : gameObject.texture->imageView;
-            vk::DescriptorImageInfo  normalMapInfo(*textureSampler, normalImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-            std::array<vk::WriteDescriptorSet, 3> descriptorWrites{
-                vk::WriteDescriptorSet(gameObject.descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo),
-                vk::WriteDescriptorSet(gameObject.descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr),
-                vk::WriteDescriptorSet(gameObject.descriptorSets[i], 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &normalMapInfo, nullptr)
-            };
-            device.updateDescriptorSets(descriptorWrites, {});
+            DescriptorWriter{}
+            .writeBuffer(0, gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(ObjectUBO), vk::DescriptorType::eUniformBuffer)
+            .writeImage(1, textureSampler, gameObject.texture->imageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+            .writeImage(2, textureSampler, normalImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+            .updateSet(device, gameObject.descriptorSets[i]);
         }
     }
 }
@@ -104,17 +89,18 @@ void Renderer::createDescriptorPool() {
 }
 
 // Descriptor Set Layout Builder
-void DescriptorSetLayoutBuilder::addBinding(uint32_t binding, vk::DescriptorType type, uint32_t count, vk::ShaderStageFlagBits shaderStage) {
+DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::addBinding(uint32_t binding, vk::DescriptorType type, uint32_t count, vk::ShaderStageFlagBits shaderStage) {
     bindings.emplace_back(binding, type, count, shaderStage, nullptr);
+    return *this;
 }
 
 void DescriptorSetLayoutBuilder::clearBindings() {
     bindings.clear();
 }
 
-vk::raii::DescriptorSetLayout DescriptorSetLayoutBuilder::build(vk::raii::Device const &device) const {
+void DescriptorSetLayoutBuilder::build(vk::raii::Device const &device, vk::raii::DescriptorSetLayout& layout) const {
     vk::DescriptorSetLayoutCreateInfo layoutInfo({}, bindings.size(), bindings.data());
-    return {vk::raii::DescriptorSetLayout(device, layoutInfo)};
+    layout = vk::raii::DescriptorSetLayout(device, layoutInfo);
 }
 
 // Descriptor Set Allocator
