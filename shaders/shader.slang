@@ -61,12 +61,10 @@ ConstantBuffer<GlobalUBO> globalUbo;
 [[vk::binding(1, 0)]]
 ConstantBuffer<LightBuffer> lightUbo;
 
-//set 2
+//set 2 - per object descriptor
 [[vk::binding(0, 1)]]
-ConstantBuffer<ObjectUBO> objectUbo;
-[[vk::binding(1, 1)]]
 Sampler2D texture;
-[[vk::binding(2, 1)]]
+[[vk::binding(1, 1)]]
 Sampler2D normalMap;
 
 // could cause issues with the other pipeline that has bindings in set 0 as well
@@ -83,23 +81,26 @@ ConstantBuffer<LightBuffer> lightingUBO;
 ConstantBuffer<LightBuffer> lightingUbo;
 
 [[vk::push_constant]]
+ConstantBuffer<ObjectUBO> objectPush;
+
+[[vk::push_constant]]
 int debugState;
 
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
     VSOutput output;
-    output.pos = mul(globalUbo.proj, mul(globalUbo.view, mul(objectUbo.model, float4(input.inPosition, 1.0))));
+    output.pos = mul(globalUbo.proj, mul(globalUbo.view, mul(objectPush.model, float4(input.inPosition, 1.0))));
 
-    float4 worldPos = mul(objectUbo.model, float4(input.inPosition, 1.0));
+    float4 worldPos = mul(objectPush.model, float4(input.inPosition, 1.0));
     output.fragPos = worldPos.xyz;
 
     output.fragTexCoord = input.inTexCoord;
     output.color = input.inColor;
 
-    output.normal = normalize(mul((float3x3)objectUbo.normalMatrix, input.inNormal));
+    output.normal = normalize(mul((float3x3)objectPush.normalMatrix, input.inNormal));
 
     float3 N = output.normal;
-    float3 T = normalize(mul((float3x3)objectUbo.normalMatrix, input.inTangent.xyz));
+    float3 T = normalize(mul((float3x3)objectPush.normalMatrix, input.inTangent.xyz));
     T = normalize(T - N * dot(N, T));
     float3 B = normalize(input.inTangent.w * cross(N, T));
     float3x3 TBN = float3x3(float3(T.x, B.x, N.x),
@@ -107,7 +108,7 @@ VSOutput vertMain(VSInput input) {
                             float3(T.z, B.z, N.z));
     output.TBN = TBN;
 
-    output.useNormal = (bool)objectUbo.flags.x;
+    output.useNormal = (bool)objectPush.flags.x;
 
     return output;
 }

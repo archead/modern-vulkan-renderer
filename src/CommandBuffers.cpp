@@ -86,6 +86,13 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 		commandBuffers[currentFrame].bindVertexBuffers(0, models[gameObject.modelIndex].getVertexBuffer(), {0});
 		commandBuffers[currentFrame].bindIndexBuffer(models[gameObject.modelIndex].getIndexBuffer(), 0, vk::IndexType::eUint32);
 		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *gameObject.descriptorSets[currentFrame], {});
+
+		ObjectUBO push{};
+		push.model = gameObject.getModelMatrix();
+		push.normalMatrix = glm::transpose(glm::inverse(push.model));
+		push.flags = gameObject.flags;
+		commandBuffers[currentFrame].pushConstants<ObjectUBO>(*geometryPipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, push);
+
 		commandBuffers[currentFrame].drawIndexed(models[gameObject.modelIndex].getIndexCount(), 1, 0, 0, 0);
 	}
 
@@ -123,6 +130,7 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 
 	// set push constants
 	commandBuffers[currentFrame].pushConstants<int32_t>(*lightingPipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, static_cast<int32_t>(currentDebugState));
+
 
 	// big trangle trick
 	commandBuffers[currentFrame].draw(3, 1, 0, 0);

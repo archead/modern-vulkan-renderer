@@ -13,9 +13,8 @@ void Renderer::createDescriptorSetLayouts() {
     .build(device, globalSetLayout );
 
     DescriptorSetLayoutBuilder{}// per object ubo + texture sampler
-    .addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex)
-    .addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// texture sampler
-    .addBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// normal map sampler
+    .addBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// texture sampler
+    .addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// normal map sampler
     .build(device, objectSetLayout);
 
     DescriptorSetLayoutBuilder{}// Lighting Pipeline
@@ -42,9 +41,8 @@ void Renderer::createGameObjectDescriptorSets() {
             vk::ImageView normalImageView = gameObject.normalMap ? gameObject.normalMap->imageView : gameObject.texture->imageView;
 
             DescriptorWriter{}
-            .writeBuffer(0, gameObject.uniformBuffers[i].buffer.buffer, 0, sizeof(ObjectUBO), vk::DescriptorType::eUniformBuffer)
-            .writeImage(1, textureSampler, gameObject.texture->imageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
-            .writeImage(2, textureSampler, normalImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+            .writeImage(0, *textureSampler, gameObject.texture->imageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+            .writeImage(1, *textureSampler, normalImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
             .updateSet(device, gameObject.descriptorSets[i]);
         }
     }
@@ -92,10 +90,6 @@ void Renderer::createDescriptorPool() {
 DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::addBinding(uint32_t binding, vk::DescriptorType type, uint32_t count, vk::ShaderStageFlagBits shaderStage) {
     bindings.emplace_back(binding, type, count, shaderStage, nullptr);
     return *this;
-}
-
-void DescriptorSetLayoutBuilder::clearBindings() {
-    bindings.clear();
 }
 
 void DescriptorSetLayoutBuilder::build(vk::raii::Device const &device, vk::raii::DescriptorSetLayout& layout) const {

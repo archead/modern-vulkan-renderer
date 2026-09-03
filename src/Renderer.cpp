@@ -139,6 +139,7 @@ void Renderer::bootstrapVulkan() {
 
 	const vkb::PhysicalDevice vkbPhysicalDevice = phys_ret.value();
 	physicalDevice = vk::raii::PhysicalDevice(instance, vkbPhysicalDevice);
+	std::cout << "Physical Device Push Constant Size: " << physicalDevice.getProperties().limits.maxPushConstantsSize << "\n";
 	msaaSamples = vk::SampleCountFlagBits::e1; // hard coded since we are using deferred rendering
 
 	// ---- Create Logical Device
@@ -397,9 +398,17 @@ void Renderer::createGeometryPipeline() {
 	colorBlending.pAttachments    = colorBlendAttachments.data();
 
 	std::array<vk::DescriptorSetLayout, 2> setLayouts = {*globalSetLayout, *objectSetLayout};
+
+	vk::PushConstantRange objectPushConstantRange{};
+	objectPushConstantRange.size = sizeof(ObjectUBO);
+	objectPushConstantRange.offset = 0;
+	objectPushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
 	vk::PipelineLayoutCreateInfo           pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
+	pipelineLayoutInfo.pPushConstantRanges = &objectPushConstantRange;
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
 	geometryPipelineLayout            = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
 	vk::Format depthFormat = vkutil::findDepthFormat(physicalDevice);
@@ -1032,7 +1041,6 @@ void Renderer::initVulkan() {
 	createGameObjects();
 	createPointLights();
 
-	createGameObjectUniformBuffers();
 	createUniformBuffers();
 
 	createDescriptorPool();
@@ -1128,12 +1136,6 @@ void Renderer::cleanup() {
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 
-	for (auto& gameObject : gameObjects) {
-		for (auto& ub : gameObject.uniformBuffers) {
-			vkutil::destroyBuffer(allocator, ub.buffer);
-		}
-	}
-
 	for (auto& buffer : globalUniformBuffers) {
 		vkutil::destroyBuffer(allocator, buffer.buffer);
 	}
@@ -1225,7 +1227,6 @@ void Renderer::drawFrame() {
 
 	vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
-	updateGameObjectUniformBuffer(currentFrame);
 	updateUniformBuffer(currentFrame);
 
 	vk::SubmitInfo submitInfo;
