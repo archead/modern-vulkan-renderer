@@ -31,6 +31,7 @@ void Renderer::createDescriptorSetLayouts() {
 }
 
 // per-game object descriptors
+// assumes that texture and normal map members of the object dont change at runtime
 void Renderer::createGameObjectDescriptorSets() {
     for (auto &gameObject: gameObjects) {
         // Create descriptor sets for each FIF

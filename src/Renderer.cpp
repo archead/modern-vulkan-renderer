@@ -39,6 +39,7 @@
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_sdl3.h>
 
+#include "DescriptorWriter.hpp"
 #include "VkUtil.hpp"
 #include "MikkUtil.hpp"
 
@@ -899,17 +900,11 @@ void Renderer::recreateGBuffer() {
 	createGBuffer();
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-	    // configure GBuffer info and writes
-    	vk::DescriptorImageInfo gBufferFragPosInfo(*gBufferSampler, gBuffer.fragPosImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-    	vk::DescriptorImageInfo gBufferNormalInfo(*gBufferSampler, gBuffer.normalVectorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-    	vk::DescriptorImageInfo gBufferAlbedoInfo(*gBufferSampler, gBuffer.albedoColorImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-    	std::array<vk::WriteDescriptorSet, 3> writes2 {
-    		vk::WriteDescriptorSet(gBufferDescriptorSets[i], 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferFragPosInfo, nullptr),
-			vk::WriteDescriptorSet(gBufferDescriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferNormalInfo, nullptr),
-			vk::WriteDescriptorSet(gBufferDescriptorSets[i], 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &gBufferAlbedoInfo, nullptr),
-			};
-    	device.updateDescriptorSets(writes2, {});
+		DescriptorWriter{}
+    	.writeImage(0, *gBufferSampler, gBuffer.fragPosImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+    	.writeImage(1, *gBufferSampler, gBuffer.normalVectorImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+    	.writeImage(2, *gBufferSampler, gBuffer.albedoColorImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+    	.updateSet(device, gBufferDescriptorSets[i]);
     }
 }
 
