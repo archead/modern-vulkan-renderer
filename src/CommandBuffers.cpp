@@ -138,7 +138,7 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	// swap over to billboard pipeline and draw the gizmo
 	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, billboardPipeline);
 	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *billboardPipelineLayout, 0, *billboardDescriptorSets[currentFrame], {});
-	commandBuffers[currentFrame].draw(6, 1, 0, 0);
+	commandBuffers[currentFrame].draw(6,MAX_POINT_LIGHTS , 0, 0);
 
 	// draw debug menu
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]); // part of lighting pass

@@ -5,6 +5,11 @@
 #include "VkUtil.hpp"
 
 // set layout config
+// Layouts grouped by frequency
+// per-frame: global
+// per-material: object
+// per-pass: gbuffer / billboard
+
 void Renderer::createDescriptorSetLayouts() {
 
     DescriptorSetLayoutBuilder{}// per frame ubos
@@ -12,26 +17,26 @@ void Renderer::createDescriptorSetLayouts() {
     .addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment)// light ubo
     .build(device, globalSetLayout );
 
-    DescriptorSetLayoutBuilder{}// per object ubo + texture sampler
+    DescriptorSetLayoutBuilder{}// per material: texture samplers
     .addBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// texture sampler
     .addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// normal map sampler
     .build(device, objectSetLayout);
 
-    DescriptorSetLayoutBuilder{}// Lighting Pipeline
+    DescriptorSetLayoutBuilder{}// per pass: lighting pipeline reads g-buffer + lightdata
     .addBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// G-buffer
     .addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)
     .addBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)
     .addBinding(3, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment)// Lighting UBO
     .build(device, gBufferSetLayout );
 
-    DescriptorSetLayoutBuilder{}// Billboard Pipeline
+    DescriptorSetLayoutBuilder{}// per pass: same as global but used for a different pipeline
     .addBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex)
     .addBinding(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex)
     .build(device, billboardSetLayout );
 }
 
 // per-game object descriptors
-// assumes that texture and normal map members of the object dont change at runtime
+// assumes that texture and normal map members of the object don't change at runtime
 void Renderer::createGameObjectDescriptorSets() {
     for (auto &gameObject: gameObjects) {
         // Create descriptor sets for each FIF
