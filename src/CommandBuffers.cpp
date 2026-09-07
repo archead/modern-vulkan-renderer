@@ -131,14 +131,13 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	// set push constants
 	commandBuffers[currentFrame].pushConstants<int32_t>(*lightingPipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, static_cast<int32_t>(currentDebugState));
 
-
 	// big trangle trick
 	commandBuffers[currentFrame].draw(3, 1, 0, 0);
 
 	// swap over to billboard pipeline and draw the gizmo
 	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, billboardPipeline);
 	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *billboardPipelineLayout, 0, *billboardDescriptorSets[currentFrame], {});
-	commandBuffers[currentFrame].draw(6,MAX_POINT_LIGHTS , 0, 0);
+	commandBuffers[currentFrame].draw(6,MAX_POINT_LIGHTS , 0, 0); //instanced to light count
 
 	// draw debug menu
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]); // part of lighting pass
