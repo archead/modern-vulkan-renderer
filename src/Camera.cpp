@@ -9,6 +9,21 @@ glm::vec3 Camera::getTarget() const {
     return target;
 }
 
+glm::vec3 Camera::getFront() const {
+   glm::vec3 front(0.0);
+    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front = glm::normalize(front);
+    return front;
+}
+
+void Camera::rotate(float deltaPitch, float deltaYaw) {
+    pitch = glm::clamp(pitch + deltaPitch, -89.9f, 89.9f);
+    yaw += deltaYaw;
+    target = pos + getFront();
+}
+
 glm::mat4 Camera::getProjectionMatrix(float aspect) const {
     glm::mat4 proj = glm::perspective(fovY, aspect, zNear, zFar);
     proj[1][1] *= -1;
@@ -16,12 +31,16 @@ glm::mat4 Camera::getProjectionMatrix(float aspect) const {
 }
 
 glm::mat4 Camera::getViewMatrix() const {
-    return glm::lookAt(pos, target, glm::vec3(0.0f, 1.0f, 0.0f));
+    return glm::lookAt(pos, pos + getFront(), glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void Camera::moveCamera(glm::vec3 dirVector) {
     pos += dirVector;
     target += dirVector;
+}
+
+void Camera::setTarget(glm::vec3 newTarget) {
+    target = newTarget;
 }
 
 float Camera::getSpeed() const {

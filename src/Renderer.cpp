@@ -939,7 +939,6 @@ void Renderer::createGameObjects() {
 	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\albedo.ktx2)"));
 	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\normal.ktx2)"));
 
-
 	gameObjects.resize(2);
 
 	gameObjects[0].modelIndex = 0;
@@ -955,14 +954,6 @@ void Renderer::createGameObjects() {
 	gameObjects[1].texture = modelTextures[2].get();
 	gameObjects[1].normalMap = modelTextures[3].get();
 	gameObjects[1].flags.x = 1; // disable normal map
-
-	// gameObjects[1].position = {1.0f, 0.0f, -1.0f};
-	// gameObjects[1].scale    = {0.5f, 0.5f, 0.5f};
-	// gameObjects[1].texture = modelTextures[2].get();
-	//
-	// gameObjects[2].position = {-0.20f, 0.0f, -2.0f};
-	// gameObjects[2].scale    = {0.75f, 0.75f, 0.75f};
-	// gameObjects[2].texture = modelTextures[0].get();
 }
 
 void Renderer::createPointLights() {
@@ -1077,6 +1068,7 @@ void Renderer::mainLoop() {
 }
 
 glm::vec3 Renderer::getKeyboardInput() {
+	// TODO add delta time to fix frame dependent speed
 	const bool* key_states = SDL_GetKeyboardState(NULL);
 
 	auto dir_world_up = glm::vec3(0, 1, 0);
@@ -1085,21 +1077,18 @@ glm::vec3 Renderer::getKeyboardInput() {
 
 
 	auto dir_vector = glm::vec3(0.0f, 0.0f, 0.0f);
-	auto dir_vector_look_at = glm::vec3(0.0f, 0.0f, 0.0f);
-
 	if (key_states[SDL_SCANCODE_W]) { dir_vector += dir_forward; }
 	if (key_states[SDL_SCANCODE_S]) { dir_vector -= dir_forward; }
 	if (key_states[SDL_SCANCODE_A]) { dir_vector -= dir_right; }
 	if (key_states[SDL_SCANCODE_D]) { dir_vector += dir_right; }
 	if (key_states[SDL_SCANCODE_SPACE]) { dir_vector += dir_world_up; }
 	if (key_states[SDL_SCANCODE_LCTRL]) { dir_vector -= dir_world_up; }
-	if (key_states[SDL_SCANCODE_UP]) { dir_vector_look_at -= glm::vec3(0.0f, 1.0f, 0.0f); }
-	if (key_states[SDL_SCANCODE_DOWN]) { dir_vector_look_at += glm::vec3(0.0f, 1.0f, 0.0f); }
-	if (key_states[SDL_SCANCODE_LEFT]) { dir_vector_look_at += glm::vec3(1.0f, 0.0f, 0.0f); }
-	if (key_states[SDL_SCANCODE_RIGHT]) { dir_vector_look_at -= glm::vec3(1.0f, 0.0f, 0.0f); }
+	if (key_states[SDL_SCANCODE_UP]) { camera.rotate(1.0, 0.0); }
+	if (key_states[SDL_SCANCODE_DOWN]) {camera.rotate(-1.0, 0.0); }
+	if (key_states[SDL_SCANCODE_LEFT]) { camera.rotate(0.0, -1.0); }
+	if (key_states[SDL_SCANCODE_RIGHT]) { camera.rotate(0.0, 1.0); }
 
 	if (glm::length(dir_vector) > 0.0f) { dir_vector = glm::normalize(dir_vector)*camera.getSpeed(); }
-	if (glm::length(dir_vector_look_at) > 0.0f) { dir_vector_look_at = glm::normalize(dir_vector_look_at)*camera.getSpeed(); }
 
 	camera.moveCamera(dir_vector);
 	return dir_vector;
