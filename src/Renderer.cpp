@@ -1060,35 +1060,44 @@ void Renderer::mainLoop() {
 					break;
 			}
 		}
-		getKeyboardInput();
+		auto currentFrameTime = std::chrono::steady_clock::now();
+		float deltaTime = std::chrono::duration<float>(currentFrameTime - lastFrameTime).count();
+		lastFrameTime = currentFrameTime;
+		getKeyboardInput(deltaTime);
 		drawFrame();
 	}
 
 	device.waitIdle();
 }
 
-glm::vec3 Renderer::getKeyboardInput() {
+glm::vec3 Renderer::getKeyboardInput(float deltaTime) {
 	// TODO add delta time to fix frame dependent speed
 	const bool* key_states = SDL_GetKeyboardState(NULL);
 
 	auto dir_world_up = glm::vec3(0, 1, 0);
-	auto dir_forward = glm::normalize(camera.getTarget() - camera.getPosition());
+	auto dir_forward = glm::normalize(camera.getFront());
 	auto dir_right = glm::normalize(glm::cross(dir_forward, dir_world_up));
 
+	float moveSpeed = camera.getSpeed() * deltaTime;
+	float lookSpeed = camera.getLookSpeed() * deltaTime;
 
 	auto dir_vector = glm::vec3(0.0f, 0.0f, 0.0f);
 	if (key_states[SDL_SCANCODE_W]) { dir_vector += dir_forward; }
 	if (key_states[SDL_SCANCODE_S]) { dir_vector -= dir_forward; }
 	if (key_states[SDL_SCANCODE_A]) { dir_vector -= dir_right; }
 	if (key_states[SDL_SCANCODE_D]) { dir_vector += dir_right; }
+
 	if (key_states[SDL_SCANCODE_SPACE]) { dir_vector += dir_world_up; }
 	if (key_states[SDL_SCANCODE_LCTRL]) { dir_vector -= dir_world_up; }
-	if (key_states[SDL_SCANCODE_UP]) { camera.rotate(1.0, 0.0); }
-	if (key_states[SDL_SCANCODE_DOWN]) {camera.rotate(-1.0, 0.0); }
-	if (key_states[SDL_SCANCODE_LEFT]) { camera.rotate(0.0, -1.0); }
-	if (key_states[SDL_SCANCODE_RIGHT]) { camera.rotate(0.0, 1.0); }
 
-	if (glm::length(dir_vector) > 0.0f) { dir_vector = glm::normalize(dir_vector)*camera.getSpeed(); }
+	float deltaPitch = 0.0f, deltaYaw = 0.0f;
+	if (key_states[SDL_SCANCODE_UP])	{ deltaPitch += lookSpeed; }
+	if (key_states[SDL_SCANCODE_DOWN])	{ deltaPitch -= lookSpeed; }
+	if (key_states[SDL_SCANCODE_LEFT])	{ deltaYaw -= lookSpeed; }
+	if (key_states[SDL_SCANCODE_RIGHT]) { deltaYaw += lookSpeed; }
+	camera.rotate(deltaPitch, deltaYaw);
+
+	if (glm::length(dir_vector) > 0.0f) { dir_vector = glm::normalize(dir_vector) * moveSpeed; }
 
 	camera.moveCamera(dir_vector);
 	return dir_vector;

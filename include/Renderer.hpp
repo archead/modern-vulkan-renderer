@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <VkBootstrap.h>
 #include <memory>
+#include <chrono>
 
 #include "Types.hpp"
 #include "DescriptorSets.hpp"
@@ -192,6 +193,8 @@ private:
 
 	DebugState currentDebugState = DebugState::Lit;
 
+	 std::chrono::steady_clock::time_point lastFrameTime = std::chrono::steady_clock::now();
+
 	//endregion
 
 	void handleBootstrapErrors(auto obj_ret);
@@ -292,7 +295,7 @@ private:
 
 	void mainLoop();
 
-	glm::vec3 getKeyboardInput();
+	glm::vec3 getKeyboardInput(float deltaTime);
 
 	void dumpAllocationStats();
 
