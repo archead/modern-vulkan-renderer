@@ -19,11 +19,11 @@ private:
 
  public:
 
-    std::vector<Mesh> meshes;
-    std::vector<Node> nodes;
-    std::vector<int> rootNodes;
-    std::vector<Material2> materials;
-    std::vector<ModelTexture> textures;
+    std::vector<Mesh> meshes_m;
+    std::vector<Node> nodes_m;
+    std::vector<int> rootNodes_m;
+    std::vector<Material2> materials_m;
+    std::vector<ModelTexture> textures_m;
 
     vk::Buffer getVertexBuffer();
     vk::Buffer getIndexBuffer();

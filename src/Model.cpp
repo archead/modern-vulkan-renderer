@@ -16,12 +16,18 @@ void Model::loadModel2(std::string modelPath) {
 	if (!err.empty())	{ std::cout << "glTF error: " << err << std::endl; }
 	if (!ret)			{ throw std::runtime_error("failed to load glTF model"); }
 
-	std::vector<Vertex> vertices;
+	for (const auto& material : model.materials) {
+		Material2 m{};
+		m.normalTex = material.normalTexture.index;
+		m.roughnessFactor = material.pbrMetallicRoughness.roughnessFactor;
+		m.metallicFactor = material.pbrMetallicRoughness.metallicFactor;
+		m.metalRoughTex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
 
+		materials_m.push_back(m);
+	}
 	for (const auto& mesh : model.meshes) {
+		Mesh m{};
 		for (const auto& primitive : mesh.primitives) {
-			int materialIndex = primitive.material;
-
 			tinygltf::Accessor& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
 			tinygltf::Accessor& normalAccessor = model.accessors[primitive.attributes.at("NORMAL")];
 			tinygltf::Accessor& tangentAccessor = model.accessors[primitive.attributes.at("TANGENT")];
@@ -40,6 +46,7 @@ void Model::loadModel2(std::string modelPath) {
 			tinygltf::Buffer& texCoordBuffer= model.buffers[texCoordBufferView.buffer];
 			tinygltf::Buffer& indexBuffer = model.buffers[indexBufferView.buffer];
 
+
 			unsigned char* posOffset = posBuffer.data.data() + posAccessor.byteOffset + posBufferView.byteOffset;
 			size_t posStride = posAccessor.ByteStride(posBufferView);
 
@@ -55,21 +62,48 @@ void Model::loadModel2(std::string modelPath) {
 			unsigned char* indexOffset = indexBuffer.data.data() + indexAccessor.byteOffset + indexBufferView.byteOffset;
 			size_t indexStride = indexAccessor.ByteStride(indexBufferView);
 
-
+			Primitive p{};
+			p.materialIndex = primitive.material;
+			p.firstIndex = indices_m.size();
+			p.vertexOffset = vertices_m.size();
 
 			for (size_t i = 0; i < posAccessor.count; i++) {
-				Vertex v;
-				v.pos = *reinterpret_cast<const glm::vec3*>(posOffset + i * posStride);
-				v.color = glm::vec4{1.0f};
-				v.normal = *reinterpret_cast<const glm::vec3*>(normalOffset + i * normalStride);
-				v.tangent = *reinterpret_cast<const glm::vec4*>(tangentOffset + i * tangentStride);
+				Vertex v{};
+				auto* pos = reinterpret_cast<const float*>(posOffset + i * posStride);
+				v.pos = {pos[0], pos[1], pos[2]};
 
+				v.color = glm::vec4{1.0f};
+
+				auto* normal = reinterpret_cast<const float*>(normalOffset + i * normalStride);
+				v.normal = {normal[0], normal[1], normal[2]};
+
+				auto* tangent = reinterpret_cast<const float*>(tangentOffset + i * tangentStride);
+				v.tangent = {tangent[0], tangent[1], tangent[2], tangent[3]};
+
+				auto* texCoord = reinterpret_cast<const float*>(texCoordOffset + i * texCoordStride);
+				v.texCoord = {texCoord[0], texCoord[1]};
+
+				vertices_m.push_back(v);
 			}
 
+			 for (size_t i = 0; i < indexAccessor.count; i++) {
+				switch (indexAccessor.componentType) {
+					case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+						indices_m.push_back(*reinterpret_cast<uint32_t*>(indexOffset + i * indexStride)); break;
+					case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+						indices_m.push_back(*reinterpret_cast<uint16_t*>(indexOffset + i * indexStride)); break;
+					case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+						indices_m.push_back(*reinterpret_cast<uint8_t*>(indexOffset + i * indexStride)); break;
+					default:
+						throw std::runtime_error("unsupported index component type!");
+				}
+			}
+
+			p.indexCount = indices_m.size() - p.firstIndex;
+			m.primitives.push_back(p);
 		}
+		meshes_m.push_back(m);
 	}
-
-
 }
 
 void Model::loadModel(std::string modelPath) {
