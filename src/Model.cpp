@@ -4,6 +4,74 @@
 #include "MikkUtil.hpp"
 #include "VkUtil.hpp"
 
+void Model::loadModel2(std::string modelPath) {
+	tinygltf::Model model;
+	tinygltf::TinyGLTF loader;
+	std::string err, warn;
+
+	std::cout << "Loading Model: " << modelPath << std::endl;
+	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, modelPath);
+
+	if (!warn.empty())	{ std::cout << "glTF warning: " << warn << std::endl; }
+	if (!err.empty())	{ std::cout << "glTF error: " << err << std::endl; }
+	if (!ret)			{ throw std::runtime_error("failed to load glTF model"); }
+
+	std::vector<Vertex> vertices;
+
+	for (const auto& mesh : model.meshes) {
+		for (const auto& primitive : mesh.primitives) {
+			int materialIndex = primitive.material;
+
+			tinygltf::Accessor& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
+			tinygltf::Accessor& normalAccessor = model.accessors[primitive.attributes.at("NORMAL")];
+			tinygltf::Accessor& tangentAccessor = model.accessors[primitive.attributes.at("TANGENT")];
+			tinygltf::Accessor& texCoordAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+			tinygltf::Accessor& indexAccessor = model.accessors[primitive.indices];
+
+			tinygltf::BufferView& posBufferView = model.bufferViews[posAccessor.bufferView];
+			tinygltf::BufferView& normalBufferView = model.bufferViews[normalAccessor.bufferView];
+			tinygltf::BufferView& tangentBufferView = model.bufferViews[tangentAccessor.bufferView];
+			tinygltf::BufferView& texCoordBufferView = model.bufferViews[texCoordAccessor.bufferView];
+			tinygltf::BufferView& indexBufferView = model.bufferViews[indexAccessor.bufferView];
+
+			tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
+			tinygltf::Buffer& normalBuffer = model.buffers[normalBufferView.buffer];
+			tinygltf::Buffer& tangentBuffer = model.buffers[tangentBufferView.buffer];
+			tinygltf::Buffer& texCoordBuffer= model.buffers[texCoordBufferView.buffer];
+			tinygltf::Buffer& indexBuffer = model.buffers[indexBufferView.buffer];
+
+			unsigned char* posOffset = posBuffer.data.data() + posAccessor.byteOffset + posBufferView.byteOffset;
+			size_t posStride = posAccessor.ByteStride(posBufferView);
+
+			unsigned char* normalOffset = normalBuffer.data.data() + normalAccessor.byteOffset + normalBufferView.byteOffset;
+			size_t normalStride = normalAccessor.ByteStride(normalBufferView);
+
+			unsigned char* tangentOffset = tangentBuffer.data.data() + tangentAccessor.byteOffset + tangentBufferView.byteOffset;
+			size_t tangentStride = tangentAccessor.ByteStride(tangentBufferView);
+
+			unsigned char* texCoordOffset = texCoordBuffer.data.data() + texCoordAccessor.byteOffset + texCoordBufferView.byteOffset;
+			size_t texCoordStride = texCoordAccessor.ByteStride(texCoordBufferView);
+
+			unsigned char* indexOffset = indexBuffer.data.data() + indexAccessor.byteOffset + indexBufferView.byteOffset;
+			size_t indexStride = indexAccessor.ByteStride(indexBufferView);
+
+
+
+			for (size_t i = 0; i < posAccessor.count; i++) {
+				Vertex v;
+				v.pos = *reinterpret_cast<const glm::vec3*>(posOffset + i * posStride);
+				v.color = glm::vec4{1.0f};
+				v.normal = *reinterpret_cast<const glm::vec3*>(normalOffset + i * normalStride);
+				v.tangent = *reinterpret_cast<const glm::vec4*>(tangentOffset + i * tangentStride);
+
+			}
+
+		}
+	}
+
+
+}
+
 void Model::loadModel(std::string modelPath) {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;

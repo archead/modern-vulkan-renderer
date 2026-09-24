@@ -37,20 +37,33 @@ void Renderer::createDescriptorSetLayouts() {
 
 // per-game object descriptors
 // assumes that texture and normal map members of the object don't change at runtime
-void Renderer::createGameObjectDescriptorSets() {
-    for (auto &gameObject: gameObjects) {
-        // Create descriptor sets for each FIF
-        std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *objectSetLayout);
-        gameObject.descriptorSets = descriptorSetAllocator->Allocate(layouts);
+// void Renderer::createGameObjectDescriptorSets() {
+//     for (auto &gameObject: gameObjects) {
+//         // Create descriptor sets for each FIF
+//         std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *objectSetLayout);
+//         gameObject.descriptorSets = descriptorSetAllocator->Allocate(layouts);
+//
+//         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+//             vk::ImageView normalImageView = gameObject.normalMap ? gameObject.normalMap->imageView : gameObject.texture->imageView;
+//
+//             DescriptorWriter{}
+//             .writeImage(0, *textureSampler, gameObject.texture->imageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+//             .writeImage(1, *textureSampler, normalImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+//             .updateSet(device, gameObject.descriptorSets[i]);
+//         }
+//     }
+// }
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vk::ImageView normalImageView = gameObject.normalMap ? gameObject.normalMap->imageView : gameObject.texture->imageView;
+void Renderer::createMaterialDescriptorSets() {
+   std::vector<vk::DescriptorSetLayout> layouts(materials.size(), *objectSetLayout);
+    materialDescriptorSets = descriptorSetAllocator->Allocate(layouts);
 
-            DescriptorWriter{}
-            .writeImage(0, *textureSampler, gameObject.texture->imageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
-            .writeImage(1, *textureSampler, normalImageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
-            .updateSet(device, gameObject.descriptorSets[i]);
-        }
+    for (size_t i = 0; i < materials.size(); i++) {
+        const Material& mat = materials[i];
+        DescriptorWriter{}
+        .writeImage(0, *textureSampler, modelTextures[mat.baseColorTexture]->imageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+        .writeImage(1, *textureSampler, modelTextures[mat.normalTexture]->imageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+        .updateSet(device, materialDescriptorSets[i]);
     }
 }
 

@@ -7,6 +7,8 @@
 #include "Config.hpp"
 #include <vk_mem_alloc.h>
 
+#include "ktxvulkan.h"
+
 struct AllocatedBuffer {
     VkBuffer buffer = VK_NULL_HANDLE;
     VmaAllocation allocation = VK_NULL_HANDLE;
@@ -98,3 +100,51 @@ struct MikkTSpaceUserData {
     std::vector<Vertex>* vertices;
     std::vector<uint32_t>* indices;
 };
+
+struct Material {
+    uint32_t baseColorTexture;
+    uint32_t normalTexture;
+};
+
+struct Primitive {
+    uint32_t firstIndex;
+    uint32_t indexCount;
+    uint32_t vertexOffset;
+    uint32_t materialIndex;
+};
+
+struct Mesh { std::vector<Primitive> primitives; };
+
+struct Node {
+    uint32_t meshIndex = -1;
+    glm::mat4 rotation{1.0f};
+    std::vector<int> children;
+};
+
+struct Material2 {
+    int baseColorTex, normalTex, metalRoughTex, occlusionTex, emissiveTex = -1;
+    glm::vec4 baseColorFactor{1.0f};
+    float metallicFactor, roughnessFactor, normalScale = 1.0f;
+    bool doubleSided = false;
+};
+
+struct ModelTexture {
+    ktxVulkanTexture             ktxVkTexture = {};
+    const VkAllocationCallbacks *allocator    = nullptr;
+    VkDevice                     device       = VK_NULL_HANDLE;
+    vk::Sampler                  sampler      = nullptr; // this is a reference to global sampler
+    vk::raii::ImageView          imageView    = nullptr;
+
+    ~ModelTexture() {
+        if (device && ktxVkTexture.image != VK_NULL_HANDLE) {
+            ktxVulkanTexture_Destruct(&ktxVkTexture, device, allocator);
+            ktxVkTexture = {};
+        }
+    }
+
+    // remove copy and assign operators / constructors
+    ModelTexture() = default;
+    ModelTexture(const ModelTexture&) = delete;
+    ModelTexture& operator=(const ModelTexture&) = delete;
+};
+

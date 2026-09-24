@@ -930,30 +930,29 @@ void Renderer::createGBufferSampler() {
 }
 
 void Renderer::createGameObjects() {
+	materials.push_back({2, 3});
 
-	models.emplace_back(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\helmet\DamagedHelmet.gltf)");
-	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\helmet\albedo.ktx2)"));
+	models.emplace_back(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\textured_box\BoxTextured.gltf)");
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\models\textured_box\CesiumLogoFlat.ktx2)"));
 	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\helmet\normal.ktx2)"));
 
-	models.emplace_back(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
-	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\albedo.ktx2)"));
-	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\normal.ktx2)"));
+	// models.emplace_back(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
+	// modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\albedo.ktx2)"));
+	// modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\normal.ktx2)"));
 
-	gameObjects.resize(2);
+	gameObjects.resize(1);
 
 	gameObjects[0].modelIndex = 0;
 	gameObjects[0].position = {0.0f, 0.0f, 0.0f};
 	gameObjects[0].scale    = {1.0f, 1.0f, 1.0f};
-	gameObjects[0].texture = modelTextures[0].get();
-	gameObjects[0].normalMap = modelTextures[1].get();
-	gameObjects[0].flags.x = 1; // disable normal map
+	gameObjects[0].materialIndex = 0;
+	gameObjects[0].flags.x = 0; // disable normal map
 
-	gameObjects[1].modelIndex = 1;
-	gameObjects[1].position = {1.0f, 0.5f, 1.0f};
-	gameObjects[1].scale    = {2.0f, 2.0f, 2.0f};
-	gameObjects[1].texture = modelTextures[2].get();
-	gameObjects[1].normalMap = modelTextures[3].get();
-	gameObjects[1].flags.x = 1; // disable normal map
+	// gameObjects[1].modelIndex = 1;
+	// gameObjects[1].position = {1.0f, 0.5f, 1.0f};
+	// gameObjects[1].scale    = {2.0f, 2.0f, 2.0f};
+	// gameObjects[0].materialIndex = 1;
+	// gameObjects[1].flags.x = 1; // disable normal map
 }
 
 void Renderer::createPointLights() {
@@ -1030,7 +1029,8 @@ void Renderer::initVulkan() {
 	createUniformBuffers();
 
 	createDescriptorPool();
-	createGameObjectDescriptorSets();
+	// createGameObjectDescriptorSets();
+	createMaterialDescriptorSets();
 	createDescriptorSets();
 	createCommandBuffers();
 
@@ -1116,7 +1116,7 @@ void Renderer::cleanup() {
 
 	// 1) Destroy descriptor sets first
 	for (auto& obj : gameObjects) {
-		obj.descriptorSets.clear();
+		materialDescriptorSets.clear();
 	}
 
 	globalDescriptorSets.clear();

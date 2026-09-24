@@ -10,6 +10,7 @@ private:
     VmaAllocator* allocator_m = nullptr;
 
     void loadModel(std::string modelPath);
+    void loadModel2(std::string modelPath);
 
     void createVertexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue);
     void createIndexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue);
@@ -17,6 +18,12 @@ private:
     void cleanup();
 
  public:
+
+    std::vector<Mesh> meshes;
+    std::vector<Node> nodes;
+    std::vector<int> rootNodes;
+    std::vector<Material2> materials;
+    std::vector<ModelTexture> textures;
 
     vk::Buffer getVertexBuffer();
     vk::Buffer getIndexBuffer();

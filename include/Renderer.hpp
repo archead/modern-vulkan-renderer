@@ -95,6 +95,9 @@ private:
 	vk::raii::DescriptorSetLayout billboardSetLayout = nullptr;
 	std::vector<vk::raii::DescriptorSet> billboardDescriptorSets;
 
+	// set 4
+	std::vector<vk::raii::DescriptorSet> materialDescriptorSets;
+
 	PoolSizes                               poolSize{};
 	DescriptorSetLayoutBuilder              layoutBuilder{};
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
@@ -132,36 +135,14 @@ private:
 
 	std::vector<const char *> deviceExtensions = { vk::KHRSwapchainExtensionName };
 
-	struct ModelTexture {
-		ktxVulkanTexture             ktxVkTexture = {};
-		const VkAllocationCallbacks *allocator    = nullptr;
-		VkDevice                     device       = VK_NULL_HANDLE;
-		vk::Sampler                  sampler      = nullptr; // this is a reference to global sampler
-		vk::raii::ImageView          imageView    = nullptr;
-
-		~ModelTexture() {
-			if (device && ktxVkTexture.image != VK_NULL_HANDLE) {
-				ktxVulkanTexture_Destruct(&ktxVkTexture, device, allocator);
-				ktxVkTexture = {};
-			}
-		}
-
-		// remove copy and assign operators / constructors
-		ModelTexture() = default;
-		ModelTexture(const ModelTexture&) = delete;
-		ModelTexture& operator=(const ModelTexture&) = delete;
-	};
-
 	struct GameObject {
 		glm::vec3 position = {0.0f, 0.0f, 0.0f};
 		glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
 		glm::vec3 scale    = {1.0f, 1.0f, 1.0f};
 
-		size_t							 modelIndex;
-		ModelTexture *                       texture   = nullptr;
-		ModelTexture *                       normalMap = nullptr;
-		glm::uvec4                           flags     = {0, 0, 0, 0};
-		std::vector<vk::raii::DescriptorSet> descriptorSets;
+		size_t modelIndex;
+		uint32_t materialIndex;
+		glm::uvec4 flags = {0, 0, 0, 0};
 
 		// Calculate model matrix based on position, rotation and scale
 		[[nodiscard]] glm::mat4 getModelMatrix() const;
@@ -194,6 +175,8 @@ private:
 	DebugState currentDebugState = DebugState::Lit;
 
 	 std::chrono::steady_clock::time_point lastFrameTime = std::chrono::steady_clock::now();
+
+	std::vector<Material> materials;
 
 	//endregion
 
@@ -237,13 +220,15 @@ private:
 
 	void cleanupSwapchain();
 
-	std::unique_ptr<Renderer::ModelTexture> loadTextureKTX(const char *texturePath);
+	std::unique_ptr<ModelTexture> loadTextureKTX(const char *texturePath);
 
 	void createVertexBuffer();
 
 	void createIndexBuffer();
 
 	void createGameObjectDescriptorSets();
+
+	void createMaterialDescriptorSets();
 
 	void createDescriptorSetLayouts();
 

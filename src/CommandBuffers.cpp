@@ -85,7 +85,7 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	for (const auto& gameObject : gameObjects) {
 		commandBuffers[currentFrame].bindVertexBuffers(0, models[gameObject.modelIndex].getVertexBuffer(), {0});
 		commandBuffers[currentFrame].bindIndexBuffer(models[gameObject.modelIndex].getIndexBuffer(), 0, vk::IndexType::eUint32);
-		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *gameObject.descriptorSets[currentFrame], {});
+		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *materialDescriptorSets[gameObject.materialIndex], {});
 
 		ObjectUBO push{};
 		push.model = gameObject.getModelMatrix();
@@ -215,7 +215,7 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 
 		commandBuffers[currentFrame].bindVertexBuffers(0, models[gameObject.modelIndex].getVertexBuffer(), {0});
 		commandBuffers[currentFrame].bindIndexBuffer(models[gameObject.modelIndex].getIndexBuffer(), 0, vk::IndexType::eUint32);
-		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 1, *gameObject.descriptorSets[currentFrame], {});
+		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 1, *materialDescriptorSets[gameObject.materialIndex], {});
 		commandBuffers[currentFrame].drawIndexed(models[gameObject.modelIndex].getIndexCount(), 1, 0, 0, 0);
 	}
 

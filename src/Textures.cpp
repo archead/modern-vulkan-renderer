@@ -56,7 +56,7 @@ void Renderer::createTextureSampler() {
     textureSampler = vk::raii::Sampler(device, samplerInfo);
 }
 
-std::unique_ptr<Renderer::ModelTexture> Renderer::loadTextureKTX(const char* texturePath) {
+std::unique_ptr<ModelTexture> Renderer::loadTextureKTX(const char* texturePath) {
 
     auto mTex = std::make_unique<ModelTexture>();
     mTex->device = *device;
