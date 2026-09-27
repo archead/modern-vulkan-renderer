@@ -9,6 +9,14 @@
 
 #include "ktxvulkan.h"
 
+struct VulkanContext {
+    vk::raii::Device&         device;
+    vk::raii::PhysicalDevice& physicalDevice;
+    vk::raii::CommandPool&    commandPool;
+    vk::raii::Queue&          graphicsQueue;
+    VmaAllocator              allocator = nullptr;
+};
+
 struct AllocatedBuffer {
     VkBuffer buffer = VK_NULL_HANDLE;
     VmaAllocation allocation = VK_NULL_HANDLE;

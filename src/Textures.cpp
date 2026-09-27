@@ -11,9 +11,6 @@ void Renderer::createTextureImage() {
     if (result != KTX_SUCCESS) { throw std::runtime_error("failed to load ktx texture image!"); }
     if (kTexture->vkFormat == VK_FORMAT_UNDEFINED) { ktxTexture2_Destroy(kTexture); throw std::runtime_error("KTX2 has VK_FORMAT UNDEFINED (needs transcoding)"); }
 
-    mipLevels = kTexture->numLevels;
-    textureFormat =	static_cast<vk::Format>(kTexture->vkFormat);
-
     ktxVulkanDeviceInfo deviceInfo{};
     result = ktxVulkanDeviceInfo_Construct(&deviceInfo, *physicalDevice, *device, *graphicsQueue, *commandPool, nullptr);
 
@@ -67,8 +64,6 @@ std::unique_ptr<ModelTexture> Renderer::loadTextureKTX(const char* texturePath) 
     KTX_error_code result = ktxTexture2_CreateFromNamedFile(texturePath, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &kTexture);
 
     if (result != KTX_SUCCESS) { throw std::runtime_error("failed to load ktx texture image!"); } if (kTexture->vkFormat == VK_FORMAT_UNDEFINED) { ktxTexture2_Destroy(kTexture); throw std::runtime_error("KTX2 has VK_FORMAT UNDEFINED (needs transcoding)"); }
-    mipLevels = kTexture->numLevels;
-    textureFormat =	static_cast<vk::Format>(kTexture->vkFormat);
 
     ktxVulkanDeviceInfo deviceInfo{};
     result = ktxVulkanDeviceInfo_Construct(&deviceInfo, *physicalDevice, *device, *graphicsQueue, *commandPool, nullptr);

@@ -104,9 +104,7 @@ private:
 	vk::raii::DescriptorPool                imGuiDescriptorPool = nullptr;
 
 	ktxVulkanTexture    ktxVkTexture     = {};
-	uint32_t            mipLevels        = 1;
 	AllocatedImage      textureImage     = {};
-	vk::Format          textureFormat    = vk::Format::eUndefined;
 	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler   textureSampler   = nullptr;
 

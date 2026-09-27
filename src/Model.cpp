@@ -1,10 +1,12 @@
 #include "Model.hpp"
+
 #include <iostream>
 #include <tiny_gltf.h>
 #include "MikkUtil.hpp"
 #include "VkUtil.hpp"
 
-void Model::loadModel2(std::string modelPath) {
+void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
+
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err, warn;
@@ -18,10 +20,12 @@ void Model::loadModel2(std::string modelPath) {
 
 	for (const auto& material : model.materials) {
 		Material2 m{};
+		m.baseColorTex = material.pbrMetallicRoughness.baseColorTexture.index;
 		m.normalTex = material.normalTexture.index;
+		m.metalRoughTex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
 		m.roughnessFactor = material.pbrMetallicRoughness.roughnessFactor;
 		m.metallicFactor = material.pbrMetallicRoughness.metallicFactor;
-		m.metalRoughTex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
+		m.normalScale = material.normalTexture.scale;
 
 		materials_m.push_back(m);
 	}
@@ -103,6 +107,20 @@ void Model::loadModel2(std::string modelPath) {
 			m.primitives.push_back(p);
 		}
 		meshes_m.push_back(m);
+	}
+
+
+	std::filesystem::path gltfDir = std::filesystem::path(modelPath).parent_path();
+	for (auto& tex : model.textures) {
+		const auto& image = model.images[tex.source];
+		std::filesystem::path imagePath = gltfDir / std::filesystem::path(image.uri).replace_extension(".ktx2");
+
+		if (!std::filesystem::exists(imagePath)) {
+			throw std::runtime_error("Cooked texture does not exist: " + imagePath.string());
+		}
+
+		textures_m.push_back(vkutil::loadTextureKTX(vkCtx, imagePath.string().c_str()));
+		texturePaths_m.push_back(imagePath);
 	}
 }
 
@@ -220,19 +238,19 @@ void Model::createVertexBuffer(vk::raii::Device &device, vk::raii::CommandPool &
 	vk::DeviceSize bufferSize = sizeof(Vertex) * vertices_m.size();
 
 	AllocatedBuffer stagingBuffer = {};
-	vkutil::createBuffer(*allocator_m, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
+	vkutil::createBuffer(allocator_m, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
 
 	void* data = nullptr;
-	vmaMapMemory(*allocator_m, stagingBuffer.allocation, &data);
+	vmaMapMemory(allocator_m, stagingBuffer.allocation, &data);
 	std::memcpy(data, vertices_m.data(), bufferSize);
-	vmaUnmapMemory(*allocator_m, stagingBuffer.allocation);
+	vmaUnmapMemory(allocator_m, stagingBuffer.allocation);
 
-	vmaFlushAllocation(*allocator_m, stagingBuffer.allocation, 0, bufferSize);
+	vmaFlushAllocation(allocator_m, stagingBuffer.allocation, 0, bufferSize);
 
-	vkutil::createBuffer(*allocator_m, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertexBuffer_m,false);
+	vkutil::createBuffer(allocator_m, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertexBuffer_m,false);
 
 	vkutil::copyBuffer(stagingBuffer.buffer, vertexBuffer_m.buffer, bufferSize, device, commandPool, graphicsQueue);
-	vkutil::destroyBuffer(*allocator_m, stagingBuffer);
+	vkutil::destroyBuffer(allocator_m, stagingBuffer);
 }
 
 void Model::createIndexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue){
@@ -240,29 +258,30 @@ void Model::createIndexBuffer(vk::raii::Device &device, vk::raii::CommandPool &c
 
 	AllocatedBuffer stagingBuffer = {};
 
-	vkutil::createBuffer(*allocator_m, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
+	vkutil::createBuffer(allocator_m, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
 	void* data = nullptr;
-	vmaMapMemory(*allocator_m, stagingBuffer.allocation, &data);
+	vmaMapMemory(allocator_m, stagingBuffer.allocation, &data);
 	std::memcpy(data, indices_m.data(), bufferSize);
-	vmaUnmapMemory(*allocator_m, stagingBuffer.allocation);
+	vmaUnmapMemory(allocator_m, stagingBuffer.allocation);
 
-	vkutil::createBuffer(*allocator_m, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBuffer_m, false);
+	vkutil::createBuffer(allocator_m, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBuffer_m, false);
 
 	vkutil::copyBuffer(stagingBuffer.buffer, indexBuffer_m.buffer, bufferSize, device, commandPool, graphicsQueue);
-	vkutil::destroyBuffer(*allocator_m, stagingBuffer);
+	vkutil::destroyBuffer(allocator_m, stagingBuffer);
 }
 
-Model::Model(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue, VmaAllocator* allocator, std::string modelPath) {
-	this->allocator_m = allocator;
-	loadModel(modelPath);
-	createVertexBuffer(device, commandPool, graphicsQueue);
-	createIndexBuffer(device, commandPool, graphicsQueue);
+Model::Model(VulkanContext& vkCtx, std::string modelPath) {
+	this->allocator_m = vkCtx.allocator;
+	modelPath_m = modelPath;
+	loadModel2(vkCtx, modelPath);
+	createVertexBuffer(vkCtx.device, vkCtx.commandPool, vkCtx.graphicsQueue);
+	createIndexBuffer(vkCtx.device, vkCtx.commandPool, vkCtx.graphicsQueue);
 }
 
 void Model::cleanup() {
 	if (allocator_m != nullptr){
-		if (indexBuffer_m.buffer != nullptr){ vkutil::destroyBuffer(*allocator_m, indexBuffer_m);}
-		if (vertexBuffer_m.buffer != nullptr){vkutil::destroyBuffer(*allocator_m, vertexBuffer_m);}
+		if (indexBuffer_m.buffer != nullptr){ vkutil::destroyBuffer(allocator_m, indexBuffer_m);}
+		if (vertexBuffer_m.buffer != nullptr){vkutil::destroyBuffer(allocator_m, vertexBuffer_m);}
 		allocator_m = nullptr;
 	}
 }

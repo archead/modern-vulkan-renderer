@@ -1,5 +1,7 @@
 #pragma once
 #include "Types.hpp"
+#include "vkUtil.hpp"
+#include <filesystem>
 
 class Model{
 private:
@@ -7,10 +9,12 @@ private:
     std::vector<uint32_t> indices_m;
     AllocatedBuffer vertexBuffer_m;
     AllocatedBuffer indexBuffer_m;
-    VmaAllocator* allocator_m = nullptr;
+
+    VmaAllocator          allocator_m = nullptr;
+    std::string            modelPath_m;
 
     void loadModel(std::string modelPath);
-    void loadModel2(std::string modelPath);
+    void loadModel2(VulkanContext vkCtx, std::string modelPath);
 
     void createVertexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue);
     void createIndexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue);
@@ -23,13 +27,14 @@ private:
     std::vector<Node> nodes_m;
     std::vector<int> rootNodes_m;
     std::vector<Material2> materials_m;
-    std::vector<ModelTexture> textures_m;
+    std::vector<std::unique_ptr<ModelTexture>> textures_m;
+    std::vector<std::filesystem::path> texturePaths_m;
 
     vk::Buffer getVertexBuffer();
     vk::Buffer getIndexBuffer();
     uint32_t getIndexCount();
 
-    Model(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue, VmaAllocator* allocator, std::string modelPath);
+    Model(VulkanContext& vkCtx, std::string modelPath);
 
     ~Model();
 

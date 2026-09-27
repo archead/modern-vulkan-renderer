@@ -244,3 +244,32 @@ void vkutil::copyBufferToImage(vk::raii::Device& device, vk::raii::CommandPool& 
 	return shaderModule;
 }
 
+std::unique_ptr<ModelTexture> vkutil::loadTextureKTX(VulkanContext& vkCtx, const char* texturePath) {
+
+    auto mTex = std::make_unique<ModelTexture>();
+    mTex->device = *vkCtx.device;
+
+    // Load KTX texture instead of using std_image
+    ktxTexture2* kTexture;
+    KTX_error_code result = ktxTexture2_CreateFromNamedFile(texturePath, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &kTexture);
+
+    if (result != KTX_SUCCESS) { throw std::runtime_error("failed to load ktx texture image!"); } if (kTexture->vkFormat == VK_FORMAT_UNDEFINED) { ktxTexture2_Destroy(kTexture); throw std::runtime_error("KTX2 has VK_FORMAT UNDEFINED (needs transcoding)"); }
+
+	ktxVulkanDeviceInfo deviceInfo{};
+    result = ktxVulkanDeviceInfo_Construct(&deviceInfo, *vkCtx.physicalDevice, *vkCtx.device, *vkCtx.graphicsQueue, *vkCtx.commandPool, nullptr);
+
+    if (result != KTX_SUCCESS) { throw std::runtime_error("ktxVulkanDeviceInfo_Construct() failed!"); }
+
+    // does all the hard work, creates staging buffer, a VkImage buffer, does all the transitions, all is left is to use the created ktxVulkanTexture object
+    result = ktxTexture2_VkUploadEx(kTexture, &deviceInfo, &mTex->ktxVkTexture, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    if (result != KTX_SUCCESS) { ktxVulkanDeviceInfo_Destruct(&deviceInfo); ktxTexture2_Destroy(kTexture); throw std::runtime_error("ktxTexture_VkUploadEx() failed!"); }
+	//TODO ensure that normals are loaded as VK_FORMAT_R8G8B8A8_UNORM instead of SRGB to prevent unnecessary gamma correction
+    mTex->imageView = vkutil::createImageView(vkCtx.device, mTex->ktxVkTexture.image, static_cast<vk::Format>(kTexture->vkFormat), vk::ImageAspectFlagBits::eColor, mTex->ktxVkTexture.levelCount);
+
+    ktxVulkanDeviceInfo_Destruct(&deviceInfo);
+    ktxTexture2_Destroy(kTexture);
+
+
+    return mTex;
+}

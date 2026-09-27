@@ -39,4 +39,8 @@ namespace vkutil {
 	void copyBufferToImage(vk::raii::Device& device, vk::raii::CommandPool& commandPool, vk::raii::Queue& graphicsQueue, const vk::Buffer& buffer, vk::Image image, vk::ImageLayout layout, const std::vector<vk::BufferImageCopy>& regions);
 
 	[[nodiscard]] vk::raii::ShaderModule createShaderModule(vk::raii::Device& device, const std::vector<char>& code);
+
+
+	std::unique_ptr<ModelTexture> loadTextureKTX(VulkanContext& vkCtx, const char* texturePath);
 }
+

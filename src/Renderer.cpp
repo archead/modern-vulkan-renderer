@@ -748,10 +748,6 @@ void Renderer::cleanupSwapchain() {
 	swapChain = nullptr;
 }
 
-void Renderer::createTextureImageView() {
-	textureImageView = vkutil::createImageView(device, vk::Image(textureImage.image), textureFormat, vk::ImageAspectFlagBits::eColor, mipLevels);
-}
-
 void Renderer::createDepthResources() {
 	vk::Format depthFormat = vkutil::findDepthFormat(physicalDevice);
 
@@ -930,15 +926,13 @@ void Renderer::createGBufferSampler() {
 }
 
 void Renderer::createGameObjects() {
+	VulkanContext vkCtx = {device, physicalDevice, commandPool, graphicsQueue, allocator};
+
 	materials.push_back({2, 3});
 
-	models.emplace_back(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\textured_box\BoxTextured.gltf)");
-	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\models\textured_box\CesiumLogoFlat.ktx2)"));
-	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\helmet\normal.ktx2)"));
-
-	// models.emplace_back(device, commandPool, graphicsQueue, &allocator, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
-	// modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\albedo.ktx2)"));
-	// modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\normal.ktx2)"));
+	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\albedo.ktx2)"));
+	modelTextures.emplace_back(loadTextureKTX(R"(C:\dev\vulkan-doc-tutorial\textures\fish\normal.ktx2)"));
 
 	gameObjects.resize(1);
 
