@@ -18,6 +18,22 @@ void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
 	if (!err.empty())	{ std::cout << "glTF error: " << err << std::endl; }
 	if (!ret)			{ throw std::runtime_error("failed to load glTF model"); }
 
+
+	// Load textures
+	std::filesystem::path gltfDir = std::filesystem::path(modelPath).parent_path();
+	for (auto& tex : model.textures) {
+		const auto& image = model.images[tex.source];
+		std::filesystem::path imagePath = gltfDir / std::filesystem::path(image.uri).replace_extension(".ktx2");
+
+		if (!std::filesystem::exists(imagePath)) {
+			throw std::runtime_error("Cooked texture does not exist: " + imagePath.string());
+		}
+
+		textures_m.push_back(vkutil::loadTextureKTX(vkCtx, imagePath.string().c_str()));
+		texturePaths_m.push_back(imagePath);
+	}
+
+	// Load materials
 	for (const auto& material : model.materials) {
 		Material2 m{};
 		m.baseColorTex = material.pbrMetallicRoughness.baseColorTexture.index;
@@ -29,6 +45,8 @@ void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
 
 		materials_m.push_back(m);
 	}
+
+	// Load vertices
 	for (const auto& mesh : model.meshes) {
 		Mesh m{};
 		for (const auto& primitive : mesh.primitives) {
@@ -108,21 +126,7 @@ void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
 		}
 		meshes_m.push_back(m);
 	}
-
-
-	std::filesystem::path gltfDir = std::filesystem::path(modelPath).parent_path();
-	for (auto& tex : model.textures) {
-		const auto& image = model.images[tex.source];
-		std::filesystem::path imagePath = gltfDir / std::filesystem::path(image.uri).replace_extension(".ktx2");
-
-		if (!std::filesystem::exists(imagePath)) {
-			throw std::runtime_error("Cooked texture does not exist: " + imagePath.string());
-		}
-
-		textures_m.push_back(vkutil::loadTextureKTX(vkCtx, imagePath.string().c_str()));
-		texturePaths_m.push_back(imagePath);
-	}
-}
+ }
 
 void Model::loadModel(std::string modelPath) {
 	tinygltf::Model model;
