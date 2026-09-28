@@ -40,7 +40,8 @@ namespace vkutil {
 
 	[[nodiscard]] vk::raii::ShaderModule createShaderModule(vk::raii::Device& device, const std::vector<char>& code);
 
-
 	std::unique_ptr<ModelTexture> loadTextureKTX(VulkanContext& vkCtx, const char* texturePath);
+
+	ModelTexture createSolidColorTexture(const VulkanContext& ctx, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vk::Format format);
 }
 

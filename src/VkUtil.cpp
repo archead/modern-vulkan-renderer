@@ -255,6 +255,7 @@ std::unique_ptr<ModelTexture> vkutil::loadTextureKTX(VulkanContext& vkCtx, const
 
     if (result != KTX_SUCCESS) { throw std::runtime_error("failed to load ktx texture image!"); } if (kTexture->vkFormat == VK_FORMAT_UNDEFINED) { ktxTexture2_Destroy(kTexture); throw std::runtime_error("KTX2 has VK_FORMAT UNDEFINED (needs transcoding)"); }
 
+
 	ktxVulkanDeviceInfo deviceInfo{};
     result = ktxVulkanDeviceInfo_Construct(&deviceInfo, *vkCtx.physicalDevice, *vkCtx.device, *vkCtx.graphicsQueue, *vkCtx.commandPool, nullptr);
 
@@ -265,7 +266,13 @@ std::unique_ptr<ModelTexture> vkutil::loadTextureKTX(VulkanContext& vkCtx, const
 
     if (result != KTX_SUCCESS) { ktxVulkanDeviceInfo_Destruct(&deviceInfo); ktxTexture2_Destroy(kTexture); throw std::runtime_error("ktxTexture_VkUploadEx() failed!"); }
 	//TODO ensure that normals are loaded as VK_FORMAT_R8G8B8A8_UNORM instead of SRGB to prevent unnecessary gamma correction
-    mTex->imageView = vkutil::createImageView(vkCtx.device, mTex->ktxVkTexture.image, static_cast<vk::Format>(kTexture->vkFormat), vk::ImageAspectFlagBits::eColor, mTex->ktxVkTexture.levelCount);
+    mTex->imageView = vkutil::createImageView(
+    	vkCtx.device,
+    	mTex->ktxVkTexture.image,
+    	static_cast<vk::Format>(mTex->ktxVkTexture.imageFormat),
+    	vk::ImageAspectFlagBits::eColor,
+    	mTex->ktxVkTexture.levelCount
+    	);
 
     ktxVulkanDeviceInfo_Destruct(&deviceInfo);
     ktxTexture2_Destroy(kTexture);
@@ -273,3 +280,8 @@ std::unique_ptr<ModelTexture> vkutil::loadTextureKTX(VulkanContext& vkCtx, const
 
     return mTex;
 }
+
+ModelTexture vkutil::createSolidColorTexture(const VulkanContext &ctx, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vk::Format format) {
+
+}
+
