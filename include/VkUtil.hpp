@@ -30,7 +30,7 @@ namespace vkutil {
 
     void destroyImage(VmaAllocator allocator, AllocatedImage& allocImage);
 
-	vk::raii::ImageView createImageView(vk::raii::Device& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels);
+	[[nodiscard]] vk::raii::ImageView createImageView(vk::raii::Device& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels);
 
 	void generateMipmaps(vk::raii::PhysicalDevice& physicalDevice, vk::raii::Device& device, vk::raii::CommandPool& commandPool, vk::raii::Queue& graphicsQueue, vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 
@@ -42,6 +42,6 @@ namespace vkutil {
 
 	std::unique_ptr<ModelTexture> loadTextureKTX(VulkanContext& vkCtx, const char* texturePath);
 
-	ModelTexture createSolidColorTexture(const VulkanContext& ctx, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vk::Format format);
+	void createDefaultTexture(const VulkanContext& ctx, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vk::Format format, AllocatedImage& image, vk::raii::ImageView& imageView);
 }
 

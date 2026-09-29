@@ -940,11 +940,12 @@ void Renderer::createGameObjects() {
 	gameObjects[0].materialIndex = 0;
 	gameObjects[0].flags.x = 0; // disable normal map
 
-	// gameObjects[1].modelIndex = 1;
-	// gameObjects[1].position = {1.0f, 0.5f, 1.0f};
-	// gameObjects[1].scale    = {2.0f, 2.0f, 2.0f};
-	// gameObjects[0].materialIndex = 1;
-	// gameObjects[1].flags.x = 1; // disable normal map
+}
+
+void Renderer::createDefaultTextures() {
+	vkutil::createDefaultTexture(vkCtx, 255, 255, 255, 255, vk::Format::eR8G8B8A8Srgb, whiteImage, whiteImageView);
+	vkutil::createDefaultTexture(vkCtx, 0, 0, 0, 255, vk::Format::eR8G8B8A8Srgb, blackImage, blackImageView);
+	vkutil::createDefaultTexture(vkCtx, 128, 128, 255, 255, vk::Format::eR8G8B8A8Unorm, flatNormalImage, flatNormalImageView);
 }
 
 void Renderer::createPointLights() {
@@ -1012,6 +1013,7 @@ void Renderer::initVulkan() {
 	createColorResources();
 	createDepthResources();
 	createTextureSampler();
+	createDefaultTextures();
 
 	loadModels();
 

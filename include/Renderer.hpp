@@ -65,7 +65,6 @@ private:
 
 	uint32_t currentFrame = 0;
 
-
 	std::vector<Vertex>   vertices;
 	std::vector<uint32_t> indices;
 
@@ -113,6 +112,17 @@ private:
 	vk::SampleCountFlagBits msaaSamples    = vk::SampleCountFlagBits::e1;
 	AllocatedImage          colorImage     = {};
 	vk::raii::ImageView     colorImageView = nullptr;
+
+	VulkanContext vkCtx = { device, physicalDevice, commandPool, graphicsQueue, allocator };
+
+	AllocatedImage whiteImage{};
+	vk::raii::ImageView whiteImageView = nullptr;
+
+	AllocatedImage blackImage{};
+	vk::raii::ImageView blackImageView = nullptr;
+
+	AllocatedImage flatNormalImage{};
+	vk::raii::ImageView flatNormalImageView = nullptr;
 
 	struct GBuffer {
 		vk::Format fragPosFormat = vk::Format::eR16G16B16A16Sfloat;
@@ -291,4 +301,6 @@ private:
 	void updateUniformBuffer(uint32_t imageIndex);
 
 	void loadModels();
+
+	void createDefaultTextures();
 };

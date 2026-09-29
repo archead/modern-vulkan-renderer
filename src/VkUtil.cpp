@@ -115,7 +115,7 @@ void vkutil::destroyImage(VmaAllocator allocator, AllocatedImage& allocImage) {
     vmaDestroyImage(allocator, allocImage.image, allocImage.allocation);
 }
 
-vk::raii::ImageView vkutil::createImageView(vk::raii::Device& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels) {
+[[nodiscard]] vk::raii::ImageView vkutil::createImageView(vk::raii::Device& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels) {
     vk::ImageViewCreateInfo viewInfo{};
     viewInfo.image = image;
     viewInfo.viewType = vk::ImageViewType::e2D;
@@ -281,7 +281,30 @@ std::unique_ptr<ModelTexture> vkutil::loadTextureKTX(VulkanContext& vkCtx, const
     return mTex;
 }
 
-ModelTexture vkutil::createSolidColorTexture(const VulkanContext &ctx, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vk::Format format) {
+void vkutil::createDefaultTexture(const VulkanContext &ctx, uint8_t r, uint8_t g, uint8_t b, uint8_t a, vk::Format format, AllocatedImage& image, vk::raii::ImageView& imageView) {
+	uint8_t pixel[4] = {r, g, b, a};
 
+	AllocatedBuffer stagingBuffer{};
+	createBuffer(ctx.allocator, sizeof(pixel), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer, true);
+
+	void* data = nullptr;
+	vmaMapMemory(ctx.allocator, stagingBuffer.allocation, &data);
+	memcpy(data, pixel, sizeof(pixel));
+	vmaUnmapMemory(ctx.allocator, stagingBuffer.allocation);
+	vmaFlushAllocation(ctx.allocator, stagingBuffer.allocation, 0, sizeof(pixel));
+
+	createImage(ctx.allocator, 1, 1, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(format), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, image);
+
+	transitionImageLayout(ctx.device, ctx.commandPool, ctx.graphicsQueue, image.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, 1);
+
+	vk::ImageSubresourceLayers subresourceLayers = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+	vk::BufferImageCopy regions = {0, 0, 0 , subresourceLayers, {0, 0, 0}, {1, 1, 1}};
+
+	copyBufferToImage(ctx.device, ctx.commandPool, ctx.graphicsQueue, stagingBuffer.buffer, image.image, vk::ImageLayout::eTransferDstOptimal, { regions });
+	destroyBuffer(ctx.allocator, stagingBuffer);
+
+	transitionImageLayout(ctx.device, ctx.commandPool, ctx.graphicsQueue, image.image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, 1);
+
+	imageView = createImageView(ctx.device, image.image, format, vk::ImageAspectFlagBits::eColor, 1);
 }
 
