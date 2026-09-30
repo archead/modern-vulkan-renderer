@@ -18,9 +18,12 @@ void Renderer::createDescriptorSetLayouts() {
     .build(device, globalSetLayout );
 
     DescriptorSetLayoutBuilder{}// per material: texture samplers
-    .addBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// texture sampler
-    .addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// normal map sampler
-    .build(device, objectSetLayout);
+    .addBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment) // baseColor
+    .addBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment) // normal
+    .addBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment) // metalRough
+    .addBinding(3, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment) // occlusion
+    .addBinding(4, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment) // emissive
+    .build(device, materialSetLayout);
 
     DescriptorSetLayoutBuilder{}// per pass: lighting pipeline reads g-buffer + lightdata
     .addBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)// G-buffer
@@ -54,16 +57,37 @@ void Renderer::createDescriptorSetLayouts() {
 //     }
 // }
 
-void Renderer::createMaterialDescriptorSets() {
-   std::vector<vk::DescriptorSetLayout> layouts(materials.size(), *objectSetLayout);
-    materialDescriptorSets = descriptorSetAllocator->Allocate(layouts);
+void Renderer::createMaterialDescriptorSets(Model& model) {
+    size_t materialsSize = model.materials_m.size();
+    if ( materialsSize == 0 ) { return; }
 
-    for (size_t i = 0; i < materials.size(); i++) {
-        const Material& mat = materials[i];
+    std::vector<vk::DescriptorSetLayout> layouts(materialsSize, *materialSetLayout);
+    model.descriptorSets_m = descriptorSetAllocator->Allocate(layouts);
+    for (size_t i = 0; i < materialsSize; i++) {
+        const Material2& mat = model.materials_m[i];
         DescriptorWriter{}
-        .writeImage(0, *textureSampler, modelTextures[mat.baseColorTexture]->imageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
-        .writeImage(1, *textureSampler, modelTextures[mat.normalTexture]->imageView, vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
-        .updateSet(device, materialDescriptorSets[i]);
+
+        .writeImage(0, *textureSampler,
+            mat.baseColorTex == -1 ? *whiteImageView : model.textures_m[mat.baseColorTex]->imageView,
+            vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+
+        .writeImage(1, *textureSampler,
+            mat.normalTex == -1 ? *flatNormalImageView : model.textures_m[mat.normalTex]->imageView,
+            vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+
+        .writeImage(2, *textureSampler,
+            mat.metalRoughTex == -1 ? *whiteImageView : model.textures_m[mat.metalRoughTex]->imageView,
+            vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+
+        .writeImage(3, *textureSampler,
+            mat.occlusionTex == -1 ? *whiteImageView : model.textures_m[mat.occlusionTex]->imageView,
+            vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+
+        .writeImage(4, *textureSampler,
+           mat.emissiveTex == -1 ? *blackImageView : model.textures_m[mat.emissiveTex]->imageView,
+            vk::ImageLayout::eShaderReadOnlyOptimal, vk::DescriptorType::eCombinedImageSampler)
+
+        .updateSet(device, model.descriptorSets_m[i]);
     }
 }
 

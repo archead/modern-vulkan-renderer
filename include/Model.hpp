@@ -1,6 +1,5 @@
 #pragma once
 #include "Types.hpp"
-#include "vkUtil.hpp"
 #include <filesystem>
 
 class Model{
@@ -29,6 +28,7 @@ private:
     std::vector<Material2> materials_m;
     std::vector<std::unique_ptr<ModelTexture>> textures_m;
     std::vector<std::filesystem::path> texturePaths_m;
+    std::vector<vk::raii::DescriptorSet> descriptorSets_m;
 
     vk::Buffer getVertexBuffer();
     vk::Buffer getIndexBuffer();

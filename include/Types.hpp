@@ -117,22 +117,29 @@ struct Material {
 struct Primitive {
     uint32_t firstIndex;
     uint32_t indexCount;
-    uint32_t vertexOffset;
-    uint32_t materialIndex;
+    int32_t vertexOffset;
+    int32_t materialIndex;
 };
 
 struct Mesh { std::vector<Primitive> primitives; };
 
 struct Node {
-    uint32_t meshIndex = -1;
-    glm::mat4 rotation{1.0f};
+    int32_t meshIndex = -1;
+    glm::mat4 localTransform{1.0f};
     std::vector<int> children;
 };
 
 struct Material2 {
-    int baseColorTex, normalTex, metalRoughTex, occlusionTex, emissiveTex = -1;
+    int baseColorTex = -1;
+    int normalTex = -1;
+    int metalRoughTex = -1;
+    int occlusionTex = -1;
+    int emissiveTex = -1;
+
     glm::vec4 baseColorFactor{1.0f};
-    float metallicFactor, roughnessFactor, normalScale = 1.0f;
+    float metallicFactor = 1.0f;
+    float roughnessFactor = 1.0f;
+    float normalScale = 1.0f;
     bool doubleSided = false;
 };
 
@@ -140,7 +147,6 @@ struct ModelTexture {
     ktxVulkanTexture             ktxVkTexture = {};
     const VkAllocationCallbacks *allocator    = nullptr;
     VkDevice                     device       = VK_NULL_HANDLE;
-    vk::Sampler                  sampler      = nullptr; // this is a reference to global sampler
     vk::raii::ImageView          imageView    = nullptr;
 
     ~ModelTexture() {

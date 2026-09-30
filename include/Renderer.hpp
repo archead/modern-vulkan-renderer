@@ -84,7 +84,7 @@ private:
 	std::vector<vk::raii::DescriptorSet>    globalDescriptorSets;
 
 	// set 1 (object) NOTE: the sets and buffers are declared per gameObject
-	vk::raii::DescriptorSetLayout			objectSetLayout = nullptr;
+	vk::raii::DescriptorSetLayout			materialSetLayout = nullptr;
 
 	// set 2 (deferred lighting), non-FIF
 	vk::raii::DescriptorSetLayout gBufferSetLayout = nullptr;
@@ -236,7 +236,7 @@ private:
 
 	void createGameObjectDescriptorSets();
 
-	void createMaterialDescriptorSets();
+	void createMaterialDescriptorSets(Model&);
 
 	void createDescriptorSetLayouts();
 

@@ -299,7 +299,7 @@ void Renderer::createLightingPipeline() {
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
 	pipelineLayoutInfo.pPushConstantRanges = &range;
 
-	lightingPipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
+	lightingPipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
 	pipelineRenderingCreateInfo.colorAttachmentCount    = 1;
@@ -398,22 +398,24 @@ void Renderer::createGeometryPipeline() {
 	colorBlending.attachmentCount = 3;
 	colorBlending.pAttachments    = colorBlendAttachments.data();
 
-	std::array<vk::DescriptorSetLayout, 2> setLayouts = {*globalSetLayout, *objectSetLayout};
+	std::array<vk::DescriptorSetLayout, 2> setLayouts = {*globalSetLayout, *materialSetLayout};
 
 	vk::PushConstantRange objectPushConstantRange{};
-	objectPushConstantRange.size = sizeof(ObjectUBO);
-	objectPushConstantRange.offset = 0;
+	objectPushConstantRange.size       = sizeof(ObjectUBO);
+	objectPushConstantRange.offset     = 0;
 	objectPushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
 
-	vk::PipelineLayoutCreateInfo           pipelineLayoutInfo;
-	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
-	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
-	pipelineLayoutInfo.pPushConstantRanges = &objectPushConstantRange;
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
+	pipelineLayoutInfo.setLayoutCount         = static_cast<uint32_t>(setLayouts.size());
+	pipelineLayoutInfo.pSetLayouts            = setLayouts.data();
+	pipelineLayoutInfo.pPushConstantRanges    = &objectPushConstantRange;
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
-	geometryPipelineLayout            = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
+	geometryPipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
-	vk::Format depthFormat = vkutil::findDepthFormat(physicalDevice);
-	std::array<vk::Format, 3> gBufferFormats = {gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat};
+	vk::Format                depthFormat    = vkutil::findDepthFormat(physicalDevice);
+	std::array<vk::Format, 3> gBufferFormats = {
+		gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat
+	};
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
 	pipelineRenderingCreateInfo.colorAttachmentCount    = 3;
@@ -618,7 +620,7 @@ void Renderer::createGraphicsPipeline() {
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments    = &colorBlendAttachment;
 
-	std::array<vk::DescriptorSetLayout, 2> setLayouts = { *globalSetLayout, *objectSetLayout};
+	std::array<vk::DescriptorSetLayout, 2> setLayouts = { *globalSetLayout, *materialSetLayout};
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
@@ -1023,8 +1025,7 @@ void Renderer::initVulkan() {
 	createUniformBuffers();
 
 	createDescriptorPool();
-	// createGameObjectDescriptorSets();
-	createMaterialDescriptorSets();
+	createMaterialDescriptorSets(TODO);
 	createDescriptorSets();
 	createCommandBuffers();
 

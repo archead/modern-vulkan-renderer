@@ -295,29 +295,43 @@ Model::~Model() {
 }
 
 Model::Model(Model&& other) noexcept {
-	indexBuffer_m = std::move(other.indexBuffer_m);
-	vertexBuffer_m = std::move(other.vertexBuffer_m);
-	indices_m = std::move(other.indices_m);
-	vertices_m = std::move(other.vertices_m);
-	allocator_m = other.allocator_m;
+	indexBuffer_m    = std::move(other.indexBuffer_m);
+	vertexBuffer_m   = std::move(other.vertexBuffer_m);
+	indices_m        = std::move(other.indices_m);
+	vertices_m       = std::move(other.vertices_m);
+	allocator_m      = other.allocator_m;
+	meshes_m         = std::move(other.meshes_m);
+	nodes_m          = std::move(other.nodes_m);
+	rootNodes_m      = std::move(other.rootNodes_m);
+	materials_m      = std::move(other.materials_m);
+	textures_m       = std::move(other.textures_m);
+	texturePaths_m   = std::move(other.texturePaths_m);
+	descriptorSets_m = std::move(other.descriptorSets_m);
 
-	other.indexBuffer_m.buffer = nullptr;
+	other.indexBuffer_m.buffer  = nullptr;
 	other.vertexBuffer_m.buffer = nullptr;
-	other.allocator_m = nullptr;
+	other.allocator_m           = nullptr;
 }
 
 Model& Model::operator=(Model&& other) noexcept {
 	if (this != &other) {
 		cleanup();
-		indexBuffer_m = std::move(other.indexBuffer_m);
-		vertexBuffer_m = std::move(other.vertexBuffer_m);
-		indices_m = std::move(other.indices_m);
-		vertices_m = std::move(other.vertices_m);
-		allocator_m = other.allocator_m;
+		indexBuffer_m    = std::move(other.indexBuffer_m);
+		vertexBuffer_m   = std::move(other.vertexBuffer_m);
+		indices_m        = std::move(other.indices_m);
+		vertices_m       = std::move(other.vertices_m);
+		allocator_m      = other.allocator_m;
+		meshes_m         = std::move(other.meshes_m);
+		nodes_m          = std::move(other.nodes_m);
+		rootNodes_m      = std::move(other.rootNodes_m);
+		materials_m      = std::move(other.materials_m);
+		textures_m       = std::move(other.textures_m);
+		texturePaths_m   = std::move(other.texturePaths_m);
+		descriptorSets_m = std::move(other.descriptorSets_m);
 
-		other.indexBuffer_m.buffer = nullptr;
+		other.indexBuffer_m.buffer  = nullptr;
 		other.vertexBuffer_m.buffer = nullptr;
-		other.allocator_m = nullptr;
+		other.allocator_m           = nullptr;
 	}
 	return *this;
 }

@@ -63,9 +63,15 @@ ConstantBuffer<LightBuffer> lightUbo;
 
 //set 2 - per object descriptor
 [[vk::binding(0, 1)]]
-Sampler2D texture;
+Sampler2D baseColorMap;
 [[vk::binding(1, 1)]]
 Sampler2D normalMap;
+[[vk::binding(2, 1)]]
+Sampler2D metalRoughMap;
+[[vk::binding(3, 1)]]
+Sampler2D occlusionMap;
+[[vk::binding(4, 1)]]
+Sampler2D emissiveMap;
 
 // could cause issues with the other pipeline that has bindings in set 0 as well
 [[vk::binding(0, 0)]]
@@ -171,7 +177,7 @@ GBufferOutput geometryFragMain(VSOutput vertIn) {
     } else { normal = normalize(vertIn.normal); }
 
     output.normal = float4(normal, 0.0);
-    output.albedo = texture.Sample(vertIn.fragTexCoord);
+    output.albedo = baseColorMap.Sample(vertIn.fragTexCoord);
 
     return output;
 }
@@ -187,7 +193,7 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
         normal = normalize(mul(vertIn.TBN, normal));
     } else { normal = normalize(vertIn.normal); }
 
-    float4 albedo = texture.Sample(vertIn.fragTexCoord);
+    float4 albedo = baseColorMap.Sample(vertIn.fragTexCoord);
     float3 color = float3(0);
 
     for (int i = 0; i < lightUbo.cameraPos.w; i++){ // .w stores the light count, variable needs to be renamed
