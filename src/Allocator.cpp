@@ -8,6 +8,7 @@ void Renderer::createAllocator() {
     info.vulkanApiVersion = VK_API_VERSION_1_3;
 
     vmaCreateAllocator(&info, &allocator);
+    vkCtx.allocator = allocator;
 }
 
 void Renderer::destroyAllocator() {

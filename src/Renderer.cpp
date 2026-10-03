@@ -65,10 +65,6 @@ static std::vector<char> readFile(const std::string& filename) {
 	return buffer;
 }
 
-void Renderer::loadModels() {
-
-}
-
 glm::mat4 Renderer::GameObject::getModelMatrix() const {
 	auto model = glm::mat4(1.0f);
 	model = glm::translate(model, position);
@@ -928,10 +924,6 @@ void Renderer::createGBufferSampler() {
 }
 
 void Renderer::createGameObjects() {
-	VulkanContext vkCtx = {device, physicalDevice, commandPool, graphicsQueue, allocator};
-
-	materials.push_back({2, 3});
-
 	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
 
 	gameObjects.resize(1);
@@ -939,7 +931,6 @@ void Renderer::createGameObjects() {
 	gameObjects[0].modelIndex = 0;
 	gameObjects[0].position = {0.0f, 0.0f, 0.0f};
 	gameObjects[0].scale    = {1.0f, 1.0f, 1.0f};
-	gameObjects[0].materialIndex = 0;
 	gameObjects[0].flags.x = 0; // disable normal map
 
 }
@@ -1017,15 +1008,13 @@ void Renderer::initVulkan() {
 	createTextureSampler();
 	createDefaultTextures();
 
-	loadModels();
-
 	createGameObjects();
 	createPointLights();
 
 	createUniformBuffers();
 
 	createDescriptorPool();
-	createMaterialDescriptorSets(TODO);
+	createMaterialDescriptorSets(models[0]); // TODO MAKE THIS NOT HARDCODED TO AN INDEX
 	createDescriptorSets();
 	createCommandBuffers();
 
@@ -1135,7 +1124,6 @@ void Renderer::cleanup() {
 	vkutil::destroyBuffer(allocator, vertexBuffer);
 	vkutil::destroyBuffer(allocator, indexBuffer);
 
-	ktxVulkanTexture_Destruct(&ktxVkTexture, *device, nullptr);
 	vkutil::destroyImage(allocator, depthImage);
 	vkutil::destroyImage(allocator, colorImage);
 	vkutil::destroyImage(allocator, gBuffer.albedoColorImage);

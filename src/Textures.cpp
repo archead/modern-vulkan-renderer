@@ -3,33 +3,6 @@
 #include <ktxvulkan.h>
 #include "VkUtil.hpp"
 
-void Renderer::createTextureImage() {
-    // Load KTX texture instead of using std_image
-    ktxTexture2* kTexture;
-    KTX_error_code result = ktxTexture2_CreateFromNamedFile(TEXTURE_PATH, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &kTexture);
-
-    if (result != KTX_SUCCESS) { throw std::runtime_error("failed to load ktx texture image!"); }
-    if (kTexture->vkFormat == VK_FORMAT_UNDEFINED) { ktxTexture2_Destroy(kTexture); throw std::runtime_error("KTX2 has VK_FORMAT UNDEFINED (needs transcoding)"); }
-
-    ktxVulkanDeviceInfo deviceInfo{};
-    result = ktxVulkanDeviceInfo_Construct(&deviceInfo, *physicalDevice, *device, *graphicsQueue, *commandPool, nullptr);
-
-    if (result != KTX_SUCCESS) { throw std::runtime_error("ktxVulkanDeviceInfo_Construct() failed!"); }
-
-    // does all the hard work, creates staging buffer, a VkImage buffer, does all the transitions, all is left is to use the created ktxVulkanTexture object
-    ktxVulkanTexture m_ktxVkTexture{};
-    result = ktxTexture2_VkUploadEx(kTexture, &deviceInfo, &m_ktxVkTexture, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    ktxVkTexture = m_ktxVkTexture;
-
-    if (result != KTX_SUCCESS) { ktxVulkanDeviceInfo_Destruct(&deviceInfo); ktxTexture2_Destroy(kTexture); throw std::runtime_error("ktxTexture_VkUploadEx() failed!"); }
-
-    textureImage.image = m_ktxVkTexture.image;
-    textureImage.memory = m_ktxVkTexture.deviceMemory;
-
-    ktxVulkanDeviceInfo_Destruct(&deviceInfo);
-    ktxTexture2_Destroy(kTexture);
-}
-
 void Renderer::createTextureSampler() {
     vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
 
@@ -57,7 +30,7 @@ std::unique_ptr<ModelTexture> Renderer::loadTextureKTX(const char* texturePath) 
 
     auto mTex = std::make_unique<ModelTexture>();
     mTex->device = *device;
-    mTex->sampler = *textureSampler;
+    // mTex->sampler = *textureSampler;
 
     // Load KTX texture instead of using std_image
     ktxTexture2* kTexture;

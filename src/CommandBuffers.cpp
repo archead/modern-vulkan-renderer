@@ -34,6 +34,7 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 	vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
 
+	// SETUP G-BUFFER ATTACHMENTS
 	vk::RenderingAttachmentInfo fragPosAttachmentInfo = {};
 	fragPosAttachmentInfo.imageView                   = gBuffer.fragPosImageView;
 	fragPosAttachmentInfo.imageLayout                 = vk::ImageLayout::eColorAttachmentOptimal;
@@ -82,10 +83,13 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	// bind descriptors
 	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout,0, *globalDescriptorSets[currentFrame],{});
 
+
+	// DRAW CALLS PER OBJECT
 	for (const auto& gameObject : gameObjects) {
-		commandBuffers[currentFrame].bindVertexBuffers(0, models[gameObject.modelIndex].getVertexBuffer(), {0});
-		commandBuffers[currentFrame].bindIndexBuffer(models[gameObject.modelIndex].getIndexBuffer(), 0, vk::IndexType::eUint32);
-		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *materialDescriptorSets[gameObject.materialIndex], {});
+		Model &model = models[gameObject.modelIndex];
+
+		commandBuffers[currentFrame].bindVertexBuffers(0, model.getVertexBuffer(), {0});
+		commandBuffers[currentFrame].bindIndexBuffer(model.getIndexBuffer(), 0, vk::IndexType::eUint32);
 
 		ObjectUBO push{};
 		push.model = gameObject.getModelMatrix();
@@ -93,11 +97,17 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 		push.flags = gameObject.flags;
 		commandBuffers[currentFrame].pushConstants<ObjectUBO>(*geometryPipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, push);
 
-		commandBuffers[currentFrame].drawIndexed(models[gameObject.modelIndex].getIndexCount(), 1, 0, 0, 0);
+		for (const auto& mesh : model.meshes_m) {
+			for (const auto& primitive : mesh.primitives) {
+				commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *model.descriptorSets_m[primitive.materialIndex], {});
+				commandBuffers[currentFrame].drawIndexed(primitive.indexCount, 1, primitive.firstIndex, primitive.vertexOffset, 0);
+			}
+		}
 	}
 
 	commandBuffers[currentFrame].endRendering();
 
+	// DRAW LIGHTING PASS ------------------------
 	transition_image_layout(gBuffer.fragPosImage.image, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eColorAttachmentWrite, vk::AccessFlagBits2::eShaderRead, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eFragmentShader, vk::ImageAspectFlagBits::eColor);
 	transition_image_layout(gBuffer.normalVectorImage.image, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eColorAttachmentWrite, vk::AccessFlagBits2::eShaderRead, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eFragmentShader, vk::ImageAspectFlagBits::eColor);
 	transition_image_layout(gBuffer.albedoColorImage.image, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eColorAttachmentWrite, vk::AccessFlagBits2::eShaderRead, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eFragmentShader, vk::ImageAspectFlagBits::eColor);
@@ -134,12 +144,13 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 	// big trangle trick
 	commandBuffers[currentFrame].draw(3, 1, 0, 0);
 
+	// DRAW GIZMO OVERLAY -----------------------------
 	// swap over to billboard pipeline and draw the gizmo
 	commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, billboardPipeline);
 	commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *billboardPipelineLayout, 0, *billboardDescriptorSets[currentFrame], {});
 	commandBuffers[currentFrame].draw(6,MAX_POINT_LIGHTS , 0, 0); //instanced to light count
 
-	// draw debug menu
+	// DRAW DEBUG MENU ---------------------
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]); // part of lighting pass
 
 	commandBuffers[currentFrame].endRendering();
@@ -219,6 +230,7 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 		commandBuffers[currentFrame].drawIndexed(models[gameObject.modelIndex].getIndexCount(), 1, 0, 0, 0);
 	}
 
+	// DRAW DEBUG MENU ---------------------
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffers[currentFrame]);
 
 	commandBuffers[currentFrame].endRendering();

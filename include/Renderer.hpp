@@ -102,9 +102,6 @@ private:
 	std::unique_ptr<DescriptorSetAllocator> descriptorSetAllocator;
 	vk::raii::DescriptorPool                imGuiDescriptorPool = nullptr;
 
-	ktxVulkanTexture    ktxVkTexture     = {};
-	AllocatedImage      textureImage     = {};
-	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler   textureSampler   = nullptr;
 
 	AllocatedImage          depthImage     = {};
@@ -155,8 +152,6 @@ private:
 		// Calculate model matrix based on position, rotation and scale
 		[[nodiscard]] glm::mat4 getModelMatrix() const;
 	};
-
-	std::vector<std::unique_ptr<ModelTexture>> modelTextures;
 
 	std::vector<GameObject> gameObjects;
 
@@ -252,8 +247,6 @@ private:
 
 	void createBillboardUniformBuffers();
 
-	void createTextureImage();
-
 	void createTextureImageView();
 
 	void createTextureSampler();
@@ -299,8 +292,6 @@ private:
 	void drawFrame();
 
 	void updateUniformBuffer(uint32_t imageIndex);
-
-	void loadModels();
 
 	void createDefaultTextures();
 };
