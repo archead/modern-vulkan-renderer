@@ -924,7 +924,7 @@ void Renderer::createGBufferSampler() {
 }
 
 void Renderer::createGameObjects() {
-	//models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
+	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
 
 	gameObjects.resize(1);
 	gameObjects[0].modelIndex = 0;
