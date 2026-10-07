@@ -171,10 +171,8 @@ GBufferOutput geometryFragMain(VSOutput vertIn) {
 
     // set the normal vector, if object has a normalMap, use that, if not, use vertex normal
     float3 normal;
-    if (vertIn.useNormal){
-        normal = normalize(normalMap.Sample(vertIn.fragTexCoord).xyz * 2.0 - 1.0);
-        normal = normalize(mul(vertIn.TBN, normal));
-    } else { normal = normalize(vertIn.normal); }
+    normal = normalize(normalMap.Sample(vertIn.fragTexCoord).xyz * 2.0 - 1.0);
+    normal = normalize(mul(vertIn.TBN, normal));
 
     output.normal = float4(normal, 0.0);
     output.albedo = baseColorMap.Sample(vertIn.fragTexCoord);

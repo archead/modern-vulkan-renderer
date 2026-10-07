@@ -91,14 +91,16 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 		commandBuffers[currentFrame].bindVertexBuffers(0, model.getVertexBuffer(), {0});
 		commandBuffers[currentFrame].bindIndexBuffer(model.getIndexBuffer(), 0, vk::IndexType::eUint32);
 
-		ObjectUBO push{};
-		push.model = gameObject.getModelMatrix();
-		push.normalMatrix = glm::transpose(glm::inverse(push.model));
-		push.flags = gameObject.flags;
-		commandBuffers[currentFrame].pushConstants<ObjectUBO>(*geometryPipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, push);
 
-		for (const auto& mesh : model.meshes_m) {
-			for (const auto& primitive : mesh.primitives) {
+		for (auto& item : model.drawList_m) {
+
+			ObjectUBO push{};
+			push.model = gameObject.getModelMatrix() * item.transformMatrix;
+			push.normalMatrix = glm::transpose(glm::inverse(push.model));
+			push.flags = gameObject.flags;
+
+			commandBuffers[currentFrame].pushConstants<ObjectUBO>(*geometryPipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, push);
+			for (const auto& primitive : model.meshes_m[item.meshIndex].primitives) {
 				commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *model.descriptorSets_m[primitive.materialIndex], {});
 				commandBuffers[currentFrame].drawIndexed(primitive.indexCount, 1, primitive.firstIndex, primitive.vertexOffset, 0);
 			}

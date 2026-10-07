@@ -162,3 +162,8 @@ struct ModelTexture {
     ModelTexture& operator=(const ModelTexture&) = delete;
 };
 
+struct DrawItem {
+    int meshIndex;
+    glm::mat4 transformMatrix;
+};
+

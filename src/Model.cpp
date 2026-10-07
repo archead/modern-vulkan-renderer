@@ -4,9 +4,57 @@
 #include <tiny_gltf.h>
 #include "MikkUtil.hpp"
 #include "VkUtil.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
+#include "glm/gtc/type_ptr.hpp"
+
+void Model::traverseNode(const tinygltf::Model& model, int nodeIndex, const glm::mat4 parentTransform) {
+	const tinygltf::Node& node = model.nodes[nodeIndex];
+	DrawItem item{};
+	glm::mat4 parent = parentTransform;
+
+	if (!node.matrix.empty()) {
+		glm::mat4 transform = glm::mat4(glm::make_mat4(node.matrix.data()));
+		parent = parent * transform;
+	}
+
+	else {
+		// get translation
+		if (!node.translation.empty()) { parent = glm::translate(parent, glm::vec3(node.translation[0],node.translation[1],node.translation[2] )); }
+		// get rotation
+		if (!node.rotation.empty()) {
+			glm::quat q(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]);
+			glm::mat4 rotation = glm::mat4_cast(q);
+			parent = parent * rotation;
+		}
+		// get scale
+		if (!node.scale.empty()) { parent = glm::scale(parent, glm::vec3(node.scale[0], node.scale[1], node.scale[2])); }
+	}
+	// if there's an actual mesh associated with this node > then add it to the drawList_m
+	if (node.mesh > -1) {
+		item.meshIndex = node.mesh;
+		item.transformMatrix = parent;
+		drawList_m.push_back(item);
+	}
+	// recursively go through the rest of the children
+	for (auto& child : node.children) {
+		traverseNode(model, child, parent);
+	}
+}
+
+void Model::loadScene(const tinygltf::Model &model) {
+	if (model.scenes.empty()) { std::cout << "No scenes found in " << modelPath_m << "\n"; return; }
+
+	int defaultScene = model.defaultScene > -1 ? model.defaultScene : 0;
+	const tinygltf::Scene& scene = model.scenes[defaultScene];
+
+	for (auto& node : scene.nodes) {
+		traverseNode(model, node, glm::mat4(1.0f));
+	}
+}
 
 void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
-
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err, warn;
@@ -18,6 +66,8 @@ void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
 	if (!err.empty())	{ std::cout << "glTF error: " << err << std::endl; }
 	if (!ret)			{ throw std::runtime_error("failed to load glTF model"); }
 
+	// Generate draw list from default scene
+	loadScene(model);
 
 	// Load textures
 	std::filesystem::path gltfDir = std::filesystem::path(modelPath).parent_path();

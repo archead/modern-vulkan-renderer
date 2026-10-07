@@ -1,6 +1,7 @@
 #pragma once
 #include "Types.hpp"
 #include <filesystem>
+#include <tiny_gltf.h>
 
 class Model{
 private:
@@ -17,7 +18,8 @@ private:
 
     void createVertexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue);
     void createIndexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue);
-
+    void traverseNode(const tinygltf::Model& model, int nodeIndex, const glm::mat4 parentTransform);
+    void loadScene(const tinygltf::Model& model);
     void cleanup();
 
  public:
@@ -25,6 +27,7 @@ private:
     std::vector<Mesh> meshes_m;
     std::vector<Node> nodes_m;
     std::vector<int> rootNodes_m;
+    std::vector<DrawItem> drawList_m;
     std::vector<Material2> materials_m;
     std::vector<std::unique_ptr<ModelTexture>> textures_m;
     std::vector<std::filesystem::path> texturePaths_m;

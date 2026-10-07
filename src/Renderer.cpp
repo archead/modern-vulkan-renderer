@@ -924,14 +924,10 @@ void Renderer::createGBufferSampler() {
 }
 
 void Renderer::createGameObjects() {
-	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
+	//models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
 
 	gameObjects.resize(1);
-
 	gameObjects[0].modelIndex = 0;
-	gameObjects[0].position = {0.0f, 0.0f, 0.0f};
-	gameObjects[0].scale    = {1.0f, 1.0f, 1.0f};
-	gameObjects[0].flags.x = 0; // disable normal map
 
 }
 
@@ -1098,13 +1094,11 @@ void Renderer::cleanup() {
 
 	device.waitIdle();
 
-	// 1) Destroy descriptor sets first
-	for (auto& obj : gameObjects) {
-		materialDescriptorSets.clear();
-	}
 
+	// 1) Destroy things that rely on the allocator first
+
+	models.clear();
 	globalDescriptorSets.clear();
-
 	gBufferDescriptorSets.clear();
 
 	// 2) Then destroy pools/allocator
@@ -1129,6 +1123,10 @@ void Renderer::cleanup() {
 	vkutil::destroyImage(allocator, gBuffer.albedoColorImage);
 	vkutil::destroyImage(allocator, gBuffer.normalVectorImage);
 	vkutil::destroyImage(allocator, gBuffer.fragPosImage);
+
+	vkutil::destroyImage(allocator, blackImage);
+	vkutil::destroyImage(allocator, whiteImage);
+	vkutil::destroyImage(allocator, flatNormalImage);
 
 	//dumpAllocationStats();
 	destroyAllocator();
