@@ -5,7 +5,8 @@
 #include "MikkUtil.hpp"
 #include "VkUtil.hpp"
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/quaternion.hpp>a
+#include <numeric>
 
 #include "glm/gtc/type_ptr.hpp"
 
@@ -54,7 +55,12 @@ void Model::loadScene(const tinygltf::Model &model) {
 	}
 }
 
-void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
+int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute) {
+	auto accessorIndex = primitive.attributes.find(attribute);
+	return accessorIndex == primitive.attributes.end() ? -1 : accessorIndex->second; // find return a Pair type pointer, second member being the value
+}
+
+ void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err, warn;
@@ -66,12 +72,12 @@ void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
 	if (!err.empty())	{ std::cout << "glTF error: " << err << std::endl; }
 	if (!ret)			{ throw std::runtime_error("failed to load glTF model"); }
 
-	// Generate draw list from default scene
+	// Load drawlist
 	loadScene(model);
 
 	// Load textures
 	std::filesystem::path gltfDir = std::filesystem::path(modelPath).parent_path();
-	for (auto& tex : model.textures) {
+	for (auto& tex : model.textures) { // TODO HANDLE NO TEXTURE WITH A DEFAULT MATERIAL
 		const auto& image = model.images[tex.source];
 		std::filesystem::path imagePath = gltfDir / std::filesystem::path(image.uri).replace_extension(".ktx2");
 
@@ -84,7 +90,7 @@ void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
 	}
 
 	// Load materials
-	for (const auto& material : model.materials) {
+	for (const auto& material : model.materials) { // TODO HANDLE DEFAULT MATERIAL
 		Material2 m{};
 		m.baseColorTex = material.pbrMetallicRoughness.baseColorTexture.index;
 		m.normalTex = material.normalTexture.index;
@@ -97,81 +103,134 @@ void Model::loadModel2(VulkanContext vkCtx, std::string modelPath) {
 	}
 
 	// Load vertices
+
 	for (const auto& mesh : model.meshes) {
 		Mesh m{};
+
 		for (const auto& primitive : mesh.primitives) {
-			tinygltf::Accessor& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
-			tinygltf::Accessor& normalAccessor = model.accessors[primitive.attributes.at("NORMAL")];
-			tinygltf::Accessor& tangentAccessor = model.accessors[primitive.attributes.at("TANGENT")];
-			tinygltf::Accessor& texCoordAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
-			tinygltf::Accessor& indexAccessor = model.accessors[primitive.indices];
 
-			tinygltf::BufferView& posBufferView = model.bufferViews[posAccessor.bufferView];
-			tinygltf::BufferView& normalBufferView = model.bufferViews[normalAccessor.bufferView];
-			tinygltf::BufferView& tangentBufferView = model.bufferViews[tangentAccessor.bufferView];
-			tinygltf::BufferView& texCoordBufferView = model.bufferViews[texCoordAccessor.bufferView];
-			tinygltf::BufferView& indexBufferView = model.bufferViews[indexAccessor.bufferView];
+			int tangentAccessorIndex = -1; // needed for MikkTSpace generation check outside the scope
 
+			// Create staging buffers for verts and idxs in case tangent generation will be required
+			std::vector<Vertex> vertices_l;
+			std::vector<uint32_t> indices_l;
+
+			unsigned char* posOffset = nullptr;
+			size_t posStride = 0;
+
+			unsigned char* normalOffset = nullptr;
+			size_t normalStride = 0;
+
+			unsigned char* tangentOffset = nullptr;
+			size_t tangentStride = 0;
+
+			unsigned char* texCoordOffset = nullptr;
+			size_t texCoordStride = 0;
+
+			int normalAccessorIndex = getAccessorIndex(primitive, "NORMAL");
+			if (normalAccessorIndex > -1) {
+				const tinygltf::Accessor& normalAccessor = model.accessors[normalAccessorIndex];
+				const tinygltf::BufferView& normalBufferView = model.bufferViews[normalAccessor.bufferView];
+				tinygltf::Buffer& normalBuffer = model.buffers[normalBufferView.buffer];
+				normalOffset = normalBuffer.data.data() + normalAccessor.byteOffset + normalBufferView.byteOffset;
+				normalStride = normalAccessor.ByteStride(normalBufferView);
+			}
+
+			tangentAccessorIndex = getAccessorIndex(primitive, "TANGENT");
+			if (tangentAccessorIndex > -1) {
+				const tinygltf::Accessor& tangentAccessor = model.accessors[tangentAccessorIndex];
+				const tinygltf::BufferView& tangentBufferView = model.bufferViews[tangentAccessor.bufferView];
+				tinygltf::Buffer& tangentBuffer = model.buffers[tangentBufferView.buffer];
+				tangentOffset = tangentBuffer.data.data() + tangentAccessor.byteOffset + tangentBufferView.byteOffset;
+				tangentStride = tangentAccessor.ByteStride(tangentBufferView);
+			}
+
+			int texCoordAccessorIndex = getAccessorIndex(primitive, "TEXCOORD_0");
+			if (texCoordAccessorIndex > -1) {
+				const tinygltf::Accessor& texCoordAccessor = model.accessors[texCoordAccessorIndex];
+				const tinygltf::BufferView& texCoordBufferView = model.bufferViews[texCoordAccessor.bufferView];
+				tinygltf::Buffer& texCoordBuffer= model.buffers[texCoordBufferView.buffer];
+				texCoordOffset = texCoordBuffer.data.data() + texCoordAccessor.byteOffset + texCoordBufferView.byteOffset;
+				texCoordStride = texCoordAccessor.ByteStride(texCoordBufferView);
+			}
+
+			int posAccessorIndex = getAccessorIndex(primitive, "POSITION");
+			if (posAccessorIndex == -1) { continue; }
+			const tinygltf::Accessor& posAccessor = model.accessors[posAccessorIndex];
+			const tinygltf::BufferView& posBufferView = model.bufferViews[posAccessor.bufferView];
 			tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
-			tinygltf::Buffer& normalBuffer = model.buffers[normalBufferView.buffer];
-			tinygltf::Buffer& tangentBuffer = model.buffers[tangentBufferView.buffer];
-			tinygltf::Buffer& texCoordBuffer= model.buffers[texCoordBufferView.buffer];
-			tinygltf::Buffer& indexBuffer = model.buffers[indexBufferView.buffer];
+			posOffset = posBuffer.data.data() + posAccessor.byteOffset + posBufferView.byteOffset;
+			posStride = posAccessor.ByteStride(posBufferView);
 
-
-			unsigned char* posOffset = posBuffer.data.data() + posAccessor.byteOffset + posBufferView.byteOffset;
-			size_t posStride = posAccessor.ByteStride(posBufferView);
-
-			unsigned char* normalOffset = normalBuffer.data.data() + normalAccessor.byteOffset + normalBufferView.byteOffset;
-			size_t normalStride = normalAccessor.ByteStride(normalBufferView);
-
-			unsigned char* tangentOffset = tangentBuffer.data.data() + tangentAccessor.byteOffset + tangentBufferView.byteOffset;
-			size_t tangentStride = tangentAccessor.ByteStride(tangentBufferView);
-
-			unsigned char* texCoordOffset = texCoordBuffer.data.data() + texCoordAccessor.byteOffset + texCoordBufferView.byteOffset;
-			size_t texCoordStride = texCoordAccessor.ByteStride(texCoordBufferView);
-
-			unsigned char* indexOffset = indexBuffer.data.data() + indexAccessor.byteOffset + indexBufferView.byteOffset;
-			size_t indexStride = indexAccessor.ByteStride(indexBufferView);
-
-			Primitive p{};
-			p.materialIndex = primitive.material;
-			p.firstIndex = indices_m.size();
-			p.vertexOffset = vertices_m.size();
 
 			for (size_t i = 0; i < posAccessor.count; i++) {
 				Vertex v{};
+
 				auto* pos = reinterpret_cast<const float*>(posOffset + i * posStride);
 				v.pos = {pos[0], pos[1], pos[2]};
 
 				v.color = glm::vec4{1.0f};
 
-				auto* normal = reinterpret_cast<const float*>(normalOffset + i * normalStride);
-				v.normal = {normal[0], normal[1], normal[2]};
+				if (normalOffset != nullptr) {
+					auto* normal = reinterpret_cast<const float*>(normalOffset + i * normalStride);
+					v.normal = {normal[0], normal[1], normal[2]};
+				} else { v.normal = {0.0f, 1.0f, 0.0f}; }
 
-				auto* tangent = reinterpret_cast<const float*>(tangentOffset + i * tangentStride);
-				v.tangent = {tangent[0], tangent[1], tangent[2], tangent[3]};
+				if (tangentOffset != nullptr) {
+					auto* tangent = reinterpret_cast<const float*>(tangentOffset + i * tangentStride);
+					v.tangent = {tangent[0], tangent[1], tangent[2], tangent[3]};
+				} else { v.tangent = {0.0f, 0.0f, 0.0f, 1.0f}; }
 
-				auto* texCoord = reinterpret_cast<const float*>(texCoordOffset + i * texCoordStride);
-				v.texCoord = {texCoord[0], texCoord[1]};
+				if (texCoordOffset != nullptr) {
+					auto* texCoord = reinterpret_cast<const float*>(texCoordOffset + i * texCoordStride); // TODO HANDLE OTHER TYPES RATHER THAN REINTERPRETING
+					v.texCoord = {texCoord[0], texCoord[1]};
+				} else { v.texCoord = {0.0f, 0.0f}; }
 
-				vertices_m.push_back(v);
+				vertices_l.push_back(v);
 			}
 
-			 for (size_t i = 0; i < indexAccessor.count; i++) {
-				switch (indexAccessor.componentType) {
-					case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-						indices_m.push_back(*reinterpret_cast<uint32_t*>(indexOffset + i * indexStride)); break;
-					case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-						indices_m.push_back(*reinterpret_cast<uint16_t*>(indexOffset + i * indexStride)); break;
-					case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-						indices_m.push_back(*reinterpret_cast<uint8_t*>(indexOffset + i * indexStride)); break;
-					default:
-						throw std::runtime_error("unsupported index component type!");
+			if (primitive.indices > -1) {
+				size_t                     indexStride     = 0;
+				unsigned char*             indexOffset     = nullptr;
+				const tinygltf::Accessor&  indexAccessor   = model.accessors[primitive.indices];
+				const tinygltf::BufferView&indexBufferView = model.bufferViews[indexAccessor.bufferView];
+				tinygltf::Buffer&          indexBuffer     = model.buffers[indexBufferView.buffer];
+				indexOffset                                = indexBuffer.data.data() + indexAccessor.byteOffset + indexBufferView.byteOffset;
+				indexStride                                = indexAccessor.ByteStride(indexBufferView);
+
+
+				for (size_t i = 0; i < indexAccessor.count; i++) {
+					switch (indexAccessor.componentType) {
+						case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+							indices_l.push_back(*reinterpret_cast<uint32_t*>(indexOffset + i * indexStride)); break;
+						case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+							indices_l.push_back(*reinterpret_cast<uint16_t*>(indexOffset + i * indexStride)); break;
+						case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+							indices_l.push_back(*reinterpret_cast<uint8_t*>(indexOffset + i * indexStride)); break;
+						default:
+							throw std::runtime_error("unsupported index component type!");
+					}
 				}
+			} else {
+				indices_l.resize(posAccessor.count);
+				std::iota(indices_l.begin(), indices_l.end(), 0u);
 			}
 
-			p.indexCount = indices_m.size() - p.firstIndex;
+
+			if (tangentAccessorIndex == -1 && texCoordAccessorIndex > -1) { // generate tangent if none are present in the model AND texture coords exist
+				mikkutil::unweldVertices(vertices_l, indices_l);
+				mikkutil::generateTangents(vertices_l, indices_l);
+			}
+
+			Primitive p{};
+			p.materialIndex = primitive.material;
+			p.firstIndex = indices_m.size(); // snapshot the offsets right before inserting the staging buffers
+			p.vertexOffset = vertices_m.size();
+			p.indexCount = indices_l.size();
+
+			vertices_m.insert(vertices_m.end(), vertices_l.begin(), vertices_l.end());
+			indices_m.insert(indices_m.end(), indices_l.begin(), indices_l.end());
+
 			m.primitives.push_back(p);
 		}
 		meshes_m.push_back(m);
@@ -335,7 +394,7 @@ Model::Model(VulkanContext& vkCtx, std::string modelPath) {
 void Model::cleanup() {
 	if (allocator_m != nullptr){
 		if (indexBuffer_m.buffer != nullptr){ vkutil::destroyBuffer(allocator_m, indexBuffer_m);}
-		if (vertexBuffer_m.buffer != nullptr){vkutil::destroyBuffer(allocator_m, vertexBuffer_m);}
+		if (vertexBuffer_m.buffer != nullptr){ vkutil::destroyBuffer(allocator_m, vertexBuffer_m);}
 		allocator_m = nullptr;
 	}
 }

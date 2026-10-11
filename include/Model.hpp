@@ -15,7 +15,7 @@ private:
 
     void loadModel(std::string modelPath);
     void loadModel2(VulkanContext vkCtx, std::string modelPath);
-
+    int getAccessorIndex(tinygltf::Primitive primitive, std::string attribute);
     void createVertexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue);
     void createIndexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue);
     void traverseNode(const tinygltf::Model& model, int nodeIndex, const glm::mat4 parentTransform);
