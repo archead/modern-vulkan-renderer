@@ -102,6 +102,11 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 		materials_m.push_back(m);
 	}
 
+	// add the default initialization material at the very end of the material list
+	// used to substitute primitive.material = -1
+	materials_m.push_back(Material2{});
+	const int defaultMaterial = materials_m.size() - 1;
+
 	// Load vertices
 
 	for (const auto& mesh : model.meshes) {
@@ -115,23 +120,23 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 			std::vector<Vertex> vertices_l;
 			std::vector<uint32_t> indices_l;
 
-			unsigned char* posOffset = nullptr;
+			const unsigned char* posOffset = nullptr;
 			size_t posStride = 0;
 
-			unsigned char* normalOffset = nullptr;
+			const unsigned char* normalOffset = nullptr;
 			size_t normalStride = 0;
 
-			unsigned char* tangentOffset = nullptr;
+			const unsigned char* tangentOffset = nullptr;
 			size_t tangentStride = 0;
 
-			unsigned char* texCoordOffset = nullptr;
+			const unsigned char* texCoordOffset = nullptr;
 			size_t texCoordStride = 0;
 
 			int normalAccessorIndex = getAccessorIndex(primitive, "NORMAL");
 			if (normalAccessorIndex > -1) {
 				const tinygltf::Accessor& normalAccessor = model.accessors[normalAccessorIndex];
 				const tinygltf::BufferView& normalBufferView = model.bufferViews[normalAccessor.bufferView];
-				tinygltf::Buffer& normalBuffer = model.buffers[normalBufferView.buffer];
+				const tinygltf::Buffer& normalBuffer = model.buffers[normalBufferView.buffer];
 				normalOffset = normalBuffer.data.data() + normalAccessor.byteOffset + normalBufferView.byteOffset;
 				normalStride = normalAccessor.ByteStride(normalBufferView);
 			}
@@ -140,7 +145,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 			if (tangentAccessorIndex > -1) {
 				const tinygltf::Accessor& tangentAccessor = model.accessors[tangentAccessorIndex];
 				const tinygltf::BufferView& tangentBufferView = model.bufferViews[tangentAccessor.bufferView];
-				tinygltf::Buffer& tangentBuffer = model.buffers[tangentBufferView.buffer];
+				const tinygltf::Buffer& tangentBuffer = model.buffers[tangentBufferView.buffer];
 				tangentOffset = tangentBuffer.data.data() + tangentAccessor.byteOffset + tangentBufferView.byteOffset;
 				tangentStride = tangentAccessor.ByteStride(tangentBufferView);
 			}
@@ -149,7 +154,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 			if (texCoordAccessorIndex > -1) {
 				const tinygltf::Accessor& texCoordAccessor = model.accessors[texCoordAccessorIndex];
 				const tinygltf::BufferView& texCoordBufferView = model.bufferViews[texCoordAccessor.bufferView];
-				tinygltf::Buffer& texCoordBuffer= model.buffers[texCoordBufferView.buffer];
+				const tinygltf::Buffer& texCoordBuffer= model.buffers[texCoordBufferView.buffer];
 				texCoordOffset = texCoordBuffer.data.data() + texCoordAccessor.byteOffset + texCoordBufferView.byteOffset;
 				texCoordStride = texCoordAccessor.ByteStride(texCoordBufferView);
 			}
@@ -158,7 +163,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 			if (posAccessorIndex == -1) { continue; }
 			const tinygltf::Accessor& posAccessor = model.accessors[posAccessorIndex];
 			const tinygltf::BufferView& posBufferView = model.bufferViews[posAccessor.bufferView];
-			tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
+			const tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
 			posOffset = posBuffer.data.data() + posAccessor.byteOffset + posBufferView.byteOffset;
 			posStride = posAccessor.ByteStride(posBufferView);
 
@@ -223,7 +228,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 			}
 
 			Primitive p{};
-			p.materialIndex = primitive.material;
+			p.materialIndex = primitive.material > -1 ? primitive.material : defaultMaterial;
 			p.firstIndex = indices_m.size(); // snapshot the offsets right before inserting the staging buffers
 			p.vertexOffset = vertices_m.size();
 			p.indexCount = indices_l.size();
