@@ -78,7 +78,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 	// Load textures
 	std::filesystem::path gltfDir = std::filesystem::path(modelPath).parent_path();
 	for (auto& tex : model.textures) { // TODO HANDLE NO TEXTURE WITH A DEFAULT MATERIAL
-		const auto& image = model.images[tex.source];
+		const auto& image = model.images[tex.source]; // could be -1 in edge cases
 		std::filesystem::path imagePath = gltfDir / std::filesystem::path(image.uri).replace_extension(".ktx2");
 
 		if (!std::filesystem::exists(imagePath)) {
@@ -90,7 +90,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 	}
 
 	// Load materials
-	for (const auto& material : model.materials) { // TODO HANDLE DEFAULT MATERIAL
+	for (const auto& material : model.materials) {
 		Material2 m{};
 		m.baseColorTex = material.pbrMetallicRoughness.baseColorTexture.index;
 		m.normalTex = material.normalTexture.index;
@@ -121,16 +121,16 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 			std::vector<uint32_t> indices_l;
 
 			const unsigned char* posOffset = nullptr;
-			size_t posStride = 0;
+			int posStride = 0;
 
 			const unsigned char* normalOffset = nullptr;
-			size_t normalStride = 0;
+			int normalStride = 0;
 
 			const unsigned char* tangentOffset = nullptr;
-			size_t tangentStride = 0;
+			int tangentStride = 0;
 
 			const unsigned char* texCoordOffset = nullptr;
-			size_t texCoordStride = 0;
+			int texCoordStride = 0;
 
 			int normalAccessorIndex = getAccessorIndex(primitive, "NORMAL");
 			if (normalAccessorIndex > -1) {
@@ -196,7 +196,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 
 			if (primitive.indices > -1) {
 				size_t                     indexStride     = 0;
-				unsigned char*             indexOffset     = nullptr;
+				const unsigned char*       indexOffset     = nullptr;
 				const tinygltf::Accessor&  indexAccessor   = model.accessors[primitive.indices];
 				const tinygltf::BufferView&indexBufferView = model.bufferViews[indexAccessor.bufferView];
 				tinygltf::Buffer&          indexBuffer     = model.buffers[indexBufferView.buffer];
@@ -207,11 +207,11 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 				for (size_t i = 0; i < indexAccessor.count; i++) {
 					switch (indexAccessor.componentType) {
 						case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-							indices_l.push_back(*reinterpret_cast<uint32_t*>(indexOffset + i * indexStride)); break;
+							indices_l.push_back(*reinterpret_cast<const uint32_t*>(indexOffset + i * indexStride)); break;
 						case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-							indices_l.push_back(*reinterpret_cast<uint16_t*>(indexOffset + i * indexStride)); break;
+							indices_l.push_back(*reinterpret_cast<const uint16_t*>(indexOffset + i * indexStride)); break;
 						case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-							indices_l.push_back(*reinterpret_cast<uint8_t*>(indexOffset + i * indexStride)); break;
+							indices_l.push_back(*reinterpret_cast<const uint8_t*>(indexOffset + i * indexStride)); break; // technically redundant cast but there for consistency
 						default:
 							throw std::runtime_error("unsupported index component type!");
 					}
@@ -220,7 +220,6 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 				indices_l.resize(posAccessor.count);
 				std::iota(indices_l.begin(), indices_l.end(), 0u);
 			}
-
 
 			if (tangentAccessorIndex == -1 && texCoordAccessorIndex > -1) { // generate tangent if none are present in the model AND texture coords exist
 				mikkutil::unweldVertices(vertices_l, indices_l);
