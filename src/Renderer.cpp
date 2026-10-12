@@ -941,7 +941,6 @@ void Renderer::createPointLights() {
 
 	pointLights.cameraPos_lightCount = glm::vec4(camera.getPosition(), MAX_POINT_LIGHTS);
 
-	pointLights.lights[1].pos_intensity = glm::vec4(-0.2, 0.2, 0.0, defaultLightIntensity);
 	pointLights.lights[1].color_attenK = glm::vec4(0.0, 0.0, 1.0, defaultLightAttenK);
 }
 
