@@ -924,11 +924,23 @@ void Renderer::createGBufferSampler() {
 }
 
 void Renderer::createGameObjects() {
+	models.reserve(8); // temporary fix for loading multiple models, prevents the entire vector being moved in memory which destroys certain members
 	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
-
-	gameObjects.resize(1);
+	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\triangleWithoutIndices\triangleWithoutIndices.gltf)");
+	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\helmet\DamagedHelmet.gltf)");
+  
+	gameObjects.resize(3);
 	gameObjects[0].modelIndex = 0;
+	gameObjects[1].modelIndex = 1;
+	gameObjects[2].modelIndex = 2;
 
+	gameObjects[0].position = glm::vec3(0.0f, 0.0f, 1.0f);
+
+	gameObjects[1].position = glm::vec3(0.5, -0.5, 1.0);
+	gameObjects[1].scale = glm::vec3(0.5);
+
+	gameObjects[2].position = glm::vec3(-0.5, 0.5, 1.0);
+	gameObjects[2].scale = glm::vec3(0.25);
 }
 
 void Renderer::createDefaultTextures() {
@@ -941,6 +953,9 @@ void Renderer::createPointLights() {
 
 	pointLights.cameraPos_lightCount = glm::vec4(camera.getPosition(), MAX_POINT_LIGHTS);
 
+	pointLights.lights[0].pos_intensity = glm::vec4(0.5, 0.2, 1.0, defaultLightIntensity);
+
+	pointLights.lights[1].pos_intensity = glm::vec4(-0.4, 0.2, 1.2, defaultLightIntensity);
 	pointLights.lights[1].color_attenK = glm::vec4(0.0, 0.0, 1.0, defaultLightAttenK);
 }
 
@@ -1009,8 +1024,8 @@ void Renderer::initVulkan() {
 	createUniformBuffers();
 
 	createDescriptorPool();
-	createMaterialDescriptorSets(models[0]); // TODO MAKE THIS NOT HARDCODED TO AN INDEX
 	createDescriptorSets();
+	for (auto& model : models) { createMaterialDescriptorSets(model); }
 	createCommandBuffers();
 
 	createSyncObjects();

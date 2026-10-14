@@ -27,11 +27,11 @@ public:
     [[nodiscard]] std::vector<vk::raii::DescriptorSet> Allocate(std::vector<vk::DescriptorSetLayout> layouts);
     [[nodiscard]] std::vector<vk::raii::DescriptorSet> Allocate(vk::DescriptorSetLayout layout);
     vk::DescriptorPool getCurrentPool() const;
+    std::vector<vk::raii::DescriptorPool> descriptorPools;
 
 private:
     vk::raii::Device const& m_device = nullptr;
     PoolSizes m_poolSizes;
     vk::DescriptorPoolCreateFlags m_flags;
-    std::vector<vk::raii::DescriptorPool> descriptorPools;
     size_t currentPoolIndex = 0;
 };
