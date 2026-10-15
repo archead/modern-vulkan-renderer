@@ -72,7 +72,7 @@ private:
 	AllocatedBuffer vertexBuffer = {};
 	AllocatedBuffer indexBuffer  = {};
 
-	std::vector<Model> models;
+	std::vector<std::unique_ptr<Model>> models;
 
 	// Uniform buffers
 	std::vector<AllocatedUniformBuffer>		globalUniformBuffers;

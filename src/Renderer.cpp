@@ -924,11 +924,10 @@ void Renderer::createGBufferSampler() {
 }
 
 void Renderer::createGameObjects() {
-	models.reserve(8); // temporary fix for loading multiple models, prevents the entire vector being moved in memory which destroys certain members
-	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)");
-	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\triangleWithoutIndices\triangleWithoutIndices.gltf)");
-	models.emplace_back(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\helmet\DamagedHelmet.gltf)");
-  
+	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)"));
+	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\triangleWithoutIndices\triangleWithoutIndices.gltf)"));
+	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\helmet\DamagedHelmet.gltf)"));
+
 	gameObjects.resize(3);
 	gameObjects[0].modelIndex = 0;
 	gameObjects[1].modelIndex = 1;
@@ -1025,7 +1024,7 @@ void Renderer::initVulkan() {
 
 	createDescriptorPool();
 	createDescriptorSets();
-	for (auto& model : models) { createMaterialDescriptorSets(model); }
+	for (auto& model : models) { createMaterialDescriptorSets(*model); }
 	createCommandBuffers();
 
 	createSyncObjects();

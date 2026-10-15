@@ -86,7 +86,7 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 
 	// DRAW CALLS PER OBJECT
 	for (const auto& gameObject : gameObjects) {
-		Model &model = models[gameObject.modelIndex];
+		Model &model = *models[gameObject.modelIndex];
 
 		commandBuffers[currentFrame].bindVertexBuffers(0, model.getVertexBuffer(), {0});
 		commandBuffers[currentFrame].bindIndexBuffer(model.getIndexBuffer(), 0, vk::IndexType::eUint32);
@@ -226,10 +226,10 @@ void Renderer::recordCommandBuffer(uint32_t imageIndex) {
 
 	for (const auto& gameObject : gameObjects) {
 
-		commandBuffers[currentFrame].bindVertexBuffers(0, models[gameObject.modelIndex].getVertexBuffer(), {0});
-		commandBuffers[currentFrame].bindIndexBuffer(models[gameObject.modelIndex].getIndexBuffer(), 0, vk::IndexType::eUint32);
+		commandBuffers[currentFrame].bindVertexBuffers(0, models[gameObject.modelIndex]->getVertexBuffer(), {0});
+		commandBuffers[currentFrame].bindIndexBuffer(models[gameObject.modelIndex]->getIndexBuffer(), 0, vk::IndexType::eUint32);
 		commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 1, *materialDescriptorSets[gameObject.materialIndex], {});
-		commandBuffers[currentFrame].drawIndexed(models[gameObject.modelIndex].getIndexCount(), 1, 0, 0, 0);
+		commandBuffers[currentFrame].drawIndexed(models[gameObject.modelIndex]->getIndexCount(), 1, 0, 0, 0);
 	}
 
 	// DRAW DEBUG MENU ---------------------
