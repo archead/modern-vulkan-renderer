@@ -1114,6 +1114,7 @@ void Renderer::cleanup() {
 	models.clear();
 	globalDescriptorSets.clear();
 	gBufferDescriptorSets.clear();
+	billboardDescriptorSets.clear();
 
 	// 2) Then destroy pools/allocator
 	descriptorSetAllocator.reset();
