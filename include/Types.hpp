@@ -109,11 +109,6 @@ struct MikkTSpaceUserData {
     std::vector<uint32_t>* indices;
 };
 
-struct Material {
-    uint32_t baseColorTexture;
-    uint32_t normalTexture;
-};
-
 struct Primitive {
     uint32_t firstIndex;
     uint32_t indexCount;

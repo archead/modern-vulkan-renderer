@@ -8,7 +8,6 @@
 #include "Types.hpp"
 #include "DescriptorSets.hpp"
 #include "Config.hpp"
-#include <ktxvulkan.h>
 
 #include "Camera.hpp"
 #include "Model.hpp"
@@ -65,12 +64,7 @@ private:
 
 	uint32_t currentFrame = 0;
 
-	std::vector<Vertex>   vertices;
-	std::vector<uint32_t> indices;
-
 	VmaAllocator    allocator    = {};
-	AllocatedBuffer vertexBuffer = {};
-	AllocatedBuffer indexBuffer  = {};
 
 	std::vector<std::unique_ptr<Model>> models;
 
@@ -93,9 +87,6 @@ private:
 	// set 3 (light gizmo / billboard)
 	vk::raii::DescriptorSetLayout billboardSetLayout = nullptr;
 	std::vector<vk::raii::DescriptorSet> billboardDescriptorSets;
-
-	// set 4
-	std::vector<vk::raii::DescriptorSet> materialDescriptorSets;
 
 	PoolSizes                               poolSize{};
 	DescriptorSetLayoutBuilder              layoutBuilder{};
@@ -146,7 +137,6 @@ private:
 		glm::vec3 scale    = {1.0f, 1.0f, 1.0f};
 
 		size_t modelIndex;
-		uint32_t materialIndex;
 		glm::uvec4 flags = {0, 0, 0, 0};
 
 		// Calculate model matrix based on position, rotation and scale
@@ -160,11 +150,11 @@ private:
 	glm::vec3 defaultLightColor    = {0.96, 0.89, 0.54};
 	float     defaultLightAttenK   = 0.25f;
 	glm::vec3 defaultLightPos      = {0.5, 0.2, 0.4};
-	float     defaultLightIntensity = 0.75;
+	float     defaultLightIntensity = 1.25f;
 
 	struct Light {
-		glm::vec4 pos_intensity = {0.5, 0.5, 0.5, 0.75}; // using vec4 to align the data xyz = pos, w = intensity
-		glm::vec4 color_attenK = {1.0, 1.0, 1.0, 0.25};
+		glm::vec4 pos_intensity = {0.5f, 0.5f, 0.5f, 1.25}; // using vec4 to align the data xyz = pos, w = intensity
+		glm::vec4 color_attenK = {1.0f, 1.0f, 1.0f, 0.25};
 	};
 
 	struct LightingUBO {
@@ -178,8 +168,6 @@ private:
 	DebugState currentDebugState = DebugState::Lit;
 
 	 std::chrono::steady_clock::time_point lastFrameTime = std::chrono::steady_clock::now();
-
-	std::vector<Material> materials;
 
 	//endregion
 
@@ -205,8 +193,6 @@ private:
 
 	void recordCommandBufferDeferred(uint32_t imageIndex);
 
-	void recordCommandBuffer(uint32_t imageIndex);
-
 	void transition_image_layout(
 		vk::Image               image,
 		vk::ImageLayout         oldLayout,
@@ -223,23 +209,11 @@ private:
 
 	void cleanupSwapchain();
 
-	std::unique_ptr<ModelTexture> loadTextureKTX(const char *texturePath);
-
-	void createVertexBuffer();
-
-	void createIndexBuffer();
-
-	void createGameObjectDescriptorSets();
-
 	void createMaterialDescriptorSets(Model&);
 
 	void createDescriptorSetLayouts();
 
-	void createGameObjectUniformBuffers();
-
 	void createUniformBuffers();
-
-	void updateGameObjectUniformBuffer(uint32_t imageIndex);
 
 	void createDescriptorPool();
 
@@ -247,15 +221,11 @@ private:
 
 	void createBillboardUniformBuffers();
 
-	void createTextureImageView();
-
 	void createTextureSampler();
 
 	void createDepthResources();
 
 	bool hasStencilComponent(vk::Format format);
-
-	void loadModelGLTF(std::string modelPath);
 
 	void createColorResources();
 
