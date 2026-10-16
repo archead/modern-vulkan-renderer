@@ -61,29 +61,6 @@ struct Vertex {
     }
 };
 
-struct VertexHasher {
-    size_t operator()(Vertex const& v) const noexcept {
-        size_t seed = 0;
-
-        auto combine = [&](size_t h) {
-            seed ^= h + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        };
-
-        combine(std::hash<float>{}(v.pos.x));
-        combine(std::hash<float>{}(v.pos.y));
-        combine(std::hash<float>{}(v.pos.z));
-
-        combine(std::hash<float>{}(v.color.x));
-        combine(std::hash<float>{}(v.color.y));
-        combine(std::hash<float>{}(v.color.z));
-
-        combine(std::hash<float>{}(v.texCoord.x));
-        combine(std::hash<float>{}(v.texCoord.y));
-
-        return seed;
-    }
-};
-
 struct TransformUBO {
     glm::mat4 model;
     glm::mat4 view;

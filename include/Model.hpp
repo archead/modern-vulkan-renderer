@@ -46,4 +46,5 @@ private:
 
     Model(Model&& other) noexcept;
     Model& operator=(Model&& other) noexcept;
+
  };

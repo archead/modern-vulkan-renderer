@@ -536,120 +536,6 @@ void Renderer::createBillboardPipeline() {
 	billboardPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
 }
 
-void Renderer::createGraphicsPipeline() {
-	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
-	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
-	vk::raii::ShaderModule shaderModule = vkutil::createShaderModule(device, shaderCode);
-
-	vk::PipelineShaderStageCreateInfo vertShaderStageInfo;
-	vertShaderStageInfo.stage  = vk::ShaderStageFlagBits::eVertex;
-	vertShaderStageInfo.module = shaderModule;
-	vertShaderStageInfo.pName  = "vertMain";
-
-	vk::PipelineShaderStageCreateInfo fragShaderStageInfo;
-	fragShaderStageInfo.stage  = vk::ShaderStageFlagBits::eFragment;
-	fragShaderStageInfo.module = shaderModule;
-	fragShaderStageInfo.pName  = "fragMain";
-
-	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-
-	vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
-	auto                                   bindingDescription    = Vertex::getBindingDescription();
-	auto                                   attributeDescriptions = Vertex::getAttributeDescriptions();
-	vertexInputInfo.vertexBindingDescriptionCount                = 1;
-	vertexInputInfo.pVertexBindingDescriptions                   = &bindingDescription;
-	vertexInputInfo.vertexAttributeDescriptionCount              = attributeDescriptions.size();
-	vertexInputInfo.pVertexAttributeDescriptions                 = attributeDescriptions.data();
-
-	std::vector dynamicStates = {
-		vk::DynamicState::eViewport,
-		vk::DynamicState::eScissor
-	};
-
-	vk::PipelineDynamicStateCreateInfo dynamicState;
-	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-	dynamicState.pDynamicStates    = dynamicStates.data();
-
-	vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
-	inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
-
-	vk::Viewport{ 0.0f, 0.0, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f };
-	vk::PipelineViewportStateCreateInfo viewportState({}, 1, {}, 1);
-
-	vk::PipelineDepthStencilStateCreateInfo depthStencil;
-	depthStencil.depthTestEnable       = vk::True;
-	depthStencil.depthWriteEnable      = vk::True;
-	depthStencil.depthCompareOp        = vk::CompareOp::eLess;
-	depthStencil.depthBoundsTestEnable = vk::False;
-	depthStencil.stencilTestEnable     = vk::False;
-
-	vk::PipelineRasterizationStateCreateInfo rasterizer;
-	rasterizer.depthClampEnable        = vk::False;
-	rasterizer.rasterizerDiscardEnable = vk::False;
-	rasterizer.polygonMode             = vk::PolygonMode::eFill;
-	rasterizer.cullMode                = vk::CullModeFlagBits::eBack;
-	rasterizer.frontFace               = vk::FrontFace::eCounterClockwise;
-	// this needs to be counterClockwise since we are using GLM for our uniform buffers which is originally designed for OpenGL where Y-axis is flipped
-	rasterizer.depthBiasEnable      = vk::False;
-	rasterizer.depthBiasSlopeFactor = 1.0f;
-	rasterizer.lineWidth            = 1.0f;
-
-	vk::PipelineMultisampleStateCreateInfo multisampling;
-	multisampling.rasterizationSamples = msaaSamples;
-	multisampling.sampleShadingEnable  = vk::True;
-	multisampling.minSampleShading     = 0.2f;
-
-	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
-	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-										  vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-	colorBlendAttachment.blendEnable         = vk::False; // disabling color blending for now.
-	colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
-	colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
-	colorBlendAttachment.colorBlendOp        = vk::BlendOp::eAdd;
-	colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
-	colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
-	colorBlendAttachment.alphaBlendOp        = vk::BlendOp::eAdd;
-
-	vk::PipelineColorBlendStateCreateInfo colorBlending;
-	colorBlending.logicOpEnable   = VK_FALSE;
-	colorBlending.logicOp         = vk::LogicOp::eCopy;
-	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments    = &colorBlendAttachment;
-
-	std::array<vk::DescriptorSetLayout, 2> setLayouts = { *globalSetLayout, *materialSetLayout};
-
-	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
-	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
-	pipelineLayoutInfo.pSetLayouts    = setLayouts.data();
-	pipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
-
-	vk::Format depthFormat = vkutil::findDepthFormat(physicalDevice);
-
-	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
-	pipelineRenderingCreateInfo.colorAttachmentCount    = 1;
-	pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapChainImageFormat;
-	pipelineRenderingCreateInfo.depthAttachmentFormat   = depthFormat;
-
-	vk::GraphicsPipelineCreateInfo pipelineInfo;
-	pipelineInfo.pNext               = &pipelineRenderingCreateInfo;
-	pipelineInfo.stageCount          = 2;
-	pipelineInfo.pStages             = shaderStages;
-	pipelineInfo.pVertexInputState   = &vertexInputInfo;
-	pipelineInfo.pInputAssemblyState = &inputAssembly;
-	pipelineInfo.pViewportState      = &viewportState;
-	pipelineInfo.pRasterizationState = &rasterizer;
-	pipelineInfo.pDepthStencilState  = &depthStencil;
-	pipelineInfo.pMultisampleState   = &multisampling;
-	pipelineInfo.pColorBlendState    = &colorBlending;
-	pipelineInfo.pDynamicState       = &dynamicState;
-	pipelineInfo.layout              = pipelineLayout;
-	pipelineInfo.renderPass          = nullptr;
-	pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
-	pipelineInfo.basePipelineIndex   = -1;
-
-	graphicsPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
-}
-
 void Renderer::transition_image_layout(
 	vk::Image image,
 	vk::ImageLayout oldLayout,
@@ -993,7 +879,11 @@ void Renderer::dumpAllocationStats() {
 }
 
 void Renderer::cleanup() {
- device.waitIdle();
+	device.waitIdle();
+
+	ImGui_ImplVulkan_Shutdown();
+	ImGui_ImplSDL3_Shutdown();
+	ImGui::DestroyContext();
 
 	// 1) Destroy things that rely on the allocator first
 	models.clear();
@@ -1028,9 +918,6 @@ void Renderer::cleanup() {
 	//dumpAllocationStats();
 	destroyAllocator();
 
-	ImGui_ImplVulkan_Shutdown();
-	ImGui_ImplSDL3_Shutdown();
-	ImGui::DestroyContext();
 }
 
 void Renderer::drawDebugMenu() {
