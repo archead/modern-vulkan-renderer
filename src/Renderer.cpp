@@ -703,11 +703,13 @@ void Renderer::createGameObjects() {
 	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)"));
 	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\triangleWithoutIndices\triangleWithoutIndices.gltf)"));
 	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\helmet\DamagedHelmet.gltf)"));
+	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\sponza\Sponza.gltf)"));
 
-	gameObjects.resize(3);
+	gameObjects.resize(4);
 	gameObjects[0].modelIndex = 0;
 	gameObjects[1].modelIndex = 1;
 	gameObjects[2].modelIndex = 2;
+	gameObjects[3].modelIndex = 3;
 
 	gameObjects[0].position = glm::vec3(0.0f, 0.0f, 1.0f);
 
