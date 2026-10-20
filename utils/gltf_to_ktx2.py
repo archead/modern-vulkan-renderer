@@ -203,9 +203,12 @@ def to_png(data: bytes, dst: Path, resize: str) -> tuple[bool, tuple[int, int], 
             im = im.convert("I").point(lambda v: v * (1 / 256)).convert("L")
         has_alpha = im.mode in ("RGBA", "LA", "PA", "RGBa", "La") or (
             im.mode == "P" and "transparency" in im.info)
-        im = im.convert("RGBA" if has_alpha else "RGB")
+        # Always RGBA: 3-channel formats like R8G8B8_SRGB often lack linear-filter
+        # (and sometimes sampling) support in Vulkan, and ktx create needs the input
+        # to have at least as many channels as the target format.
+        im = im.convert("RGBA")
         if has_alpha and im.getchannel("A").getextrema() == (255, 255):
-            im, has_alpha = im.convert("RGB"), False  # fully opaque alpha is wasted bits
+            has_alpha = False  # only used for logging now
         orig = im.size
         new = target_size(*orig, resize)
         if new != orig:
@@ -235,7 +238,7 @@ class Job:
 
 def build_cmd(caps: KtxCaps, job: Job, png: Path, out: Path) -> list[str]:
     srgb = job.kind == "colour"
-    channels = "R8G8B8A8" if job.has_alpha else "R8G8B8"
+    channels = "R8G8B8A8"  # see to_png(): RGB8 formats aren't reliably filterable
     return [caps.exe, "create",
             "--format", f"{channels}_{'SRGB' if srgb else 'UNORM'}",
             # Assigning (not converting) the TF stops ktx create from doing an
