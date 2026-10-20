@@ -5,7 +5,7 @@
 #include "MikkUtil.hpp"
 #include "VkUtil.hpp"
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>a
+#include <glm/gtc/quaternion.hpp>
 #include <numeric>
 
 #include "glm/gtc/type_ptr.hpp"
@@ -91,7 +91,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 
 	// Load materials
 	for (const auto& material : model.materials) {
-		Material2 m{};
+		Material m{};
 		m.baseColorTex = material.pbrMetallicRoughness.baseColorTexture.index;
 		m.normalTex = material.normalTexture.index;
 		m.metalRoughTex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
@@ -104,7 +104,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 
 	// add the default initialization material at the very end of the material list
 	// used to substitute primitive.material = -1
-	materials_m.push_back(Material2{});
+	materials_m.push_back(Material{});
 	const int defaultMaterial = materials_m.size() - 1;
 
 	// Load vertices
@@ -304,8 +304,6 @@ Model::Model(Model&& other) noexcept {
 	vertices_m       = std::move(other.vertices_m);
 	allocator_m      = other.allocator_m;
 	meshes_m         = std::move(other.meshes_m);
-	nodes_m          = std::move(other.nodes_m);
-	rootNodes_m      = std::move(other.rootNodes_m);
 	materials_m      = std::move(other.materials_m);
 	textures_m       = std::move(other.textures_m);
 	texturePaths_m   = std::move(other.texturePaths_m);
@@ -325,8 +323,6 @@ Model& Model::operator=(Model&& other) noexcept {
 		vertices_m       = std::move(other.vertices_m);
 		allocator_m      = other.allocator_m;
 		meshes_m         = std::move(other.meshes_m);
-		nodes_m          = std::move(other.nodes_m);
-		rootNodes_m      = std::move(other.rootNodes_m);
 		materials_m      = std::move(other.materials_m);
 		textures_m       = std::move(other.textures_m);
 		texturePaths_m   = std::move(other.texturePaths_m);

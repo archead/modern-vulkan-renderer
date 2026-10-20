@@ -45,7 +45,7 @@ void Renderer::createMaterialDescriptorSets(Model& model) {
     std::vector<vk::DescriptorSetLayout> layouts(materialsSize, *materialSetLayout);
     model.descriptorSets_m = descriptorSetAllocator->Allocate(layouts);
     for (size_t i = 0; i < materialsSize; i++) {
-        const Material2& mat = model.materials_m[i];
+        const Material& mat = model.materials_m[i];
         DescriptorWriter{}
 
         .writeImage(0, *textureSampler,

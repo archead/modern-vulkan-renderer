@@ -25,10 +25,8 @@ private:
  public:
 
     std::vector<Mesh> meshes_m;
-    std::vector<Node> nodes_m;
-    std::vector<int> rootNodes_m;
     std::vector<DrawItem> drawList_m;
-    std::vector<Material2> materials_m;
+    std::vector<Material> materials_m;
     std::vector<std::unique_ptr<ModelTexture>> textures_m;
     std::vector<std::filesystem::path> texturePaths_m;
     std::vector<vk::raii::DescriptorSet> descriptorSets_m;

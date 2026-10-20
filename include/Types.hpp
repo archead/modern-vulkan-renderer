@@ -25,7 +25,6 @@ struct AllocatedBuffer {
 
 struct AllocatedImage {
     VkImage image = VK_NULL_HANDLE;
-    VkDeviceMemory memory = VK_NULL_HANDLE; // mainly used with KTX2 due to UploadEX()
     VmaAllocation allocation = VK_NULL_HANDLE;
     VmaAllocationInfo allocInfo{}; // optional
 };
@@ -61,14 +60,7 @@ struct Vertex {
     }
 };
 
-struct TransformUBO {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-    glm::mat4 normalMatrix;
-};
-
-struct GlobalUBO {
+ struct GlobalUBO {
     glm::mat4 view;
     glm::mat4 proj;
 };
@@ -95,13 +87,7 @@ struct Primitive {
 
 struct Mesh { std::vector<Primitive> primitives; };
 
-struct Node {
-    int32_t meshIndex = -1;
-    glm::mat4 localTransform{1.0f};
-    std::vector<int> children;
-};
-
-struct Material2 {
+struct Material {
     int baseColorTex = -1;
     int normalTex = -1;
     int metalRoughTex = -1;
@@ -135,7 +121,7 @@ struct ModelTexture {
 };
 
 struct DrawItem {
-    int meshIndex;
+    int32_t meshIndex;
     glm::mat4 transformMatrix;
 };
 
