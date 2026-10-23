@@ -24,9 +24,6 @@
 // #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
-
 #include <VkBootstrap.h>
 
 #define VMA_IMPLEMENTATION
@@ -615,17 +612,14 @@ void Renderer::recreateSwapChain() {
 	swapChainImages = swapChain.getImages();
 
 	createImageViews();
-	createColorResources();
 	createDepthResources();
 }
 
 void Renderer::cleanupSwapchain() {
 	device.waitIdle();
 
-	colorImageView = nullptr;
 	depthImageView = nullptr;
 
-	if (colorImage.image != VK_NULL_HANDLE) {vkutil::destroyImage(allocator, colorImage);}
 	if (depthImage.image != VK_NULL_HANDLE) {vkutil::destroyImage(allocator, depthImage);}
 
 	swapChainImageViews.clear();
@@ -638,18 +632,6 @@ void Renderer::createDepthResources() {
 	vkutil::createImage(allocator, swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT, static_cast<VkFormat>(depthFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
 
 	depthImageView = vkutil::createImageView(device, vk::Image(depthImage.image), depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
-}
-
-
-bool Renderer::hasStencilComponent(vk::Format format) {
-	return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
-}
-
-void Renderer::createColorResources() {
-	vk::Format colorFormat = swapChainImageFormat;
-
-	vkutil::createImage(allocator, swapChainExtent.width, swapChainExtent.height, 1, static_cast<VkSampleCountFlagBits>(msaaSamples), static_cast<VkFormat>(colorFormat), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, colorImage);
-	colorImageView = vkutil::createImageView(device, vk::Image(colorImage.image), colorFormat, vk::ImageAspectFlagBits::eColor, 1);
 }
 
 void Renderer::createGBuffer() {
@@ -702,22 +684,30 @@ void Renderer::createGBufferSampler() {
 void Renderer::createGameObjects() {
 	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)"));
 	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\triangleWithoutIndices\triangleWithoutIndices.gltf)"));
-	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\helmet\DamagedHelmet.gltf)"));
+	// models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\helmet\DamagedHelmet.gltf)"));
+	// models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\boxInterleaved\BoxInterleaved.gltf)"));
+	// models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\lantern\Lantern.gltf)"));
+	// models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\orientationTest\OrientationTest.gltf)"));
 	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\sponza\Sponza.gltf)"));
 
-	gameObjects.resize(4);
+	gameObjects.resize(2);
 	gameObjects[0].modelIndex = 0;
-	gameObjects[1].modelIndex = 1;
-	gameObjects[2].modelIndex = 2;
-	gameObjects[3].modelIndex = 3;
+	gameObjects[1].modelIndex = 2;
+	// gameObjects[2].modelIndex = 2;
+	// gameObjects[3].modelIndex = 3;
+	// gameObjects[4].modelIndex = 5;
+	// gameObjects[4].modelIndex = 4;
 
 	gameObjects[0].position = glm::vec3(0.0f, 0.0f, 1.0f);
 
-	gameObjects[1].position = glm::vec3(0.5, -0.5, 1.0);
-	gameObjects[1].scale = glm::vec3(0.5);
-
-	gameObjects[2].position = glm::vec3(-0.5, 0.5, 1.0);
-	gameObjects[2].scale = glm::vec3(0.25);
+	// gameObjects[1].position = glm::vec3(0.5, -0.5, 1.0);
+	// gameObjects[1].scale = glm::vec3(0.5);
+	//
+	// gameObjects[2].position = glm::vec3(-0.5, 0.5, 1.0);
+	// gameObjects[2].scale = glm::vec3(0.25);
+	//
+	// gameObjects[4].position = glm::vec3(-0.25, 0.5, -1.0);
+	// gameObjects[4].scale = glm::vec3(0.25);
 }
 
 void Renderer::createDefaultTextures() {
@@ -789,7 +779,6 @@ void Renderer::initVulkan() {
 	createImGuiInstance();
 	createGBuffer();
 	createGBufferSampler();
-	createColorResources();
 	createDepthResources();
 	createTextureSampler();
 	createDefaultTextures();
@@ -908,7 +897,6 @@ void Renderer::cleanup() {
 	}
 
 	vkutil::destroyImage(allocator, depthImage);
-	vkutil::destroyImage(allocator, colorImage);
 	vkutil::destroyImage(allocator, gBuffer.albedoColorImage);
 	vkutil::destroyImage(allocator, gBuffer.normalVectorImage);
 	vkutil::destroyImage(allocator, gBuffer.fragPosImage);
@@ -919,8 +907,7 @@ void Renderer::cleanup() {
 
 	//dumpAllocationStats();
 	destroyAllocator();
-
-}
+ }
 
 void Renderer::drawDebugMenu() {
 	ImGui_ImplVulkan_NewFrame();

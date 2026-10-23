@@ -54,11 +54,7 @@ struct Vertex {
             vk::VertexInputAttributeDescription(4, 0, vk::Format::eR32G32B32A32Sfloat, offsetof(Vertex, tangent))
         };
     }
-
-    bool operator==(const Vertex& other) const {
-        return pos == other.pos && color == other.color && texCoord == other.texCoord && normal == other.normal && tangent == other.tangent;
-    }
-};
+ };
 
  struct GlobalUBO {
     glm::mat4 view;
@@ -68,7 +64,6 @@ struct Vertex {
 struct ObjectUBO {
     glm::mat4 model;
     glm::mat4 normalMatrix;
-    glm::uvec4 flags = {0, 0, 0, 0}; // x = use normal map
 };
 
 enum class DebugState : int32_t {Lit, Albedo, Normal, Position};
@@ -98,7 +93,6 @@ struct Material {
     float metallicFactor = 1.0f;
     float roughnessFactor = 1.0f;
     float normalScale = 1.0f;
-    bool doubleSided = false;
 };
 
 struct ModelTexture {

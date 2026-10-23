@@ -97,7 +97,6 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 			ObjectUBO push{};
 			push.model = gameObject.getModelMatrix() * item.transformMatrix;
 			push.normalMatrix = glm::transpose(glm::inverse(push.model));
-			push.flags = gameObject.flags;
 
 			commandBuffers[currentFrame].pushConstants<ObjectUBO>(*geometryPipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, push);
 			for (const auto& primitive : model.meshes_m[item.meshIndex].primitives) {

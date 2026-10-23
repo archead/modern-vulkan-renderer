@@ -41,7 +41,6 @@ endfunction()
 
 find_package(Vulkan REQUIRED)
 add_subdirectory(thirdparty/glm)
-add_subdirectory(thirdparty/tinyobjloader)
 add_subdirectory(thirdparty/vk-bootstrap)
 add_subdirectory(thirdparty/VulkanMemoryAllocator)
 add_subdirectory(thirdparty/SDL)
@@ -84,19 +83,16 @@ target_include_directories(mikktspace
 add_executable(vulkan_doc_tutorial
     main.cpp
     src/Renderer.cpp
-    src/Buffers.cpp
     src/UniformBuffers.cpp
     src/DescriptorSets.cpp
     src/Allocator.cpp
     src/CommandBuffers.cpp
-    src/Images.cpp
     src/Textures.cpp
     src/Camera.cpp
     src/VkUtil.cpp
     src/MikkUtil.cpp
     src/Model.cpp
     src/DescriptorWriter.cpp
-    #src/VulkanContext.cpp
 )
 
 target_include_directories(vulkan_doc_tutorial
@@ -112,7 +108,6 @@ target_link_libraries(vulkan_doc_tutorial
         PRIVATE
         Vulkan::Vulkan
         glm::glm
-        tinyobjloader
         stb
         vk-bootstrap::vk-bootstrap
         GPUOpen::VulkanMemoryAllocator

@@ -98,7 +98,7 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 		m.roughnessFactor = material.pbrMetallicRoughness.roughnessFactor;
 		m.metallicFactor = material.pbrMetallicRoughness.metallicFactor;
 		m.normalScale = material.normalTexture.scale;
-
+		m.baseColorFactor = glm::make_vec4(material.pbrMetallicRoughness.baseColorFactor.data());
 		materials_m.push_back(m);
 	}
 

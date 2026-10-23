@@ -95,8 +95,6 @@ private:
 	AllocatedImage          depthImage     = {};
 	vk::raii::ImageView     depthImageView = nullptr;
 	vk::SampleCountFlagBits msaaSamples    = vk::SampleCountFlagBits::e1;
-	AllocatedImage          colorImage     = {};
-	vk::raii::ImageView     colorImageView = nullptr;
 
 	VulkanContext vkCtx = { device, physicalDevice, commandPool, graphicsQueue, allocator };
 
@@ -219,10 +217,6 @@ private:
 	void createTextureSampler();
 
 	void createDepthResources();
-
-	bool hasStencilComponent(vk::Format format);
-
-	void createColorResources();
 
 	void createGBuffer();
 
