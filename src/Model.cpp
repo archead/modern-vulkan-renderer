@@ -94,11 +94,16 @@ int Model::getAccessorIndex(tinygltf::Primitive primitive, std::string attribute
 		Material m{};
 		m.baseColorTex = material.pbrMetallicRoughness.baseColorTexture.index;
 		m.normalTex = material.normalTexture.index;
+		m.occlusionTex = material.occlusionTexture.index;
+		m.emissiveTex = material.emissiveTexture.index;
 		m.metalRoughTex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
-		m.roughnessFactor = material.pbrMetallicRoughness.roughnessFactor;
-		m.metallicFactor = material.pbrMetallicRoughness.metallicFactor;
-		m.normalScale = material.normalTexture.scale;
+
+		m.roughnessFactor = static_cast<float>(material.pbrMetallicRoughness.roughnessFactor);
+		m.metallicFactor = static_cast<float>(material.pbrMetallicRoughness.metallicFactor);
 		m.baseColorFactor = glm::make_vec4(material.pbrMetallicRoughness.baseColorFactor.data());
+
+		m.normalScale = static_cast<float>(material.normalTexture.scale);
+
 		materials_m.push_back(m);
 	}
 
