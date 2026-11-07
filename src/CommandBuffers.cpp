@@ -2,6 +2,8 @@
 #include "Config.hpp"
 #include <imgui_impl_vulkan.h>
 
+#include "glm/gtc/type_ptr.hpp"
+
 void Renderer::createCommandPool() {
 	vk::CommandPoolCreateInfo poolInfo;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
@@ -91,15 +93,19 @@ void Renderer::recordCommandBufferDeferred(uint32_t imageIndex) {
 		commandBuffers[currentFrame].bindVertexBuffers(0, model.getVertexBuffer(), {0});
 		commandBuffers[currentFrame].bindIndexBuffer(model.getIndexBuffer(), 0, vk::IndexType::eUint32);
 
-
-		for (auto& item : model.drawList_m) {
-
-			ObjectUBO push{};
+		for (auto& item : model.drawList_m) { // TODO add eVertex and eFragment to the push constant range and finish populating the push struct instance
+			PushConstants push{};
 			push.model = gameObject.getModelMatrix() * item.transformMatrix;
 			push.normalMatrix = glm::transpose(glm::inverse(push.model));
 
-			commandBuffers[currentFrame].pushConstants<ObjectUBO>(*geometryPipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, push);
+			// commandBuffers[currentFrame].pushConstants<PushConstants>(*geometryPipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, push);
 			for (const auto& primitive : model.meshes_m[item.meshIndex].primitives) {
+
+				auto& material = model.materials_m[primitive.materialIndex];
+				push.materialFactors = glm::vec4(material.metallicFactor, material.roughnessFactor, material.normalScale, 1.0f);
+				push.baseColorFactor = material.baseColorFactor;
+				commandBuffers[currentFrame].pushConstants<PushConstants>(*geometryPipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, push);
+
 				commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *geometryPipelineLayout, 1, *model.descriptorSets_m[primitive.materialIndex], {});
 				commandBuffers[currentFrame].drawIndexed(primitive.indexCount, 1, primitive.firstIndex, primitive.vertexOffset, 0);
 			}
