@@ -13,7 +13,6 @@ private:
     VmaAllocator          allocator_m = nullptr;
     std::string            modelPath_m;
 
-    void loadModel(std::string modelPath);
     void loadModel2(VulkanContext vkCtx, std::string modelPath);
     int getAccessorIndex(tinygltf::Primitive primitive, std::string attribute);
     void createVertexBuffer(vk::raii::Device &device, vk::raii::CommandPool &commandPool, vk::raii::Queue &graphicsQueue);
@@ -23,7 +22,6 @@ private:
     void cleanup();
 
  public:
-
     std::vector<Mesh> meshes_m;
     std::vector<DrawItem> drawList_m;
     std::vector<Material> materials_m;
