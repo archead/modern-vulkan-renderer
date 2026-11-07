@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.0)
 project(vulkan_doc_tutorial)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui)
@@ -15,28 +15,45 @@ if (NOT SLANGC_EXECUTABLE)
 endif ()
 
 function (add_slang_shader_target TARGET)
-    cmake_parse_arguments ("SHADER" "" "" "SOURCES" ${ARGN})
+    cmake_parse_arguments("SHADER" "" "" "SOURCES" ${ARGN})
+
+    if (NOT SHADER_SOURCES)
+        message(FATAL_ERROR "add_slang_shader_target: no SOURCES added")
+    endif ()
+
+    if (SHADER_UNPARSED_ARGUMENTS)
+        message(FATAL_ERROR "add_slang_shader_target: unknown arguments: ${SHADER_UNPARSED_ARGUMENTS}")
+    endif ()
+
     set (SHADERS_DIR ${CMAKE_CURRENT_LIST_DIR}/shaders)
-    set (ENTRY_POINTS -entry vertMain -entry fragMain -entry lightingVertMain -entry lightingFragMain -entry geometryFragMain -entry billboardVertMain -entry billboardFragMain)
-    add_custom_command (
+
+    add_custom_command(
             OUTPUT ${SHADERS_DIR}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADERS_DIR}
     )
-    add_custom_command (
-            OUTPUT  ${SHADERS_DIR}/slang.spv
-            COMMAND ${SLANGC_EXECUTABLE} ${SHADER_SOURCES}
-                -target spirv
-                -profile spirv_1_4
-                -emit-spirv-directly
-                -fvk-use-entrypoint-name ${ENTRY_POINTS}
-                -o slang.spv
 
-            WORKING_DIRECTORY ${SHADERS_DIR}
-            DEPENDS ${SHADERS_DIR} ${SHADER_SOURCES}
-            COMMENT "Compiling Slang Shaders"
-            VERBATIM
-    )
-    add_custom_target (${TARGET} DEPENDS ${SHADERS_DIR}/slang.spv)
+    set (SPV_OUTPUTS "")
+    foreach (NAME ${SHADER_SOURCES})
+        add_custom_command(
+                OUTPUT
+                    ${SHADERS_DIR}/${NAME}.spv
+                COMMAND ${SLANGC_EXECUTABLE} ${SHADERS_DIR}/${NAME}.slang
+                    -target spirv
+                    -profile spirv_1_4
+                    -emit-spirv-directly
+                    -fvk-use-entrypoint-name
+                    -o ${NAME}.spv
+                WORKING_DIRECTORY ${SHADERS_DIR}
+                DEPENDS ${SHADERS_DIR}
+                        ${SHADERS_DIR}/${NAME}.slang
+                        ${SHADERS_DIR}/common.slang
+                COMMENT "Compiling ${NAME}.slang"
+                VERBATIM
+        )
+        list (APPEND SPV_OUTPUTS ${SHADERS_DIR}/${NAME}.spv)
+    endforeach ()
+
+    add_custom_target ( ${TARGET} DEPENDS ${SPV_OUTPUTS} )
 endfunction()
 
 find_package(Vulkan REQUIRED)
@@ -99,9 +116,7 @@ target_include_directories(vulkan_doc_tutorial
     PRIVATE
         include
 )
-
-set (SHADER_SLANG_SOURCES ${CMAKE_CURRENT_LIST_DIR}/shaders/shader.slang)
-add_slang_shader_target(shaders SOURCES ${SHADER_SLANG_SOURCES})
+add_slang_shader_target(shaders SOURCES geometry lighting billboard)
 add_dependencies(vulkan_doc_tutorial shaders)
 
 target_link_libraries(vulkan_doc_tutorial

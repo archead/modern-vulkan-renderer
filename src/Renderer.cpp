@@ -10,6 +10,7 @@
 #include <unordered_map> // Using for deduplicating OBJ vertices
 #include <fstream>
 #include <memory>
+#include <print>
 
 
 #include <SDL3/SDL.h>
@@ -50,7 +51,7 @@ static std::vector<char> readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
 	if (!file.is_open()) {
-		throw std::runtime_error("failed to open file!");
+		throw std::runtime_error("failed to open file " + filename);
 	}
 
 	std::vector<char> buffer(file.tellg());
@@ -133,7 +134,7 @@ void Renderer::bootstrapVulkan() {
 
 	const vkb::PhysicalDevice vkbPhysicalDevice = phys_ret.value();
 	physicalDevice = vk::raii::PhysicalDevice(instance, vkbPhysicalDevice);
-	std::cout << "Physical Device Push Constant Size: " << physicalDevice.getProperties().limits.maxPushConstantsSize << "\n";
+	std::print("maxPushConstantSize: {}\n", physicalDevice.getProperties().limits.maxPushConstantsSize);
 	msaaSamples = vk::SampleCountFlagBits::e1; // hard coded since we are using deferred rendering
 
 	// ---- Create Logical Device
@@ -218,7 +219,7 @@ void Renderer::createImageViews() {
 }
 
 void Renderer::createLightingPipeline() {
-	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
+	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/lighting.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
 	vk::raii::ShaderModule shaderModule = vkutil::createShaderModule(device, shaderCode);
 
@@ -319,7 +320,7 @@ void Renderer::createLightingPipeline() {
 }
 
 void Renderer::createGeometryPipeline() {
-	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
+	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/geometry.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
 	vk::raii::ShaderModule shaderModule = vkutil::createShaderModule(device, shaderCode);
 
@@ -394,9 +395,9 @@ void Renderer::createGeometryPipeline() {
 	std::array<vk::DescriptorSetLayout, 2> setLayouts = {*globalSetLayout, *materialSetLayout};
 
 	vk::PushConstantRange objectPushConstantRange{};
-	objectPushConstantRange.size       = sizeof(ObjectUBO);
+	objectPushConstantRange.size       = sizeof(PushConstants);
 	objectPushConstantRange.offset     = 0;
-	objectPushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
+	objectPushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
 	pipelineLayoutInfo.setLayoutCount         = static_cast<uint32_t>(setLayouts.size());
@@ -405,10 +406,8 @@ void Renderer::createGeometryPipeline() {
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
 	geometryPipelineLayout                    = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
-	vk::Format                depthFormat    = vkutil::findDepthFormat(physicalDevice);
-	std::array<vk::Format, 3> gBufferFormats = {
-		gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat
-	};
+	vk::Format depthFormat    = vkutil::findDepthFormat(physicalDevice);
+	std::array<vk::Format, 3> gBufferFormats = { gBuffer.fragPosFormat, gBuffer.normalVectorFormat, gBuffer.albedoColorFormat };
 
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo;
 	pipelineRenderingCreateInfo.colorAttachmentCount    = 3;
@@ -437,7 +436,7 @@ void Renderer::createGeometryPipeline() {
 
 void Renderer::createBillboardPipeline() {
 
-	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/slang.spv");
+	auto shaderCode = readFile("C:/dev/vulkan-doc-tutorial/shaders/billboard.spv");
 	std::cout << "Size of shaderCode: " << shaderCode.size() << std::endl;
 	vk::raii::ShaderModule shaderModule = vkutil::createShaderModule(device, shaderCode);
 

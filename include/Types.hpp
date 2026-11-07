@@ -61,9 +61,11 @@ struct Vertex {
     glm::mat4 proj;
 };
 
-struct ObjectUBO {
+struct PushConstants {
     glm::mat4 model;
     glm::mat4 normalMatrix;
+    glm::vec4 materialFactors;  // x = metallic, y = roughness, z = normalScale, w = occlusionStrengthor;
+    glm::vec4 baseColorFactor;
 };
 
 enum class DebugState : int32_t {Lit, Albedo, Normal, Position};
