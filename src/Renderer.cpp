@@ -39,7 +39,9 @@
 
 #include "DescriptorWriter.hpp"
 #include "VkUtil.hpp"
-#include "MikkUtil.hpp"
+
+#include <print>
+#include <json.hpp>
 
 static void check_vk_result(VkResult err) {
 	if (err == 0) { return; }
@@ -681,32 +683,23 @@ void Renderer::createGBufferSampler() {
 }
 
 void Renderer::createGameObjects() {
-	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\fish\BarramundiFish.gltf)"));
-	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\triangleWithoutIndices\triangleWithoutIndices.gltf)"));
-	// models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\helmet\DamagedHelmet.gltf)"));
-	// models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\boxInterleaved\BoxInterleaved.gltf)"));
-	// models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\lantern\Lantern.gltf)"));
-	// models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\orientationTest\OrientationTest.gltf)"));
-	models.emplace_back(std::make_unique<Model>(vkCtx, R"(C:\dev\vulkan-doc-tutorial\models\sponza\Sponza.gltf)"));
 
-	gameObjects.resize(2);
-	gameObjects[0].modelIndex = 0;
-	gameObjects[1].modelIndex = 2;
-	// gameObjects[2].modelIndex = 2;
-	// gameObjects[3].modelIndex = 3;
-	// gameObjects[4].modelIndex = 5;
-	// gameObjects[4].modelIndex = 4;
+	std::ifstream file(R"(C:\dev\vulkan-doc-tutorial\config\models.json)");
+	nlohmann::json modelsConfig = nlohmann::json::parse(file);
 
-	gameObjects[0].position = glm::vec3(0.0f, 0.0f, 1.0f);
+	std::string projectRootDir = R"(C:\dev\vulkan-doc-tutorial\)";
 
-	// gameObjects[1].position = glm::vec3(0.5, -0.5, 1.0);
-	// gameObjects[1].scale = glm::vec3(0.5);
-	//
-	// gameObjects[2].position = glm::vec3(-0.5, 0.5, 1.0);
-	// gameObjects[2].scale = glm::vec3(0.25);
-	//
-	// gameObjects[4].position = glm::vec3(-0.25, 0.5, -1.0);
-	// gameObjects[4].scale = glm::vec3(0.25);
+	for (const auto& modelPath : modelsConfig["models"]) {
+		std::string fullPath = projectRootDir + static_cast<std::string>(modelPath);
+		models.emplace_back(std::make_unique<Model>(vkCtx, fullPath));
+	}
+
+	gameObjects.resize(modelsConfig["objects"].size());
+	int objIdx = 0;
+	for (const auto& object : modelsConfig["objects"]) {
+		gameObjects[objIdx].modelIndex = object["model"];
+		objIdx += 1;
+	}
 }
 
 void Renderer::createDefaultTextures() {
