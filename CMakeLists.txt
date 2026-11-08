@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 4.0)
 project(vulkan_doc_tutorial)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -60,7 +62,7 @@ find_package(Vulkan REQUIRED)
 add_subdirectory(thirdparty/glm)
 add_subdirectory(thirdparty/vk-bootstrap)
 add_subdirectory(thirdparty/VulkanMemoryAllocator)
-add_subdirectory(thirdparty/SDL)
+add_subdirectory(thirdparty/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(thirdparty/tinygltf)
 add_subdirectory(thirdparty/ktx)
 
