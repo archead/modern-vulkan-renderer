@@ -1,0 +1,10 @@
+{
+  "models": [
+    "models/fish/BarramundiFish.fltf",
+    "models/sponza/Sponza.gltf"
+  ],
+  "objects": [
+    { "model": 0 },
+    { "model": 1 }
+  ]
+}
