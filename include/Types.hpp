@@ -68,7 +68,7 @@ struct PushConstants {
     glm::vec4 baseColorFactor;
 };
 
-enum class DebugState : int32_t {Lit, Albedo, Normal, Position};
+enum class DebugState : int32_t {Lit, Albedo, Normal, Position, Metallic, Roughness};
 
 struct MikkTSpaceUserData {
     std::vector<Vertex>* vertices;

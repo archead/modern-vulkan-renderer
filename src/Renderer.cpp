@@ -928,7 +928,9 @@ void Renderer::drawDebugMenu() {
 	ImGui::RadioButton("Lit", &current, 0); ImGui::SameLine();
 	ImGui::RadioButton("Albedo", &current, 1); ImGui::SameLine();
 	ImGui::RadioButton("Normal", &current, 2); ImGui::SameLine();
-	ImGui::RadioButton("FragPos", &current, 3);
+	ImGui::RadioButton("FragPos", &current, 3); ImGui::SameLine();
+	ImGui::RadioButton("Metallic", &current, 4); ImGui::SameLine();
+	ImGui::RadioButton("Roughness", &current, 5);
 	currentDebugState = static_cast<DebugState>(current);
 
 	ImGui::End();

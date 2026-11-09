@@ -1,9 +1,6 @@
 # TODO
 
 ## Now — PBR
-- [ ] Split shaders in separate files
-- [x] Decide: material factors in push constants vs per-material UBO
-- [ ] Pack metallic/roughness into G-buffer free alphas
 - [ ] Cook-Torrance BRDF in CalcPointLight
 - [ ] Occlusion + emissive maps
 
@@ -20,11 +17,14 @@
 - [ ] Re-weld after tangent generation
 
 ## Known bugs
-- [ ] attenK reads light[0] for every light
 - [ ] baseColorFactor never populated in loader
 - [ ] ObjectUBO::flags dead in deferred path
 
 ## Done
+- [x] Pack metallic/roughness into G-buffer free alphas
+- [x] attenK reads light[0] for every light
+- [x] Split shaders in separate files
+- [x] Decide: material factors in push constants vs per-material UBO
 - [x] Per-primitive rendering
 - [x] Node hierarchy traversal
 - [x] KTX2 texture pipeline + cook script
